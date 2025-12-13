@@ -45,9 +45,9 @@
          </div>
 
          <div class="sm:col-span-2">
-          <label for="postal-code" class="block text-sm/6 font-medium text-gray-900 dark:text-white">ZIP / Postal code</label>
+          <label for="status" class="block text-sm/6 font-medium text-gray-900 dark:text-white">Status</label>
           <div class="mt-2">
-            <input id="postal-code" type="text" name="postal-code" autocomplete="postal-code" class="border border-1 block w-full rounded-md bg-white px-3 py-1.5 text-base text-gray-900 outline-1 -outline-offset-1 outline-gray-300 placeholder:text-gray-400 focus:outline-2 focus:-outline-offset-2 focus:outline-indigo-600 sm:text-sm/6 dark:bg-white/5 dark:text-white dark:outline-white/10 dark:placeholder:text-gray-500 dark:focus:outline-indigo-500" />
+            <input id="status" type="text" name="status" autocomplete="status" class="border border-1 block w-full rounded-md bg-white px-3 py-1.5 text-base text-gray-900 outline-1 -outline-offset-1 outline-gray-300 placeholder:text-gray-400 focus:outline-2 focus:-outline-offset-2 focus:outline-indigo-600 sm:text-sm/6 dark:bg-white/5 dark:text-white dark:outline-white/10 dark:placeholder:text-gray-500 dark:focus:outline-indigo-500" />
           </div>
          </div>
         </div>

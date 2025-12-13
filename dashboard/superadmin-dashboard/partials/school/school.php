@@ -68,16 +68,16 @@
   const form = document.getElementById('addSchoolForm');
   const cancel = document.getElementById('cancel');
 
-  btn.addEventListener('click', () => {
-    form.classList.toggle('hidden');
-    form.scrollIntoView({ behavior: 'smooth' });
+  btn?.addEventListener('click', () => {
+    form.classList.remove('hidden');
+    form.scrollIntoView({ behavior: 'smooth', block: 'start' });
   });
 
-  cancel.addEventListener('click', () => {
-    form.classList.toggle('flex');
-    form.scrollIntoView({ behavior: 'smooth' });
+  cancel?.addEventListener('click', () => {
+    form.classList.add('hidden');
   });
 </script>
+
 
 </body>
 </html>
