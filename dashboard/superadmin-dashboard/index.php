@@ -10,9 +10,9 @@
 
 <div class="hidden lg:fixed lg:inset-y-0 lg:z-50 lg:flex lg:w-72 lg:flex-col">
   <div class="relative flex grow flex-col gap-y-5 overflow-y-auto border-r border-gray-200 bg-white px-6 dark:border-white/10 dark:bg-gray-900 dark:before:pointer-events-none dark:before:absolute dark:before:inset-0 dark:before:bg-black/10">
-    <div class="relative flex h-16 shrink-0 items-center">
+    <a href="/E-Shkolla/super-admin-schools" class="relative flex h-16 shrink-0 items-center">
       <img src="/E-Shkolla/images/logo.png" alt="Your Company" class="w-48 h-48 dark:hidden" />
-    </div>
+    </a>
     <nav class="relative flex flex-1 flex-col">
       <ul role="list" class="flex flex-1 flex-col gap-y-7">
         <li>
