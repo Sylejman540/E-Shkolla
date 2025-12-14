@@ -1,18 +1,33 @@
 <?php require_once __DIR__ . '/../index.php'; ?>
 <?php
-// fake data for now (replace later with DB queries)
-$totalSchools = 12;
-$activeSchools = 9;
-$inactiveSchools = 3;
+require_once __DIR__  . '/../../../db.php';   
 
-$totalUsers = 320;
-$usersByRole = [
-    'Super Admin' => 1,
-    'School Admin' => 12,
-    'Teachers' => 120,
-    'Students' => 180,
-    'Parents' => 7
-];
+// Total schools
+$totalSchools = $pdo->query("SELECT COUNT(*) FROM schools")->fetchColumn();
+
+// Active schools
+$stmt = $pdo->prepare("SELECT COUNT(*) FROM schools WHERE status = ?");
+$stmt->execute(['Active']);
+$activeSchools = $stmt->fetchColumn();
+
+// Inactive schools
+$stmt->execute(['Inactive']);
+$inactiveSchools = $stmt->fetchColumn();
+
+// Total users
+$totalUsers = $pdo->query("SELECT COUNT(*) FROM users")->fetchColumn();
+
+// Users by role
+$stmt = $pdo->query("
+    SELECT role, COUNT(*) as total
+    FROM users
+    GROUP BY role
+");
+
+$usersByRole = [];
+while ($row = $stmt->fetch(PDO::FETCH_ASSOC)) {
+    $usersByRole[$row['role']] = $row['total'];
+}
 ?>
 
 <!DOCTYPE html>
@@ -34,15 +49,15 @@ $usersByRole = [
         <dl class="mt-5 grid grid-cols-1 gap-5 sm:grid-cols-3">
             <div class="overflow-hidden rounded-lg bg-white px-4 py-5 shadow-sm sm:p-6 dark:bg-gray-800/75 dark:inset-ring dark:inset-ring-white/10">
             <dt class="truncate text-sm font-medium text-gray-500 dark:text-gray-400">Total Schools</dt>
-            <dd class="mt-1 text-3xl font-semibold tracking-tight text-gray-900 dark:text-white">71,897</dd>
+            <dd class="mt-1 text-3xl font-semibold tracking-tight text-gray-900 dark:text-white"><?= htmlspecialchars($activeSchools) ?></dd>
             </div>
             <div class="overflow-hidden rounded-lg bg-white px-4 py-5 shadow-sm sm:p-6 dark:bg-gray-800/75 dark:inset-ring dark:inset-ring-white/10">
             <dt class="truncate text-sm font-medium text-gray-500 dark:text-gray-400">Total Users</dt>
-            <dd class="mt-1 text-3xl font-semibold tracking-tight text-gray-900 dark:text-white">58.16%</dd>
+            <dd class="mt-1 text-3xl font-semibold tracking-tight text-gray-900 dark:text-white"><?= htmlspecialchars($totalUsers) ?></dd>
             </div>
             <div class="overflow-hidden rounded-lg bg-white px-4 py-5 shadow-sm sm:p-6 dark:bg-gray-800/75 dark:inset-ring dark:inset-ring-white/10">
             <dt class="truncate text-sm font-medium text-gray-500 dark:text-gray-400">Active Schools</dt>
-            <dd class="mt-1 text-3xl font-semibold tracking-tight text-gray-900 dark:text-white">24.57%</dd>
+            <dd class="mt-1 text-3xl font-semibold tracking-tight text-gray-900 dark:text-white"><?= htmlspecialchars($activeSchools) ?></dd>
             </div>
         </dl>
         </div>
