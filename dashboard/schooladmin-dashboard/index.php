@@ -5,7 +5,21 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>E-Shkolla </title>
     <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://unpkg.com/phosphor-icons"></script>
 </head>
+<style>
+  .submenu-link {
+    display: block;
+    padding: 6px 8px;
+    font-size: 0.875rem;
+    color: #4b5563;
+    border-radius: 6px;
+  }
+  .submenu-link:hover {
+    color: #4f46e5;
+    background-color: #f9fafb;
+  }
+</style>
 <body class="h-full">
 
 <div class="hidden lg:fixed lg:inset-y-0 lg:z-50 lg:flex lg:w-72 lg:flex-col">
@@ -18,47 +32,71 @@
         <li>
           <ul role="list" class="-mx-2 space-y-1">
             <li>
-              <a href="/E-Shkolla/super-admin-dashboard" class="group flex gap-x-3 rounded-md bg-gray-50 p-2 text-sm/6 font-semibold text-indigo-600 dark:bg-white/5 dark:text-white">
-                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" data-slot="icon" aria-hidden="true" class="size-6 shrink-0 text-indigo-600 dark:text-white">
-                    <path d="m2.25 12 8.954-8.955c.44-.439 1.152-.439 1.591 0L21.75 12M4.5 9.75v10.125c0 .621.504 1.125 1.125 1.125H9.75v-4.875c0-.621.504-1.125 1.125-1.125h2.25c.621 0 1.125.504 1.125 1.125V21h4.125c.621 0 1.125-.504 1.125-1.125V9.75M8.25 21h8.25" stroke-linecap="round" stroke-linejoin="round" />
-                </svg>
-                Dashboard
+              <a href="/E-Shkolla/school-admin-dashboard" class="group flex gap-x-3 rounded-md bg-gray-50 p-2 text-sm/6 font-semibold text-indigo-600 dark:bg-white/5 dark:text-white">
+                🏠 Dashboard
               </a>
             </li>
             <li>
-              <a href="/E-Shkolla/super-admin-schools" class="group flex gap-x-3 rounded-md p-2 text-sm/6 font-semibold text-gray-700 hover:bg-gray-50 hover:text-indigo-600 dark:text-gray-400 dark:hover:bg-white/5 dark:hover:text-white">
-                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" data-slot="icon" aria-hidden="true" class="size-6 shrink-0 text-gray-400 group-hover:text-indigo-600 dark:text-gray-500 dark:group-hover:text-white">
-                    <path d="M6.75 3v2.25M17.25 3v2.25M3 18.75V7.5a2.25 2.25 0 0 1 2.25-2.25h13.5A2.25 2.25 0 0 1 21 7.5v11.25m-18 0A2.25 2.25 0 0 0 5.25 21h13.5A2.25 2.25 0 0 0 21 18.75m-18 0v-7.5A2.25 2.25 0 0 1 5.25 9h13.5A2.25 2.25 0 0 1 21 11.25v7.5" stroke-linecap="round" stroke-linejoin="round" />
-                </svg>
-                Schools
+              <button type="button" data-toggle="users" class="w-full flex items-center justify-between rounded-md p-2 text-sm font-semibold text-gray-700 hover:bg-gray-50">
+                <span class="flex items-center gap-x-3">
+                  👥 Përdoruesit
+                </span>
+                <span class="arrow transition-transform">  
+                  <svg class="w-4 h-4 text-gray-400" viewBox="0 0 20 20" fill="currentColor">
+                    <path fill-rule="evenodd"
+                      d="M5.23 7.21a.75.75 0 0 1 1.06.02L10 10.94l3.71-3.71a.75.75 0 1 1 1.06 1.06l-4.24 4.24a.75.75 0 0 1-1.06 0L5.21 8.29a.75.75 0 0 1 .02-1.08Z"
+                      clip-rule="evenodd" />
+                  </svg></span>
+              </button>
+
+              <ul data-menu="users" class="ml-9 mt-1 space-y-1 hidden">
+                <li><a href="/E-Shkolla/teachers" class="submenu-link">Mësuesit</a></li>
+                <li><a href="/E-Shkolla/students" class="submenu-link">Nxënësit</a></li>
+                <li><a href="/E-Shkolla/parents" class="submenu-link">Prindërit</a></li>
+              </ul>
+            </li>
+            <li>
+              <button type="button" data-toggle="academy" class="w-full flex items-center justify-between rounded-md p-2 text-sm font-semibold text-gray-700 hover:bg-gray-50">
+                <span class="flex items-center gap-x-3">
+                  🎓 Akademia
+                </span>
+                <span class="arrow transition-transform">  
+                  <svg class="w-4 h-4 text-gray-400" viewBox="0 0 20 20" fill="currentColor">
+                    <path fill-rule="evenodd"
+                      d="M5.23 7.21a.75.75 0 0 1 1.06.02L10 10.94l3.71-3.71a.75.75 0 1 1 1.06 1.06l-4.24 4.24a.75.75 0 0 1-1.06 0L5.21 8.29a.75.75 0 0 1 .02-1.08Z"
+                      clip-rule="evenodd" />
+                  </svg></span>
+              </button>
+
+              <ul data-menu="academy" class="ml-9 mt-1 space-y-1 hidden">
+                <li><a href="/E-Shkolla/classes" class="submenu-link">Klasat</a></li>
+                <li><a href="/E-Shkolla/subjects" class="submenu-link">Lëndët</a></li>
+                <li><a href="/E-Shkolla/schedule" class="submenu-link">Orari</a></li>
+              </ul>
+            </li>
+            <li>
+              <a href="/E-Shkolla/attendance" class="flex items-center gap-x-3 rounded-md p-2 text-sm font-semibold text-gray-700 hover:bg-gray-50">
+                📊 Pjesëmarrja
               </a>
             </li>
             <li>
-              <a href="/E-Shkolla/super-admin-users" class="group flex gap-x-3 rounded-md p-2 text-sm/6 font-semibold text-gray-700 hover:bg-gray-50 hover:text-indigo-600 dark:text-gray-400 dark:hover:bg-white/5 dark:hover:text-white">
-                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" data-slot="icon" aria-hidden="true" class="size-6 shrink-0 text-gray-400 group-hover:text-indigo-600 dark:text-gray-500 dark:group-hover:text-white">
-                    <path d="M15 19.128a9.38 9.38 0 0 0 2.625.372 9.337 9.337 0 0 0 4.121-.952 4.125 4.125 0 0 0-7.533-2.493M15 19.128v-.003c0-1.113-.285-2.16-.786-3.07M15 19.128v.106A12.318 12.318 0 0 1 8.624 21c-2.331 0-4.512-.645-6.374-1.766l-.001-.109a6.375 6.375 0 0 1 11.964-3.07M12 6.375a3.375 3.375 0 1 1-6.75 0 3.375 3.375 0 0 1 6.75 0Zm8.25 2.25a2.625 2.625 0 1 1-5.25 0 2.625 2.625 0 0 1 5.25 0Z" stroke-linecap="round" stroke-linejoin="round" />
-                </svg>
-                Users
-              </a>
-            </li>
-            <li>
-              <a href="#" class="group flex gap-x-3 rounded-md p-2 text-sm/6 font-semibold text-gray-700 hover:bg-gray-50 hover:text-indigo-600 dark:text-gray-400 dark:hover:bg-white/5 dark:hover:text-white">
-                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" data-slot="icon" aria-hidden="true" class="size-6 shrink-0 text-gray-400 group-hover:text-indigo-600 dark:text-gray-500 dark:group-hover:text-white">
-                   <path d="M10.5 6a7.5 7.5 0 1 0 7.5 7.5h-7.5V6Z" stroke-linecap="round" stroke-linejoin="round" />
-                   <path d="M13.5 10.5H21A7.5 7.5 0 0 0 13.5 3v7.5Z" stroke-linecap="round" stroke-linejoin="round" />
-                </svg>
-                Settings
+              <a href="/E-Shkolla/reports" class="flex items-center gap-x-3 rounded-md p-2 text-sm font-semibold text-gray-700 hover:bg-gray-50">
+                📈 Raportet
               </a>
             </li>
           </ul>
         </li>
         <li>
-        <div class="text-xs/6 font-semibold text-gray-400 dark:text-gray-500">Personal Info</div>
+        <div class="text-xs/6 font-semibold text-gray-400 dark:text-gray-500">Cilësimet</div>
           <ul role="list" class="-mx-2 mt-2 space-y-1">
+          <li class="pt-4 border-t">
+            <a href="/E-Shkolla/school-settings" class="flex items-center gap-x-3 rounded-md p-2 text-sm font-semibold text-gray-700 hover:bg-gray-50">
+              ⚙️ Cilësimet e Shkollës
+             </a>
+          </li>
           <li>
-            <a href="/E-Shkolla/login" class="group flex gap-x-3 rounded-md p-2 text-sm/6 font-semibold text-gray-700 hover:bg-gray-50 hover:text-indigo-600 dark:text-gray-400 dark:hover:bg-white/5 dark:hover:text-white">
-              <span class="flex size-6 shrink-0 items-center justify-center rounded-lg border border-gray-200 bg-white text-[0.625rem] font-medium text-gray-400 group-hover:border-indigo-600 group-hover:text-indigo-600 dark:border-white/10 dark:bg-white/5 dark:group-hover:border-white/20 dark:group-hover:text-white">L</span>
-              <span class="truncate">Logout</span>
+            <a href="/E-Shkolla/logout" class="flex items-center gap-x-3 rounded-md p-2 text-sm font-semibold text-red-600 hover:bg-red-50">
+              🚪 Dil nga llogaria
             </a>
           </li>
           </ul>
@@ -67,7 +105,7 @@
           <a href="#" class="flex items-center gap-x-4 px-6 py-3 text-sm/6 font-semibold text-gray-900 hover:bg-gray-50 dark:text-white dark:hover:bg-white/5">
             <img src="https://images.unsplash.com/photo-1472099645785-5658abf4ff4e?ixlib=rb-1.2.1&ixid=eyJhcHBfaWQiOjEyMDd9&auto=format&fit=facearea&facepad=2&w=256&h=256&q=80" alt="" class="size-8 rounded-full bg-gray-50 outline -outline-offset-1 outline-black/5 dark:bg-gray-800 dark:outline-white/10" />
             <span class="sr-only">Your profile</span>
-            <span aria-hidden="true">Super Admin</span>
+            <span aria-hidden="true">School Admin</span>
           </a>
         </li>
       </ul>
@@ -88,6 +126,27 @@
     <img src="https://images.unsplash.com/photo-1472099645785-5658abf4ff4e?ixlib=rb-1.2.1&ixid=eyJhcHBfaWQiOjEyMDd9&auto=format&fit=facearea&facepad=2&w=256&h=256&q=80" alt="" class="size-8 rounded-full bg-gray-50 outline -outline-offset-1 outline-black/5 dark:bg-gray-800 dark:outline-white/10" />
   </a>
 </div>
+<script>
+  document.querySelectorAll('[data-toggle]').forEach(button => {
+    button.addEventListener('click', () => {
+      const key = button.dataset.toggle;
+      const menu = document.querySelector(`[data-menu="${key}"]`);
+      const arrow = button.querySelector('.arrow');
 
+      document.querySelectorAll('[data-menu]').forEach(m => {
+        if (m !== menu) m.classList.add('hidden');
+      });
+
+      document.querySelectorAll('.arrow').forEach(a => {
+        if (a !== arrow) a.style.transform = 'rotate(0deg)';
+      });
+
+      menu.classList.toggle('hidden');
+      arrow.style.transform = menu.classList.contains('hidden')
+        ? 'rotate(0deg)'
+        : 'rotate(180deg)';
+    });
+  });
+</script>
 </body>
 </html>
