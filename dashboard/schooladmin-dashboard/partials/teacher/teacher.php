@@ -24,7 +24,7 @@ $teachers = $stmt->fetchAll(PDO::FETCH_ASSOC);
 <body>
 <main class="lg:pl-72">
   <div class="xl:pl-18">
-    <div class="px-4 py-10 sm:px-6 lg:px-8 lg:py-6">
+    <div class="px-4 py-10 sm:px-6 lg:px-8 lg:py-6 relative">
         <div class="px-4 sm:px-6 lg:px-8">
         <div class="sm:flex sm:items-center">
             <div class="sm:flex-auto">
