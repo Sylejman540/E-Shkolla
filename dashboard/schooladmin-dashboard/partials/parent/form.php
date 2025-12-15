@@ -20,9 +20,9 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 }
 
 ?>
-<div id="addSchoolForm" class="hidden mt-8">
-  <div class="flex justify-center">
-    <div class="w-full max-w-4xl">
+<div id="addSchoolForm" class="hidden fixed inset-0 z-50 flex items-start justify-center bg-black/30 overflow-y-auto pt-10">
+     
+    <div class="w-full max-w-3xl px-4">
 
       <div class="rounded-xl bg-white p-8 shadow-sm ring-1 ring-gray-200 dark:bg-gray-900 dark:ring-white/10">
         
