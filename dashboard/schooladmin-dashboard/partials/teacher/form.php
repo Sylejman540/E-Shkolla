@@ -118,8 +118,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             <label for="status" class="block text-sm/6 font-medium text-gray-900 dark:text-white">Statusi</label>
             <div class="mt-2">
                 <select id="status" name="status" autocomplete="status" class="border block w-full rounded-md bg-white px-3 py-1.5 text-base text-gray-900 outline-gray-300 focus:outline-2 focus:outline-indigo-600 sm:text-sm dark:bg-white/5 dark:text-white dark:outline-white/10 dark:focus:outline-indigo-500">
-                    <option value="active" <?= $row['status'] === 'active' ? 'selected' : '' ?>>Aktive</option>
-                    <option value="inactive" <?= $row['status'] === 'inactive' ? 'selected' : '' ?>>Joaktive</option>
+                  <option value="active" <?= $row['status'] === 'active' ? 'selected' : '' ?>>Aktive</option>
+                  <option value="inactive" <?= $row['status'] === 'inactive' ? 'selected' : '' ?>>Joaktive</option>
                 </select>
             </div>
             </div>

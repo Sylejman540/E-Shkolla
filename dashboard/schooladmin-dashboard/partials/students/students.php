@@ -61,10 +61,24 @@ $students = $stmt->fetchAll(PDO::FETCH_ASSOC);
                         <td class="px-3 py-4 text-sm whitespace-nowrap text-gray-500 dark:text-gray-400"><?= htmlspecialchars($row['class']) ?></td>
                         <td class="px-3 py-4 text-sm whitespace-nowrap text-gray-500 dark:text-gray-400"><?= htmlspecialchars($row['parent_name']) ?></td>
                         <td class="px-3 py-4 text-sm whitespace-nowrap text-gray-500 dark:text-gray-400"><?= htmlspecialchars($row['parent_phone']) ?></td>
-                        <td class="px-3 py-4 text-sm whitespace-nowrap">
-                            <p class="text-green-500 py-[1px] w-14 px-2 h-6 bg-green-200 rounded-xl">
-                                <?= htmlspecialchars($row['status']) ?>
-                            </p>
+                        <td class="px-3 py-4 text-sm whitespace-nowrap text-gray-500 dark:text-gray-400">
+                            <?php
+                                $statusLabel = match ($row['status']) {
+                                    'active'   => 'Aktiv',
+                                    'inactive' => 'Joaktiv',
+                                    default    => '-',
+                                };
+
+                                $statusClass = match ($row['status']) {
+                                    'active'   => 'bg-green-200 text-green-700',
+                                    'inactive' => 'bg-red-200 text-red-700',
+                                    default    => 'bg-gray-200 text-gray-700',
+                                };
+                            ?>
+
+                            <span class="inline-block px-2 py-0.5 rounded-full text-xs font-semibold <?= $statusClass ?>">
+                                <?= $statusLabel ?>
+                            </span>
                         </td>
                         <td class="px-3 py-4 text-sm whitespace-nowrap text-gray-500 dark:text-gray-400"><?= htmlspecialchars($row['created_at']) ?></td>
                         <td class="py-4 pr-4 pl-3 text-right text-sm font-medium whitespace-nowrap sm:pr-0">
