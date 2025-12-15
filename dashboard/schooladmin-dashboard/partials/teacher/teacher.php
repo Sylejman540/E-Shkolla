@@ -93,7 +93,7 @@ $teachers = $stmt->fetchAll(PDO::FETCH_ASSOC);
                         </td>
                         <td class="px-3 py-4 text-sm whitespace-nowrap text-gray-500 dark:text-gray-400"><?= htmlspecialchars($row['created_at']) ?></td>
                         <td class="py-4 pr-4 pl-3 text-right text-sm font-medium whitespace-nowrap sm:pr-0">
-                            <a href="#" class="text-indigo-600 hover:text-indigo-900 dark:text-indigo-400 dark:hover:text-indigo-300">Edit<span class="sr-only">, Lindsay Walton</span></a>
+                            <a href="/E-Shkolla/dashboard/schooladmin-dashboard/partials/teacher/update-teacher.php?id=<?= $row['id'] ?>" class="text-indigo-600 hover:text-indigo-900 dark:text-indigo-400 dark:hover:text-indigo-300">Edit</a>
                         </td>
                     </tr>
                 </tbody>
