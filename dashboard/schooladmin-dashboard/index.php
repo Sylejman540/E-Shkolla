@@ -6,6 +6,7 @@
     <title>E-Shkolla </title>
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://unpkg.com/phosphor-icons"></script>
+    <link rel="icon" href="/E-Shkolla/images/logo.png" type="image/png">
 </head>
 <style>
   .submenu-link {
