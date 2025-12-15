@@ -2,31 +2,26 @@
 <?php
 require_once __DIR__  . '/../../../db.php';   
 
-// Total schools
-$totalSchools = $pdo->query("SELECT COUNT(*) FROM schools")->fetchColumn();
+$totalParents = $pdo->query("SELECT COUNT(*) FROM parents")->fetchColumn();
 
-// Active schools
-$stmt = $pdo->prepare("SELECT COUNT(*) FROM schools WHERE status = ?");
+$stmt = $pdo->prepare("SELECT COUNT(*) FROM parents WHERE status = ?");
 $stmt->execute(['Active']);
-$activeSchools = $stmt->fetchColumn();
+$activeParents = $stmt->fetchColumn();
 
-// Inactive schools
 $stmt->execute(['Inactive']);
-$inactiveSchools = $stmt->fetchColumn();
+$inactiveParents = $stmt->fetchColumn();
 
-// Total users
-$totalUsers = $pdo->query("SELECT COUNT(*) FROM users")->fetchColumn();
+$totalStudents = $pdo->query("SELECT COUNT(*) FROM students")->fetchColumn();
 
-// Users by role
-$stmt = $pdo->query("
-    SELECT role, COUNT(*) as total
-    FROM users
-    GROUP BY role
-");
+$stmt = $pdo->query("SELECT status, COUNT(*) as total FROM students GROUP BY status");
+
+$totalTeachers = $pdo->query("SELECT COUNT(*) FROM teachers")->fetchColumn();
+
+$stmt = $pdo->query("SELECT status, COUNT(*) as total FROM teachers GROUP BY status");
 
 $usersByRole = [];
 while ($row = $stmt->fetch(PDO::FETCH_ASSOC)) {
-    $usersByRole[$row['role']] = $row['total'];
+    $usersByRole[$row['status']] = $row['total'];
 }
 ?>
 
@@ -48,101 +43,157 @@ while ($row = $stmt->fetch(PDO::FETCH_ASSOC)) {
         <h3 class="text-base font-semibold text-gray-900 dark:text-white">SuperAdmin Dashboard</h3>
         <dl class="mt-5 grid grid-cols-1 gap-5 sm:grid-cols-3">
             <div class="overflow-hidden rounded-lg bg-white px-4 py-5 shadow-sm sm:p-6 dark:bg-gray-800/75 dark:inset-ring dark:inset-ring-white/10">
-            <dt class="truncate text-sm font-medium text-gray-500 dark:text-gray-400">Total Schools</dt>
-            <dd class="mt-1 text-3xl font-semibold tracking-tight text-gray-900 dark:text-white"><?= htmlspecialchars($activeSchools) ?></dd>
+            <dt class="truncate text-sm font-medium text-gray-500 dark:text-gray-400">Total Parents</dt>
+            <dd class="mt-1 text-3xl font-semibold tracking-tight text-gray-900 dark:text-white"><?= htmlspecialchars($totalParents) ?></dd>
             </div>
             <div class="overflow-hidden rounded-lg bg-white px-4 py-5 shadow-sm sm:p-6 dark:bg-gray-800/75 dark:inset-ring dark:inset-ring-white/10">
-            <dt class="truncate text-sm font-medium text-gray-500 dark:text-gray-400">Total Users</dt>
-            <dd class="mt-1 text-3xl font-semibold tracking-tight text-gray-900 dark:text-white"><?= htmlspecialchars($totalUsers) ?></dd>
+            <dt class="truncate text-sm font-medium text-gray-500 dark:text-gray-400">Total Students</dt>
+            <dd class="mt-1 text-3xl font-semibold tracking-tight text-gray-900 dark:text-white"><?= htmlspecialchars($totalStudents) ?></dd>
             </div>
             <div class="overflow-hidden rounded-lg bg-white px-4 py-5 shadow-sm sm:p-6 dark:bg-gray-800/75 dark:inset-ring dark:inset-ring-white/10">
-            <dt class="truncate text-sm font-medium text-gray-500 dark:text-gray-400">Active Schools</dt>
-            <dd class="mt-1 text-3xl font-semibold tracking-tight text-gray-900 dark:text-white"><?= htmlspecialchars($activeSchools) ?></dd>
+            <dt class="truncate text-sm font-medium text-gray-500 dark:text-gray-400">Total Teachers</dt>
+            <dd class="mt-1 text-3xl font-semibold tracking-tight text-gray-900 dark:text-white"><?= htmlspecialchars($totalTeachers) ?></dd>
             </div>
         </dl>
         </div>
 
-        <div class="mt-10 grid grid-cols-1 lg:grid-cols-2 gap-6">
+        <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+  <div class="h-64">
+    <canvas id="attendanceChart"></canvas>
+  </div>
 
-        <!-- Schools Status -->
-        <div class="bg-white rounded-xl border border-gray-200 p-6 h-[420px]">
-            <h4 class="mb-4 text-sm font-semibold text-gray-700">
-            Schools Status
-            </h4>
-            <div class="relative h-[320px]">
-            <canvas id="schoolsChart"></canvas>
-            </div>
-        </div>
+  <div class="h-64">
+    <canvas id="teachersStatusChart"></canvas>
+  </div>
 
-        <!-- Users by Role -->
-        <div class="bg-white rounded-xl border border-gray-200 p-6 h-[420px]">
-            <h4 class="mb-4 text-sm font-semibold text-gray-700">
-            Users by Role
-            </h4>
-            <div class="relative h-[320px]">
-            <canvas id="usersChart"></canvas>
-            </div>
-        </div>
+  <div class="h-64 md:col-span-2">
+    <canvas id="studentsByClassChart"></canvas>
+  </div>
 
-        </div>
+  <div class="h-64 md:col-span-2">
+    <canvas id="absencesByClassChart"></canvas>
+  </div>
+</div>
+
     </div>
   </div>
 </main>
 
 <script>
-new Chart(document.getElementById('schoolsChart'), {
-  type: 'doughnut',
-  data: {
-    labels: ['Active Schools', 'Inactive Schools'],
-    datasets: [{
-      data: [<?= $activeSchools ?>, <?= $inactiveSchools ?>],
-      backgroundColor: ['#3b82f6', '#f59e0b'], // blue / amber
-      borderWidth: 0
-    }]
-  },
-  options: {
-    maintainAspectRatio: false,
-    plugins: {
-      legend: {
-        position: 'bottom',
-        labels: {
-          boxWidth: 12,
-          padding: 20
+document.addEventListener('DOMContentLoaded', () => {
+
+  // 1. Attendance Today
+  new Chart(document.getElementById('attendanceChart'), {
+    type: 'doughnut',
+    data: {
+      labels: ['Prezent', 'Mungesë'],
+      datasets: [{
+        data: [420, 38],
+        backgroundColor: ['#22c55e', '#ef4444'],
+        borderWidth: 0
+      }]
+    },
+    options: {
+      maintainAspectRatio: false,
+      plugins: {
+        title: {
+          display: true,
+          text: 'Pjesëmarrja sot'
+        },
+        legend: {
+          position: 'bottom'
         }
       }
     }
-  }
-});
+  });
 
-new Chart(document.getElementById('usersChart'), {
-  type: 'bar',
-  data: {
-    labels: <?= json_encode(array_keys($usersByRole)) ?>,
-    datasets: [{
-      label: 'Users',
-      data: <?= json_encode(array_values($usersByRole)) ?>,
-      backgroundColor: '#6366f1', // indigo
-      borderRadius: 8
-    }]
-  },
-  options: {
-    maintainAspectRatio: false,
-    plugins: {
-      legend: { display: false }
+  // 2. Teachers Status
+  new Chart(document.getElementById('teachersStatusChart'), {
+    type: 'doughnut',
+    data: {
+      labels: ['Aktiv', 'Jo aktiv'],
+      datasets: [{
+        data: [42, 3],
+        backgroundColor: ['#6366f1', '#e5e7eb'],
+        borderWidth: 0
+      }]
     },
-    scales: {
-      y: {
-        beginAtZero: true,
-        grid: { color: '#e5e7eb' }
-      },
-      x: {
-        grid: { display: false }
+    options: {
+      maintainAspectRatio: false,
+      plugins: {
+        title: {
+          display: true,
+          text: 'Statusi i mësuesve'
+        },
+        legend: {
+          position: 'bottom'
+        }
       }
     }
-  }
-});
+  });
 
+  // 3. Students by Class
+  new Chart(document.getElementById('studentsByClassChart'), {
+    type: 'bar',
+    data: {
+      labels: ['6A', '6B', '7A', '7B', '8A', '9A'],
+      datasets: [{
+        label: 'Nxënës',
+        data: [28, 30, 27, 29, 31, 26],
+        backgroundColor: '#3b82f6',
+        borderRadius: 6
+      }]
+    },
+    options: {
+      maintainAspectRatio: false,
+      plugins: {
+        title: {
+          display: true,
+          text: 'Nxënës sipas klasës'
+        },
+        legend: { display: false }
+      },
+      scales: {
+        y: {
+          beginAtZero: true
+        }
+      }
+    }
+  });
+
+  // 4. Absences by Class
+  new Chart(document.getElementById('absencesByClassChart'), {
+    type: 'bar',
+    data: {
+      labels: ['6A', '6B', '7A', '7B', '8A'],
+      datasets: [{
+        label: 'Mungesa',
+        data: [2, 5, 1, 4, 3],
+        backgroundColor: '#f97316',
+        borderRadius: 6
+      }]
+    },
+    options: {
+      indexAxis: 'y',
+      maintainAspectRatio: false,
+      plugins: {
+        title: {
+          display: true,
+          text: 'Mungesa sot sipas klasës'
+        },
+        legend: { display: false }
+      },
+      scales: {
+        x: {
+          beginAtZero: true
+        }
+      }
+    }
+  });
+
+});
 </script>
+
 
 </body>
 </html>
