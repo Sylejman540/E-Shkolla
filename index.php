@@ -20,7 +20,9 @@ $routes = [
     '/super-admin-schools' => 'dashboard/superadmin-dashboard/partials/school/school.php',
     '/super-admin-users' => 'dashboard/superadmin-dashboard/partials/users/users.php',
     '/school-admin-dashboard' => 'dashboard/schooladmin-dashboard/partials/dashboard.php',
-    '/teachers' => 'dashboard/schooladmin-dashboard/partials/teacher/teacher.php'
+    '/teachers' => 'dashboard/schooladmin-dashboard/partials/teacher/teacher.php',
+    '/students' => 'dashboard/schooladmin-dashboard/partials/students/students.php',
+    '/parents' => 'dashboard/schooladmin-dashboard/partials/parent/parents.php',
 ];
 
 if (array_key_exists($uri, $routes)) {
