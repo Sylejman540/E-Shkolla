@@ -57,25 +57,25 @@ while ($row = $stmt->fetch(PDO::FETCH_ASSOC)) {
         </dl>
         </div>
 
-        <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
-  <div class="h-64">
-    <canvas id="attendanceChart"></canvas>
-  </div>
+        <div class="grid grid-cols-1 md:grid-cols-2 gap-6 mt-5">
+          <div class="h-64">
+            <canvas id="attendanceChart"></canvas>
+          </div>
 
-  <div class="h-64">
-    <canvas id="teachersStatusChart"></canvas>
-  </div>
+          <div class="h-64">
+            <canvas id="teachersStatusChart"></canvas>
+          </div>
 
-  <div class="h-64 md:col-span-2">
-    <canvas id="studentsByClassChart"></canvas>
-  </div>
+          <div class="h-64 md:col-span-2">
+            <canvas id="studentsByClassChart"></canvas>
+          </div>
 
-  <div class="h-64 md:col-span-2">
-    <canvas id="absencesByClassChart"></canvas>
-  </div>
-</div>
+          <div class="h-64 md:col-span-2">
+            <canvas id="absencesByClassChart"></canvas>
+          </div>
+        </div>
 
-    </div>
+      </div>
   </div>
 </main>
 
@@ -89,7 +89,7 @@ document.addEventListener('DOMContentLoaded', () => {
       labels: ['Prezent', 'Mungesë'],
       datasets: [{
         data: [420, 38],
-        backgroundColor: ['#22c55e', '#ef4444'],
+        backgroundColor: ['#6366f1', '#ef4444'],
         borderWidth: 0
       }]
     },
