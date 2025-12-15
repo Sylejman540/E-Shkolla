@@ -16,13 +16,25 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     $user = $stmt->fetch(PDO::FETCH_ASSOC);
 
     if ($user) {
-        // PLAIN TEXT comparison (DEV ONLY)
         if ($password === $user['password']) {
 
             $_SESSION['user'] = $user;
+            $_SESSION['role'] = $user['role'];
+          
+            if($_SESSION['role'] == 'super_admin'){    
+              header("Location: /E-Shkolla/super-admin-dashboard");
+              exit;
+            }
 
-            header('Location: /E-Shkolla/super-admin-dashboard');
-            exit;
+            if($_SESSION['role'] == 'school_admin'){
+              header("Location: /E-Shkolla/school-admin-dashboard");
+              exit;
+            }
+
+            if(!isset($_SESSION['user'])){
+              header("Location: /E-Shkolla/login");
+              exit;
+            }
         }
     }
 
