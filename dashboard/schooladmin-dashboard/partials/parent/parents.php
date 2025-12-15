@@ -58,7 +58,17 @@ $parents = $stmt->fetchAll(PDO::FETCH_ASSOC);
                         <td class="py-4 pr-3 pl-4 text-sm font-medium whitespace-nowrap text-gray-900 sm:pl-0 dark:text-white"><?= htmlspecialchars($row['full_name']) ?></td>
                         <td class="px-3 py-4 text-sm whitespace-nowrap text-gray-500 dark:text-gray-400"><?= htmlspecialchars($row['phone']) ?></td>
                         <td class="px-3 py-4 text-sm whitespace-nowrap text-gray-500 dark:text-gray-400"><?= htmlspecialchars($row['email']) ?></td>
-                        <td class="px-3 py-4 text-sm whitespace-nowrap text-gray-500 dark:text-gray-400"><?= htmlspecialchars($row['relation']) ?></td>
+                        <td class="px-3 py-4 text-sm whitespace-nowrap text-gray-500 dark:text-gray-400">
+                            <?php
+                                echo match ($row['relation']) {
+                                    'father'   => 'Babi',
+                                    'mother' => 'Nëna',
+                                    'guardian' => "Kujestar",
+                                    'other'  => 'Tjetër',
+                                    default  => '-',
+                                };
+                            ?>
+                        </td>
                         <td class="px-3 py-4 text-sm whitespace-nowrap text-gray-500 dark:text-gray-400">
                             <?php
                                 $statusLabel = match ($row['status']) {
