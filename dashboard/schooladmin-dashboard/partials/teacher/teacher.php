@@ -49,9 +49,6 @@ $teachers = $stmt->fetchAll(PDO::FETCH_ASSOC);
                         <th scope="col" class="px-3 py-3.5 text-left text-sm font-semibold text-gray-900 dark:text-white">Lënda</th>
                         <th scope="col" class="px-3 py-3.5 text-left text-sm font-semibold text-gray-900 dark:text-white">Statusi</th>
                         <th scope="col" class="px-3 py-3.5 text-left text-sm font-semibold text-gray-900 dark:text-white">Data e krijimit</th>
-                        <th scope="col" class="py-3.5 pr-4 pl-3 sm:pr-0">
-                            <span class="sr-only">Edit</span>
-                        </th>
                     </tr>
                 </thead>
                 <?php foreach($teachers as $row): ?>
@@ -71,7 +68,11 @@ $teachers = $stmt->fetchAll(PDO::FETCH_ASSOC);
                                 };
                             ?>
                         </td>
-                        <td class="px-3 py-4 text-sm whitespace-nowrap text-gray-500 dark:text-gray-400"><?= htmlspecialchars($row['subject']) ?></td>
+                        <td class="px-3 py-4">
+                            <span class="inline-flex items-center rounded-full bg-indigo-50 px-2 py-1 text-xs font-medium text-indigo-700">
+                                <?= htmlspecialchars($row['subject']) ?>
+                            </span>
+                        </td>
                         <td class="px-3 py-4 text-sm whitespace-nowrap text-gray-500 dark:text-gray-400">
                             <?php
                                 $statusLabel = match ($row['status']) {
@@ -92,9 +93,6 @@ $teachers = $stmt->fetchAll(PDO::FETCH_ASSOC);
                             </span>
                         </td>
                         <td class="px-3 py-4 text-sm whitespace-nowrap text-gray-500 dark:text-gray-400"><?= htmlspecialchars($row['created_at']) ?></td>
-                        <td class="py-4 pr-4 pl-3 text-right text-sm font-medium whitespace-nowrap sm:pr-0">
-                            <a href="/E-Shkolla/dashboard/schooladmin-dashboard/partials/teacher/update-teacher.php?id=<?= $row['id'] ?>" class="text-indigo-600 hover:text-indigo-900 dark:text-indigo-400 dark:hover:text-indigo-300">Edit</a>
-                        </td>
                     </tr>
                 </tbody>
                 <?php endforeach ?>
