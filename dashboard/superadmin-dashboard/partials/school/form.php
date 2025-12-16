@@ -12,6 +12,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     $city = $_POST['city'];
     $status = $_POST['status'];
 
+
     $stmt = $pdo->prepare("INSERT INTO schools(name, school_admin, email, city, status) VALUES(?, ?, ?, ?, ?)");
     $stmt->execute([$name, $school_admin, $email, $city, $status]);
 

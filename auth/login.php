@@ -20,18 +20,19 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 
             $_SESSION['user'] = $user;
             $_SESSION['role'] = $user['role'];
+            $_SESSION['status'] = $user['status'];
           
-            if($_SESSION['role'] == 'super_admin'){    
+            if($_SESSION['role'] == 'super_admin' && $_SESSION['status'] == 'Active'){    
               header("Location: /E-Shkolla/super-admin-dashboard");
               exit;
             }
 
-            if($_SESSION['role'] == 'school_admin'){
+            if($_SESSION['role'] == 'school_admin' && $_SESSION['status'] == 'Active'){
               header("Location: /E-Shkolla/school-admin-dashboard");
               exit;
             }
 
-            if(!isset($_SESSION['user'])){
+            if(!isset($_SESSION['user']) && $_SESSION['status'] == 'Deactive'){
               header("Location: /E-Shkolla/login");
               exit;
             }

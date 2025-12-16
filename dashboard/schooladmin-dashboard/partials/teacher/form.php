@@ -1,21 +1,34 @@
 <?php
-if(session_status() === PHP_SESSION_NONE){
+if (session_status() === PHP_SESSION_NONE) {
     session_start();
 }
 
-require_once __DIR__  . '/../../../../db.php';
+require_once __DIR__ . '/../../../../db.php';
 
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
-    $name = $_POST['name'];
-    $email = $_POST['email'];
-    $phone = $_POST['phone'];
-    $gender = $_POST['gender'];
+
+    $name    = $_POST['name'];
+    $email   = $_POST['email'];
+    $phone   = $_POST['phone'];
+    $gender  = $_POST['gender'] ?? null;
     $subject = $_POST['subject'];
-    $status = $_POST['status'];
+    $status  = $_POST['status'];
+    $password = $_POST['password']; 
+
+    // Determine school_id
+    if ($_SESSION['user']['role'] === 'super_admin') {
+        $schoolId = $_POST['school_id'];
+    } else {
+        $schoolId = $_SESSION['user']['school_id'];
+    }
+
+    if (empty($schoolId)) {
+        die('School is required');
+    }
+
     $profile_photo = null;
 
     if (!empty($_FILES['profile_photo']['name'])) {
-
         $uploadDir = __DIR__ . '/../../../../uploads/teachers/';
         if (!is_dir($uploadDir)) {
             mkdir($uploadDir, 0777, true);
@@ -26,7 +39,6 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         $fileExt  = strtolower(pathinfo($fileName, PATHINFO_EXTENSION));
 
         $allowed = ['jpg', 'jpeg', 'png', 'webp'];
-
         if (!in_array($fileExt, $allowed)) {
             die('Invalid image type');
         }
@@ -39,15 +51,17 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         }
     }
 
+    $stmt = $pdo->prepare("INSERT INTO users (school_id, name, email, password, role, status) VALUES (?, ?, ?, ?, 'teacher', ?)");
+    $stmt->execute([$schoolId, $name, $email, $password, $status]);
 
-    $stmt = $pdo->prepare("INSERT INTO teachers(name, email, phone, gender, subject, status, profile_photo) VALUES(?, ?, ?, ?, ?, ?, ?)");
-    $stmt->execute([$name, $email, $phone, $gender, $subject, $status, $profile_photo]);
+    $stmt = $pdo->prepare("INSERT INTO teachers (school_id, name, email, phone, gender, subject, status, profile_photo) VALUES (?, ?, ?, ?, ?, ?, ?, ?)");
+    $stmt->execute([$schoolId, $name, $email, $phone, $gender, $subject, $status, $profile_photo]);
 
     header("Location: /E-Shkolla/teachers");
     exit;
 }
-
 ?>
+
 <div id="addSchoolForm" class="hidden fixed inset-0 z-50 flex items-start justify-center bg-black/30 overflow-y-auto pt-10">
      
     <div class="w-full max-w-3xl px-4">
@@ -81,6 +95,13 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             </div>
             </div>
 
+            <div class="sm:col-span-3">
+            <label for="password" class="block text-sm/6 font-medium text-gray-900 dark:text-white">Password</label>
+            <div class="mt-2">
+                <input id="password" type="text" name="password" autocomplete="password" class="border border-1 block w-full rounded-md bg-white px-3 py-1.5 text-base text-gray-900 outline-1 -outline-offset-1 outline-gray-300 placeholder:text-gray-400 focus:outline-2 focus:-outline-offset-2 focus:outline-indigo-600 sm:text-sm/6 dark:bg-white/5 dark:text-white dark:outline-white/10 dark:placeholder:text-gray-500 dark:focus:outline-indigo-500" />
+            </div>
+            </div>
+
             <div class="sm:col-span-4">
             <label for="phone" class="block text-sm/6 font-medium text-gray-900 dark:text-white">Numri i telefonit</label>
             <div class="mt-2">
@@ -91,10 +112,10 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             <div class="sm:col-span-3">
             <label for="gender" class="block text-sm/6 font-medium text-gray-900 dark:text-white">Gjinia</label>
             <div class="mt-2">
-                <select id="gender" name="gender" autocomplete="sex" class="border block w-full rounded-md bg-white px-3 py-1.5 text-base text-gray-900 outline-gray-300 focus:outline-2 focus:outline-indigo-600 sm:text-sm dark:bg-white/5 dark:text-white dark:outline-white/10 dark:focus:outline-indigo-500">
-                    <option value="male" <?= $row['gender'] === 'male' ? 'selected' : '' ?>>Mashkull</option>
-                    <option value="female" <?= $row['gender'] === 'female' ? 'selected' : '' ?>>Femër</option>
-                    <option value="other" <?= $row['gender'] === 'other' ? 'selected' : '' ?>>Tjetër</option>
+                <select id="gender" name="gender" class="border block w-full rounded-md p-[7px] mt-1">
+                  <option value="male">Mashkull</option>
+                  <option value="female">Femër</option>
+                  <option value="other">Tjetër</option>
                 </select>
             </div>
             </div>
@@ -116,9 +137,9 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             <div class="sm:col-span-2">
             <label for="status" class="block text-sm/6 font-medium text-gray-900 dark:text-white">Statusi</label>
             <div class="mt-2">
-                <select id="status" name="status" autocomplete="status" class="border block w-full rounded-md bg-white px-3 py-1.5 text-base text-gray-900 outline-gray-300 focus:outline-2 focus:outline-indigo-600 sm:text-sm dark:bg-white/5 dark:text-white dark:outline-white/10 dark:focus:outline-indigo-500">
-                  <option value="active" <?= $row['status'] === 'active' ? 'selected' : '' ?>>Aktive</option>
-                  <option value="inactive" <?= $row['status'] === 'inactive' ? 'selected' : '' ?>>Joaktive</option>
+                <select id="status" name="status" class="border block w-full rounded-md p-[9px] mt-1">
+                  <option value="active">Aktive</option>
+                  <option value="inactive">Joaktive</option>
                 </select>
             </div>
             </div>
