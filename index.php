@@ -24,6 +24,7 @@ $routes = [
     '/students' => 'dashboard/schooladmin-dashboard/partials/students/students.php',
     '/parents' => 'dashboard/schooladmin-dashboard/partials/parent/parents.php',
     '/classes' => 'dashboard/schooladmin-dashboard/partials/classes/class.php',
+    '/subjects' => 'dashboard/schooladmin-dashboard/partials/subject/subject.php'
 ];
 
 if (array_key_exists($uri, $routes)) {
