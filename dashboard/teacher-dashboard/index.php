@@ -18,47 +18,97 @@
         <li>
           <ul role="list" class="-mx-2 space-y-1">
             <li>
-              <a href="/E-Shkolla/super-admin-dashboard" class="group flex gap-x-3 rounded-md bg-gray-50 p-2 text-sm/6 font-semibold text-indigo-600 dark:bg-white/5 dark:text-white">
+            <a href="/E-Shkolla/teacher-dashboard"
+                class="group flex gap-x-3 rounded-md bg-gray-50 p-2 text-sm/6 font-semibold text-indigo-600 dark:bg-white/5 dark:text-white">
                 📊
-                Dashboard
-              </a>
+                Paneli
+            </a>
             </li>
+
             <li>
-              <a href="/E-Shkolla/super-admin-schools" class="group flex gap-x-3 rounded-md p-2 text-sm/6 font-semibold text-gray-700 hover:bg-gray-50 hover:text-indigo-600 dark:text-gray-400 dark:hover:bg-white/5 dark:hover:text-white">
-                🏫
-                Schools
-              </a>
+            <a href="/E-Shkolla/teacher-classes"
+                class="group flex gap-x-3 rounded-md p-2 text-sm/6 font-semibold text-gray-700 hover:bg-gray-50 hover:text-indigo-600 dark:text-gray-400 dark:hover:bg-white/5 dark:hover:text-white">
+                📚
+                Klasat e Mia
+            </a>
             </li>
+
             <li>
-              <a href="/E-Shkolla/super-admin-users" class="group flex gap-x-3 rounded-md p-2 text-sm/6 font-semibold text-gray-700 hover:bg-gray-50 hover:text-indigo-600 dark:text-gray-400 dark:hover:bg-white/5 dark:hover:text-white">
-                🧑‍🤝‍🧑
-                Users
-              </a>
+            <a href="/E-Shkolla/teacher-attendance"
+                class="group flex gap-x-3 rounded-md p-2 text-sm/6 font-semibold text-gray-700 hover:bg-gray-50 hover:text-indigo-600 dark:text-gray-400 dark:hover:bg-white/5 dark:hover:text-white">
+                📝
+                Prezenca
+            </a>
             </li>
+
             <li>
-              <a href="#" class="group flex gap-x-3 rounded-md p-2 text-sm/6 font-semibold text-gray-700 hover:bg-gray-50 hover:text-indigo-600 dark:text-gray-400 dark:hover:bg-white/5 dark:hover:text-white">
-                ⚙️
-                Settings
-              </a>
+            <a href="/E-Shkolla/teacher-assignments"
+                class="group flex gap-x-3 rounded-md p-2 text-sm/6 font-semibold text-gray-700 hover:bg-gray-50 hover:text-indigo-600 dark:text-gray-400 dark:hover:bg-white/5 dark:hover:text-white">
+                📄
+                Detyrat
+            </a>
+            </li>
+
+            <li>
+            <a href="/E-Shkolla/teacher-grades"
+                class="group flex gap-x-3 rounded-md p-2 text-sm/6 font-semibold text-gray-700 hover:bg-gray-50 hover:text-indigo-600 dark:text-gray-400 dark:hover:text-white">
+                🎓
+                Notat
+            </a>
+            </li>
+
+            <li>
+            <a href="/E-Shkolla/teacher-schedule"
+                class="group flex gap-x-3 rounded-md p-2 text-sm/6 font-semibold text-gray-700 hover:bg-gray-50 hover:text-indigo-600 dark:text-gray-400 dark:hover:text-white">
+                🕒
+                Orari
+            </a>
             </li>
           </ul>
         </li>
         <li>
-        <div class="text-xs/6 font-semibold text-gray-400 dark:text-gray-500">Personal Info</div>
+        <div class="text-xs/6 font-semibold text-gray-400 dark:text-gray-500">Profili</div>
           <ul role="list" class="-mx-2 mt-2 space-y-1">
-          <li>
+            <li>
+            <a href="/E-Shkolla/teacher-profile"
+                class="group flex gap-x-3 rounded-md p-2 text-sm/6 font-semibold text-gray-700 hover:bg-gray-50 hover:text-indigo-600 dark:text-gray-400 dark:hover:text-white">
+                👤
+                Profili
+            </a>
+            </li>
+            <li>
             <a href="/E-Shkolla/logout" class="flex items-center gap-x-3 rounded-md p-2 text-sm font-semibold text-red-600 hover:bg-red-50">
               🚪 Logout
             </a>
-          </li>
+            </li>
           </ul>
         </li>
         <li class="-mx-6 mt-auto">
-          <a href="#" class="flex items-center gap-x-4 px-6 py-3 text-sm/6 font-semibold text-gray-900 hover:bg-gray-50 dark:text-white dark:hover:bg-white/5">
-            <img src="https://images.unsplash.com/photo-1472099645785-5658abf4ff4e?ixlib=rb-1.2.1&ixid=eyJhcHBfaWQiOjEyMDd9&auto=format&fit=facearea&facepad=2&w=256&h=256&q=80" alt="" class="size-8 rounded-full bg-gray-50 outline -outline-offset-1 outline-black/5 dark:bg-gray-800 dark:outline-white/10" />
-            <span class="sr-only">Your profile</span>
-            <span aria-hidden="true">Super Admin</span>
-          </a>
+        <?php
+            require_once __DIR__  . '/../../db.php';
+
+            $stmt = $pdo->prepare("SELECT * FROM teachers ORDER BY created_at DESC");
+            $stmt->execute([]);
+
+            $teachers = $stmt->fetchAll(PDO::FETCH_ASSOC);
+
+        ?>
+        <?php foreach ($teachers as $row): ?>
+        <div class="flex items-center gap-4 px-4 py-3 rounded-lg hover:bg-gray-50 dark:hover:bg-white/5 transition">
+            
+            <img src="/E-Shkolla/<?= htmlspecialchars($row['profile_photo']) ?>" alt="<?= htmlspecialchars($row['name']) ?>" class="w-10 h-10 rounded-full object-cover border border-gray-200 dark:border-gray-600"/>
+
+            <div class="flex flex-col">
+            <span class="text-sm font-semibold text-gray-900 dark:text-white">
+                <?= htmlspecialchars($row['name']) ?>
+            </span>
+            <span class="text-xs text-gray-500 dark:text-gray-400">
+                Teacher
+            </span>
+            </div>
+        </div>
+        <?php endforeach; ?>
+
         </li>
       </ul>
     </nav>
