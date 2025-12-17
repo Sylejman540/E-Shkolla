@@ -44,7 +44,7 @@ $classes = $stmt->fetchAll(PDO::FETCH_ASSOC);
                         <th scope="col" class="py-3.5 pr-3 pl-4 text-left text-sm font-semibold text-gray-900 sm:pl-0 dark:text-white">Klasa</th>
                         <th scope="col" class="px-3 py-3.5 text-left text-sm font-semibold text-gray-900 dark:text-white">Paralelja</th>
                         <th scope="col" class="px-3 py-3.5 text-left text-sm font-semibold text-gray-900 dark:text-white">Viti akademik</th>
-                        <th scope="col" class="px-3 py-3.5 text-left text-sm font-semibold text-gray-900 dark:text-white">Kujdestari i klasës</th>
+                        <!-- <th scope="col" class="px-3 py-3.5 text-left text-sm font-semibold text-gray-900 dark:text-white">Kujdestari i klasës</th> -->
                         <th scope="col" class="px-3 py-3.5 text-left text-sm font-semibold text-gray-900 dark:text-white">Statusi</th>
                         <th scope="col" class="px-3 py-3.5 text-left text-sm font-semibold text-gray-900 dark:text-white">Data e krijimit</th>
                         <th scope="col" class="py-3.5 pr-4 pl-3 sm:pr-0">
@@ -71,7 +71,7 @@ $classes = $stmt->fetchAll(PDO::FETCH_ASSOC);
                                     'inactive' => 'bg-red-200 text-red-700',
                                     default    => 'bg-gray-200 text-gray-700',
                                 };
-                            ?>
+                            ?>  
 
                             <span class="inline-block px-2 py-0.5 rounded-full text-xs font-semibold <?= $statusClass ?>">
                                 <?= $statusLabel ?>

@@ -10,10 +10,15 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     $code = $_POST['code'];
     $description = $_POST['description'];
     $status = $_POST['status'];
+    
+    if ($_SESSION['user']['role'] === 'super_admin') {
+      $schoolId = $_POST['school_id'];
+    } else {
+      $schoolId = $_SESSION['user']['school_id'];
+    }
 
-
-    $stmt = $pdo->prepare("INSERT INTO subjects(name, code, description, status) VALUES(?, ?, ?, ?)");
-    $stmt->execute([$name, $code, $description, $status]);
+    $stmt = $pdo->prepare("INSERT INTO subjects(school_id, name, code, description, status) VALUES(?, ?, ?, ?, ?)");
+    $stmt->execute([$schoolId, $name, $code, $description, $status]);
 
     header("Location: /E-Shkolla/subjects");
     exit;
@@ -63,7 +68,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             <div class="sm:col-span-2">
             <label for="status" class="block text-sm/6 font-medium text-gray-900 dark:text-white">Statusi</label>
             <div class="mt-2">
-                <select id="status" name="status" class="border block w-full rounded-md">
+                <select id="status" name="status" class="border block w-full rounded-md p-[6px]">
                   <option value="active">Aktive</option>
                   <option value="inactive">Joaktive</option>
                 </select>

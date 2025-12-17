@@ -11,8 +11,14 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     $academic_year = $_POST['academic_year'];
     $status = $_POST['status'];
 
-    $stmt = $pdo->prepare("INSERT INTO classes(grade, section, academic_year, status) VALUES(?, ?, ?, ?)");
-    $stmt->execute([$grade, $section, $academic_year, $status]);
+    if ($_SESSION['user']['role'] === 'super_admin') {
+      $schoolId = $_POST['school_id'];
+    } else {
+      $schoolId = $_SESSION['user']['school_id'];
+    }
+
+    $stmt = $pdo->prepare("INSERT INTO classes(school_id, grade, section, academic_year, status) VALUES(?, ?, ?, ?, ?)");
+    $stmt->execute([$schoolId, $grade, $section, $academic_year, $status]);
 
     header("Location: /E-Shkolla/classes");
     exit;
@@ -62,7 +68,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             <div class="sm:col-span-2">
             <label for="status" class="block text-sm/6 font-medium text-gray-900 dark:text-white">Statusi</label>
             <div class="mt-2">
-                <select id="status" name="status" class="border block w-full rounded-md">
+                <select id="status" name="status" class="border block w-full rounded-md p-[6px]">
                   <option value="active">Aktive</option>
                   <option value="inactive">Joaktive</option>
                 </select>
