@@ -11,6 +11,18 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     $email = $_POST['email'];
     $relation = $_POST['relation'];
     $status = $_POST['status'];
+    $password = $_POST['password'];
+
+    if ($_SESSION['user']['role'] === 'super_admin') {
+        $schoolId = $_POST['school_id'];
+    } else {
+        $schoolId = $_SESSION['user']['school_id'];
+    }
+
+
+      $stmt = $pdo->prepare("INSERT INTO users (school_id, name, email, password, role, status) VALUES (?, ?, ?, ?, 'teacher', ?)");
+      $stmt->execute([$schoolId, $name, $email, $password, $status]);
+
 
     $stmt = $pdo->prepare("INSERT INTO parents(full_name, phone, email, relation, status) VALUES(?, ?, ?, ?, ?)");
     $stmt->execute([$full_name, $phone, $email, $relation, $status]);
@@ -46,6 +58,14 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             </div>
 
             <div class="sm:col-span-3">
+            <label for="password" class="block text-sm/6 font-medium text-gray-900 dark:text-white">Fjalëkalim</label>
+            <div class="mt-2">
+                <input id="password" type="text" name="password" autocomplete="password" class="border border-1 block w-full rounded-md bg-white px-3 py-1.5 text-base text-gray-900 outline-1 -outline-offset-1 outline-gray-300 placeholder:text-gray-400 focus:outline-2 focus:-outline-offset-2 focus:outline-indigo-600 sm:text-sm/6 dark:bg-white/5 dark:text-white dark:outline-white/10 dark:placeholder:text-gray-500 dark:focus:outline-indigo-500" />
+            </div>
+            </div>
+
+
+            <div class="sm:col-span-4">
             <label for="phone" class="block text-sm/6 font-medium text-gray-900 dark:text-white">Numri i telefonit</label>
             <div class="mt-2">
                 <input id="phone" type="text" name="phone" autocomplete="phone" class="border border-1 block w-full rounded-md bg-white px-3 py-1.5 text-base text-gray-900 outline-1 -outline-offset-1 outline-gray-300 placeholder:text-gray-400 focus:outline-2 focus:-outline-offset-2 focus:outline-indigo-600 sm:text-sm/6 dark:bg-white/5 dark:text-white dark:outline-white/10 dark:placeholder:text-gray-500 dark:focus:outline-indigo-500" />
@@ -63,7 +83,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             <label for="relation" class="block text-sm/6 font-medium text-gray-900 dark:text-white">Kujdestari/ja</label>
             <div class="mt-2">
               <select id="relation" name="relation" autocomplete="relation" class="border block w-full rounded-md bg-white px-3 py-1.5 text-base text-gray-900 outline-gray-300 focus:outline-2 focus:outline-indigo-600 sm:text-sm dark:bg-white/5 dark:text-white dark:outline-white/10 dark:focus:outline-indigo-500">
-                <option value="mother" <?= $row['relation'] === 'mother' ? 'selected' : '' ?>>Babi</option>
+                <option value="mother" <?= $row['relation'] === 'mother' ? 'selected' : '' ?>>Babai</option>
                 <option value="father" <?= $row['relation'] === 'father' ? 'selected' : '' ?>>Nëna</option>
                 <option value="guardian" <?= $row['relation'] === 'guardian' ? 'selected' : '' ?>>Kujdestari/ja</option>
                 <option value="other" <?= $row['relation'] === 'other' ? 'selected' : '' ?>>Tjetër</option>
