@@ -11,12 +11,12 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     $password = $_POST['password'];
     $role = $_POST['role'];
     $status = $_POST['status'];
+
     if ($_SESSION['user']['role'] === 'super_admin') {
         $schoolId = $_POST['school_id'];   // from select
     } else {
         $schoolId = $_SESSION['user']['school_id']; // from session
     }
-
 
     $stmt = $pdo->prepare("INSERT INTO users(school_id, name, email, password, role, status) VALUES(?, ?, ?, ?, ?, ?)");
     $stmt->execute([$schoolId, $name, $email, $password, $role, $status]);
@@ -26,9 +26,9 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 }
 
 ?>
-<div id="addSchoolForm" class="hidden mt-8">
-  <div class="flex justify-center">
-    <div class="w-full max-w-4xl">
+<div id="addSchoolForm" class="hidden fixed inset-0 z-50 flex items-start justify-center bg-black/30 overflow-y-auto pt-10">
+     
+    <div class="w-full max-w-3xl px-4">
 
       <div class="rounded-xl bg-white p-8 shadow-sm ring-1 ring-gray-200 dark:bg-gray-900 dark:ring-white/10">
         
@@ -44,21 +44,39 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         <div class="grid grid-cols-1 gap-x-8 gap-y-10 border-b border-gray-900/10 pb-8 md:grid-cols-3 dark:border-white/10">
             
         <form action="/E-Shkolla/dashboard/superadmin-dashboard/partials/users/form.php" method="post" class="grid max-w-2xl grid-cols-1 gap-x-6 gap-y-8 sm:grid-cols-6 md:col-span-2">
-<?php 
-$stmt = $pdo->prepare("SELECT * FROM schools ORDER BY created_at DESC");
-$stmt->execute();
+            <?php 
+            $stmt = $pdo->prepare("SELECT * FROM schools ORDER BY created_at DESC");
+            $stmt->execute();
 
-$schools = $stmt->fetchAll(PDO::FETCH_ASSOC);
-?>
+            $schools = $stmt->fetchAll(PDO::FETCH_ASSOC);
+            ?>
 
-        <select name="school_id" required>
-  <option value="">Select school</option>
-  <?php foreach ($schools as $school): ?>
-    <option value="<?= $school['id'] ?>">
-      <?= htmlspecialchars($school['name']) ?>
-    </option>
-  <?php endforeach; ?>
-</select>
+            <div class="sm:col-span-3">
+              <label for="school_id" class="block text-sm font-medium text-gray-900 dark:text-white">
+                School
+              </label>
+
+              <div class="mt-3 relative">
+                <select name="school_id" id="school_id" required class="appearance-none border border-1 block w-full rounded-md bg-white px-3 py-1.5 text-base text-gray-900 outline-1 -outline-offset-1 outline-gray-300 placeholder:text-gray-400 focus:outline-2 focus:-outline-offset-2 focus:outline-indigo-600 sm:text-sm/6 dark:bg-white/5 dark:text-white dark:outline-white/10 dark:placeholder:text-gray-500 dark:focus:outline-indigo-500">
+                  <option value="" disabled selected>Select school</option>
+                  <?php foreach ($schools as $school): ?>
+                    <option value="<?= $school['id'] ?>">
+                      <?= htmlspecialchars($school['name']) ?>
+                    </option>
+                  <?php endforeach; ?>
+                </select>
+
+                <!-- dropdown icon -->
+                <div class="pointer-events-none absolute inset-y-0 right-0 flex items-center pr-3">
+                  <svg class="h-4 w-4 text-gray-400" viewBox="0 0 20 20" fill="currentColor">
+                    <path fill-rule="evenodd"
+                      d="M5.23 7.21a.75.75 0 011.06.02L10 11.168l3.71-3.94a.75.75 0 111.08 1.04l-4.25 4.5a.75.75 0 01-1.08 0l-4.25-4.5a.75.75 0 01.02-1.06z"
+                      clip-rule="evenodd" />
+                  </svg>
+                </div>
+              </div>
+            </div>
+
 
             <div class="sm:col-span-3">
             <label for="name" class="block text-sm/6 font-medium text-gray-900 dark:text-white">Name</label>
