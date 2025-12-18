@@ -10,8 +10,14 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     $description = $_POST['description'];
     $due_date = $_POST['due_date'];
 
-    $stmt = $pdo->prepare("INSERT INTO assignments(title, description, due_date) VALUES(?, ?, ?)");
-    $stmt->execute([$title, $description, $due_date]);
+    if ($_SESSION['user']['role'] === 'teacher') {
+      $teacherId = $_POST['teacher_id'];
+    } else {
+      $teacherId = $_SESSION['user']['teacher_id'];
+    }
+
+    $stmt = $pdo->prepare("INSERT INTO assignments(teacher_id, title, description, due_date) VALUES(?, ?, ?, ?)");
+    $stmt->execute([$teacherId, $title, $description, $due_date]);
 
     header("Location: /E-Shkolla/teacher-assignments");
     exit;
