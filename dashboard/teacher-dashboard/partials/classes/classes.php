@@ -7,10 +7,6 @@ require_once __DIR__ . '/../../index.php';
 
 require_once __DIR__ . '/../../../../db.php';
 
-$stmt = $pdo->prepare("SELECT * FROM teachers ORDER BY created_at DESC");
-$stmt->execute();
-
-$teachers = $stmt->fetchAll(PDO::FETCH_ASSOC);
 ?>
 <!DOCTYPE html>
 <html lang="en">
@@ -26,81 +22,79 @@ $teachers = $stmt->fetchAll(PDO::FETCH_ASSOC);
   <div class="xl:pl-18">
     <div class="px-4 py-10 sm:px-6 lg:px-8 lg:py-6 relative">
         <div class="px-4 sm:px-6 lg:px-8">
-        <div class="sm:flex sm:items-center">
-            <div class="sm:flex-auto">
-            <h1 class="text-base font-semibold text-gray-900 dark:text-white">Mësuesit</h1>
-            <p class="mt-2 text-sm text-gray-700 dark:text-gray-300">Lista e të gjithë mësuesve në sistemin tuaj, duke përfshirë lëndën dhe statusin e tyre.</p>
-            </div>
-            <div class="mt-4 sm:mt-0 sm:ml-16 sm:flex-none">
-                <button type="button" id="addSchoolBtn" class="block rounded-md bg-indigo-600 px-3 py-2 text-center text-sm font-semibold text-white shadow-xs hover:bg-indigo-500">Shto mësues</button>
-            </div>
-        </div>
-        <div class="mt-8 flow-root">
-            <div class="-mx-4 -my-2 overflow-x-auto sm:-mx-6 lg:-mx-8">
-            <div class="inline-block min-w-full py-2 align-middle sm:px-6 lg:px-8">
-                <table class="relative min-w-full divide-y divide-gray-300 dark:divide-white/15">
-                <thead>
-                    <tr>
-                        <th scope="col" class="px-3 py-3.5 text-left text-sm font-semibold text-gray-900 dark:text-white">Foto profili</th>
-                        <th scope="col" class="py-3.5 pr-3 pl-4 text-left text-sm font-semibold text-gray-900 sm:pl-0 dark:text-white">Emri dhe mbiemri</th>
-                        <th scope="col" class="px-3 py-3.5 text-left text-sm font-semibold text-gray-900 dark:text-white">Email</th>
-                        <th scope="col" class="px-3 py-3.5 text-left text-sm font-semibold text-gray-900 dark:text-white">Numri i telefonit</th>
-                        <th scope="col" class="px-3 py-3.5 text-left text-sm font-semibold text-gray-900 dark:text-white">Gjinia</th>
-                        <th scope="col" class="px-3 py-3.5 text-left text-sm font-semibold text-gray-900 dark:text-white">Lënda</th>
-                        <th scope="col" class="px-3 py-3.5 text-left text-sm font-semibold text-gray-900 dark:text-white">Statusi</th>
-                        <th scope="col" class="px-3 py-3.5 text-left text-sm font-semibold text-gray-900 dark:text-white">Data e krijimit</th>
-                    </tr>
-                </thead>
-                <?php foreach($teachers as $row): ?>
-                <tbody class="divide-y divide-gray-200 dark:divide-white/10">
-                    <tr>
-                        <td><img src="/E-Shkolla/<?= htmlspecialchars($row['profile_photo']) ?>" alt="<?= htmlspecialchars($row['name']) ?>" class="w-10 h-10 rounded-full ml-5 object-cover"/></td>
-                        <td class="py-4 pr-3 pl-4 text-sm font-medium whitespace-nowrap text-gray-900 sm:pl-0 dark:text-white"><?= htmlspecialchars($row['name']) ?></td>
-                        <td class="px-3 py-4 text-sm whitespace-nowrap text-gray-500 dark:text-gray-400"><?= htmlspecialchars($row['email']) ?></td>
-                        <td class="px-3 py-4 text-sm whitespace-nowrap text-gray-500 dark:text-gray-400"><?= htmlspecialchars($row['phone']) ?></td>
-                        <td class="px-3 py-4 text-sm whitespace-nowrap text-gray-500 dark:text-gray-400">
-                            <?php
-                                echo match ($row['gender']) {
-                                    'male'   => 'Mashkull',
-                                    'female' => 'Femër',
-                                    'other'  => 'Tjetër',
-                                    default  => '-',
-                                };
-                            ?>
-                        </td>
-                        <td class="px-3 py-4">
-                            <span class="inline-flex items-center rounded-full bg-indigo-50 px-2 py-1 text-xs font-medium text-indigo-700">
-                                <?= htmlspecialchars($row['subject']) ?>
-                            </span>
-                        </td>
-                        <td class="px-3 py-4 text-sm whitespace-nowrap text-gray-500 dark:text-gray-400">
-                            <?php
-                                $statusLabel = match ($row['status']) {
-                                    'active'   => 'Aktiv',
-                                    'inactive' => 'Joaktiv',
-                                    default    => '-',
-                                };
 
-                                $statusClass = match ($row['status']) {
-                                    'active'   => 'bg-green-200 text-green-700',
-                                    'inactive' => 'bg-red-200 text-red-700',
-                                    default    => 'bg-gray-200 text-gray-700',
-                                };
-                            ?>
+  <!-- Header -->
+  <div class="mb-6">
+    <h2 class="text-base font-semibold text-gray-900 dark:text-white">
+      Klasat e Mia
+    </h2>
+    <p class="mt-1 text-sm text-gray-600 dark:text-gray-400">
+      Klasat që ju janë caktuar për këtë vit shkollor
+    </p>
+  </div>
 
-                            <span class="inline-block px-2 py-0.5 rounded-full text-xs font-semibold <?= $statusClass ?>">
-                                <?= $statusLabel ?>
-                            </span>
-                        </td>
-                        <td class="px-3 py-4 text-sm whitespace-nowrap text-gray-500 dark:text-gray-400"><?= htmlspecialchars($row['created_at']) ?></td>
-                    </tr>
-                </tbody>
-                <?php endforeach ?>
-                </table>
-            </div>
-            </div>
-        </div>
-        </div>
+  <!-- Cards -->
+  <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
+
+    <!-- Class Card -->
+    <div class="rounded-xl bg-white p-6 shadow-sm hover:shadow-md transition dark:bg-gray-800/75 dark:inset-ring dark:inset-ring-white/10">
+      
+      <!-- Top -->
+      <div class="flex items-center justify-between">
+        <h3 class="text-lg font-semibold text-gray-900 dark:text-white">
+          Klasa 6A
+        </h3>
+        <span class="inline-flex items-center rounded-full bg-indigo-50 px-2 py-1 text-xs font-medium text-indigo-700 dark:bg-indigo-500/10 dark:text-indigo-300">
+          Matematikë
+        </span>
+      </div>
+
+      <!-- Info -->
+      <div class="mt-3 space-y-1 text-sm text-gray-600 dark:text-gray-400">
+        <p>Viti shkollor: 2024 / 2025</p>
+        <p>Numri i nxënësve: 28</p>
+      </div>
+
+      <!-- Actions -->
+      <div class="mt-5 grid grid-cols-3 gap-2">
+        <button class="rounded-md bg-green-600 px-3 py-2 text-sm font-semibold text-white hover:bg-green-500">
+          Prezenca
+        </button>
+        <button class="rounded-md bg-blue-600 px-3 py-2 text-sm font-semibold text-white hover:bg-blue-500">
+          Detyrat
+        </button>
+        <button class="rounded-md bg-indigo-600 px-3 py-2 text-sm font-semibold text-white hover:bg-indigo-500">
+          Notat
+        </button>
+      </div>
+    </div>
+
+    <!-- Card 2 -->
+    <div class="rounded-xl bg-white p-6 shadow-sm dark:bg-gray-800/75 dark:inset-ring dark:inset-ring-white/10">
+      <div class="flex items-center justify-between">
+        <h3 class="text-lg font-semibold text-gray-900 dark:text-white">
+          Klasa 7B
+        </h3>
+        <span class="inline-flex items-center rounded-full bg-indigo-50 px-2 py-1 text-xs font-medium text-indigo-700">
+          Fizikë
+        </span>
+      </div>
+
+      <div class="mt-3 space-y-1 text-sm text-gray-600">
+        <p>Viti shkollor: 2024 / 2025</p>
+        <p>Numri i nxënësve: 24</p>
+      </div>
+
+      <div class="mt-5 grid grid-cols-3 gap-2">
+        <button class="rounded-md bg-green-600 px-3 py-2 text-sm font-semibold text-white">Prezenca</button>
+        <button class="rounded-md bg-blue-600 px-3 py-2 text-sm font-semibold text-white">Detyrat</button>
+        <button class="rounded-md bg-indigo-600 px-3 py-2 text-sm font-semibold text-white">Notat</button>
+      </div>
+    </div>
+
+  </div>
+</div>
+
     </div>
   </div>
 </main>
