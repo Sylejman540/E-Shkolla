@@ -7,6 +7,10 @@ require_once __DIR__ . '/../../index.php';
 
 require_once __DIR__ . '/../../../../db.php';
 
+$stmt = $pdo->prepare("SELECT * FROM assignments ORDER BY created_at DESC");
+$stmt->execute([]);
+
+$assignments = $stmt->fetchAll(PDO::FETCH_ASSOC);
 ?>
 <!DOCTYPE html>
 <html lang="en">
@@ -34,20 +38,21 @@ require_once __DIR__ . '/../../../../db.php';
       </p>
     </div>
 
-    <button class="rounded-md bg-indigo-600 px-4 py-2 text-sm font-semibold text-white hover:bg-indigo-500">
+    <button id="addSchoolBtn" class="rounded-md bg-indigo-600 px-4 py-2 text-sm font-semibold text-white hover:bg-indigo-500">
       + Shto Detyrë
     </button>
     </div>
-
+    <?php foreach($assignments as $row): ?>
     <div class="space-y-4">
         <div class="rounded-xl bg-white p-5 shadow-sm dark:bg-gray-800/75">
         <div class="flex items-start justify-between">
             <div>
             <h3 class="text-sm font-semibold text-gray-900 dark:text-white">
-                Detyrë për shumëzimin
+                <?= htmlspecialchars($row['description']) ?>
             </h3>
             <p class="mt-1 text-sm text-gray-600 dark:text-gray-400">
-                Klasa 6A • Afati: 20 Maj 2025
+                <?= htmlspecialchars($row['title']) ?>
+                <?= htmlspecialchars($row['due_date']) ?>
             </p>
             </div>
 
@@ -55,7 +60,7 @@ require_once __DIR__ . '/../../../../db.php';
             E hapur
             </span>
         </div>
-
+    <?php endforeach; ?>
         <div class="mt-4 flex gap-2">
             <button class="rounded-md bg-blue-600 px-3 py-1.5 text-sm text-white hover:bg-blue-500">
             Shiko
@@ -71,7 +76,7 @@ require_once __DIR__ . '/../../../../db.php';
     </div>
     </div>
     </div>
-  </div>
+        <?php require_once 'form.php'; ?>  </div>
 </main>
 <script>
   const btn = document.getElementById('addSchoolBtn');
