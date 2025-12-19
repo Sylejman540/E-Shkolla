@@ -36,12 +36,6 @@
               </a>
             </li>
             <li>
-              <a href="/E-Shkolla/super-admin-classes" class="group flex gap-x-3 rounded-md p-2 text-sm/6 font-semibold text-gray-700 hover:bg-gray-50 hover:text-indigo-600 dark:text-gray-400 dark:hover:bg-white/5 dark:hover:text-white">
-                🧑‍🤝‍🧑
-                Classes
-              </a>
-            </li>
-            <li>
               <a href="#" class="group flex gap-x-3 rounded-md p-2 text-sm/6 font-semibold text-gray-700 hover:bg-gray-50 hover:text-indigo-600 dark:text-gray-400 dark:hover:bg-white/5 dark:hover:text-white">
                 ⚙️
                 Settings
