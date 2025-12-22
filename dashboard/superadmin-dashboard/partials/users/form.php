@@ -12,12 +12,6 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     $role = $_POST['role'];
     $status = $_POST['status'];
 
-    if ($_SESSION['user']['role'] === 'super_admin') {
-        $schoolId = $_POST['school_id'];   // from select
-    } else {
-        $schoolId = $_SESSION['user']['school_id']; // from session
-    }
-
     $stmt = $pdo->prepare("INSERT INTO users(school_id, name, email, password, role, status) VALUES(?, ?, ?, ?, ?, ?)");
     $stmt->execute([$schoolId, $name, $email, $password, $role, $status]);
 
@@ -69,10 +63,10 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             <label for="role" class="block text-sm/6 font-medium text-gray-900 dark:text-white">Role</label>
             <div class="mt-2">
               <select id="role" name="role" autocomplete="role" class="border block w-full rounded-md bg-white px-3 py-1.5 text-base text-gray-900 outline-gray-300 focus:outline-2 focus:outline-indigo-600 sm:text-sm dark:bg-white/5 dark:text-white dark:outline-white/10 dark:focus:outline-indigo-500">
-                <option value="super_admin" <?= $row['role'] === 'super_admin' ? 'selected' : '' ?>>Super Admin</option>
-                <option value="teacher" <?= $row['role'] === 'teacher' ? 'selected' : '' ?>>Teacher</option>
-                <option value="parent" <?= $row['role'] === 'parent' ? 'selected' : '' ?>>Parent</option>
-                <option value="super_admin" <?= $row['role'] === 'student' ? 'selected' : '' ?>>Student</option>
+                <option value="super_admin">Super Admin</option>
+                <option value="teacher">Teacher</option>
+                <option value="parent">Parent</option>
+                <option value="super_admin">Student</option>
               </select>
             </div>
             </div>
@@ -81,8 +75,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             <label for="status" class="block text-sm/6 font-medium text-gray-900 dark:text-white">Status</label>
             <div class="mt-2">
               <select id="status" name="status" autocomplete="status" class="border block w-full rounded-md bg-white px-3 py-1.5 text-base text-gray-900 outline-gray-300 focus:outline-2 focus:outline-indigo-600 sm:text-sm dark:bg-white/5 dark:text-white dark:outline-white/10 dark:focus:outline-indigo-500">
-                <option value="active" <?= $row['status'] === 'active' ? 'selected' : '' ?>>Active</option>
-                <option value="inactive" <?= $row['status'] === 'inactive' ? 'selected' : '' ?>>Inactive</option>
+                <option value="active">Active</option>
+                <option value="inactive">Inactive</option>
               </select>
             </div>
             </div>
