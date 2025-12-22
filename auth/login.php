@@ -22,22 +22,22 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             $_SESSION['role'] = $user['role'];
             $_SESSION['status'] = $user['status'];
           
-            if($_SESSION['role'] == 'super_admin' && $_SESSION['status'] == 'Active'){    
+            if($_SESSION['role'] == 'super_admin' && $_SESSION['status'] == 'active'){    
               header("Location: /E-Shkolla/super-admin-dashboard");
               exit;
             }
 
-            if($_SESSION['role'] == 'school_admin' && $_SESSION['status'] == 'Active'){
+            if($_SESSION['role'] == 'school_admin' && $_SESSION['status'] == 'active'){
               header("Location: /E-Shkolla/school-admin-dashboard");
               exit;
             }
 
-            if($_SESSION['role'] == 'teacher' && $_SESSION['status'] == 'Active'){
+            if($_SESSION['role'] == 'teacher' && $_SESSION['status'] == 'active'){
               header("Location: /E-Shkolla/teacher-dashboard");
               exit;
             }
 
-            if(!isset($_SESSION['user']) && $_SESSION['status'] == 'Inactive'){
+            if(!isset($_SESSION['user']) && $_SESSION['status'] == 'inactive'){
               header("Location: /E-Shkolla/login");
               exit;
             }

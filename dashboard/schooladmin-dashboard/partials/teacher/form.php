@@ -6,7 +6,6 @@ if (session_status() === PHP_SESSION_NONE) {
 require_once __DIR__ . '/../../../../db.php';
 
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
-
     $name    = $_POST['name'];
     $email   = $_POST['email'];
     $phone   = $_POST['phone'];
@@ -15,16 +14,12 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     $status  = $_POST['status'];
     $password = $_POST['password']; 
 
-    // Determine school_id
-    if ($_SESSION['user']['role'] === 'super_admin') {
-        $schoolId = $_POST['school_id'];
-    } else {
-        $schoolId = $_SESSION['user']['school_id'];
+    $schoolId = $_SESSION['user']['school_id'] ?? null;
+
+    if (!$schoolId) {
+        die('School ID missing from session');
     }
 
-    if (empty($schoolId)) {
-        die('School is required');
-    }
 
     $profile_photo = null;
 
