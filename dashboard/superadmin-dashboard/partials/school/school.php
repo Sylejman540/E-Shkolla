@@ -32,7 +32,7 @@ $schools = $stmt->fetchAll(PDO::FETCH_ASSOC);
             <p class="mt-2 text-sm text-gray-700 dark:text-gray-300">A list of all schools in your system including their school name, city, status.</p>
             </div>
             <div class="mt-4 sm:mt-0 sm:ml-16 sm:flex-none">
-                <button type="button" id="addSchoolBtn" class="block rounded-md bg-indigo-600 px-3 py-2 text-center text-sm font-semibold text-white shadow-xs hover:bg-indigo-500">Add school</button>
+                <button type="button" id="addSchoolBtn" class="block rounded-md bg-indigo-600 px-3 py-2 text-center text-sm font-semibold text-white shadow-xs hover:bg-indigo-500">Add schools</button>
             </div>
         </div>
         <div class="mt-8 flow-root">
