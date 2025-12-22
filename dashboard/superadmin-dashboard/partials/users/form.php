@@ -6,6 +6,7 @@ if (session_status() === PHP_SESSION_NONE) {
 require_once __DIR__  . '/../../../../db.php';
 
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
+    $schoolId = $_POST['school_id'];
     $name = $_POST['name'];
     $email = $_POST['email'];
     $password = $_POST['password'];
@@ -38,6 +39,21 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         <div class="grid grid-cols-1 gap-x-8 gap-y-10 border-b border-gray-900/10 pb-8 md:grid-cols-3 dark:border-white/10">
             
         <form action="/E-Shkolla/dashboard/superadmin-dashboard/partials/users/form.php" method="post" class="grid max-w-2xl grid-cols-1 gap-x-6 gap-y-8 sm:grid-cols-6 md:col-span-2">
+            <?php
+            $stmt = $pdo->prepare("SELECT id, school_name FROM schools ORDER BY school_name ASC");
+            $stmt->execute();
+            $schools = $stmt->fetchAll(PDO::FETCH_ASSOC);
+            ?>
+
+            <select name="school_id" required>
+              <option value="">Select school</option>
+              <?php foreach ($schools as $school): ?>
+                <option value="<?= $school['id'] ?>">
+                  <?= htmlspecialchars($school['school_name']) ?>
+                </option>
+              <?php endforeach; ?>
+            </select>
+        
             <div class="sm:col-span-3">
             <label for="name" class="block text-sm/6 font-medium text-gray-900 dark:text-white">Name</label>
             <div class="mt-2">
