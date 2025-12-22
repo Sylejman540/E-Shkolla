@@ -53,6 +53,7 @@ $students = $stmt->fetchAll(PDO::FETCH_ASSOC);
                         </th>   
                     </tr>
                 </thead>
+                <?php if(!empty($students)): ?>
                 <?php foreach($students as $row): ?>
                 <tbody class="divide-y divide-gray-200 dark:divide-white/10">
                     <tr>
@@ -96,6 +97,13 @@ $students = $stmt->fetchAll(PDO::FETCH_ASSOC);
                     </tr>
                 </tbody>
                 <?php endforeach ?>
+                <?php else: ?>
+                    <tr>
+                        <td colspan="8" class="py-10 text-center text-sm text-gray-500 dark:text-gray-400">
+                            Tabela nuk përmban të dhëna
+                        </td>
+                    </tr>
+                <?php endif; ?>
                 </table>
             </div>
             </div>
