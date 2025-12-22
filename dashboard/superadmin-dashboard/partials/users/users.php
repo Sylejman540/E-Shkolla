@@ -49,6 +49,7 @@ $users = $stmt->fetchAll(PDO::FETCH_ASSOC);
                         <th scope="col" class="px-3 py-3.5 text-left text-sm font-semibold text-gray-900 dark:text-white">Created At</th>
                     </tr>
                 </thead>
+                <?php if(!empty($users)): ?>
                 <?php foreach($users as $row): ?>
                 <tbody class="divide-y divide-gray-200 dark:divide-white/10">
                     <tr>
@@ -64,7 +65,14 @@ $users = $stmt->fetchAll(PDO::FETCH_ASSOC);
                         <td class="px-3 py-4 text-sm whitespace-nowrap text-gray-500 dark:text-gray-400"><?= htmlspecialchars($row['created_at']) ?></td>
                     </tr>
                 </tbody>
-                <?php endforeach ?>
+                <?php endforeach; ?>
+                <?php else: ?>
+                    <tr>
+                        <td colspan="6" class="py-10 text-center text-sm text-gray-500 dark:text-gray-400">
+                            The table is empty
+                        </td>
+                    </tr>
+                <?php endif; ?>
                 </table>
             </div>
             </div>
