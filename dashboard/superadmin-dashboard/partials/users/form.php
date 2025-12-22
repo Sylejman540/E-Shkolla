@@ -1,6 +1,10 @@
 <?php
-if(session_status() === PHP_SESSION_NONE){
+if (session_status() === PHP_SESSION_NONE) {
     session_start();
+}
+
+if (!isset($_SESSION['user'])) {
+
 }
 
 require_once __DIR__  . '/../../../../db.php';
@@ -11,6 +15,14 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     $password = $_POST['password'];
     $role = $_POST['role'];
     $status = $_POST['status'];
+  if ($_SESSION['user']['role'] === 'super_admin') {
+      if (empty($_POST['school_id'])) {
+          die('School is required');
+      }
+      $schoolId = $_POST['school_id'];
+  } else {
+      $schoolId = $_SESSION['user']['school_id'];
+  }
 
     $stmt = $pdo->prepare("INSERT INTO users(school_id, name, email, password, role, status) VALUES(?, ?, ?, ?, ?, ?)");
     $stmt->execute([$schoolId, $name, $email, $password, $role, $status]);
