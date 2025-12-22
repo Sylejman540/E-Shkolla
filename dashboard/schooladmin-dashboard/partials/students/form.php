@@ -6,26 +6,25 @@ if(session_status() === PHP_SESSION_NONE){
 require_once __DIR__  . '/../../../../db.php';
 
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
-    $full_name = $_POST['full_name'];
+    $name = $_POST['name'];
     $gender = $_POST['gender'];
     $class = $_POST['class'];
     $parent_name = $_POST['parent_name'];
     $parent_phone = $_POST['parent_phone'];
     $status = $_POST['status'];
     $password = $_POST['password'];
+    $schoolId = $_SESSION['user']['school_id'] ?? null;
 
-    if ($_SESSION['user']['role'] === 'super_admin') {
-        $schoolId = $_POST['school_id'];
-    } else {
-        $schoolId = $_SESSION['user']['school_id'];
+    if (!$schoolId) {
+        die('School ID missing from session');
     }
 
 
-      $stmt = $pdo->prepare("INSERT INTO users (school_id, name, email, password, role, status) VALUES (?, ?, NULL, ?, 'teacher', ?)");
+      $stmt = $pdo->prepare("INSERT INTO users (school_id, name, email, password, role, status) VALUES (?, ?, NULL, ?, 'student', ?)");
       $stmt->execute([$schoolId, $name, $password, $status]);
 
-    $stmt = $pdo->prepare("INSERT INTO students(full_name, gender, class, parent_name, parent_phone, status) VALUES(?, ?, ?, ?, ?, ?)");
-    $stmt->execute([$full_name, $gender, $class, $parent_name, $parent_phone, $status]);
+    $stmt = $pdo->prepare("INSERT INTO students(school_id, name, gender, class, parent_name, parent_phone, status) VALUES(?, ?, ?, ?, ?, ?, ?)");
+    $stmt->execute([$schoolId, $name, $gender, $class, $parent_name, $parent_phone, $status]);
 
     header("Location: /E-Shkolla/students");
     exit;
@@ -51,9 +50,9 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             
         <form action="/E-Shkolla/dashboard/schooladmin-dashboard/partials/students/form.php" method="post" class="grid max-w-2xl grid-cols-1 gap-x-6 gap-y-8 sm:grid-cols-6 md:col-span-2">
             <div class="sm:col-span-3">
-            <label for="full_name" class="block text-sm/6 font-medium text-gray-900 dark:text-white">Emri dhe mbiemri</label>
+            <label for="name" class="block text-sm/6 font-medium text-gray-900 dark:text-white">Emri dhe mbiemri</label>
             <div class="mt-2">
-                <input id="full_name" type="text" name="full_name" autocomplete="full_name" class="border border-1 block w-full rounded-md bg-white px-3 py-1.5 text-base text-gray-900 outline-1 -outline-offset-1 outline-gray-300 placeholder:text-gray-400 focus:outline-2 focus:-outline-offset-2 focus:outline-indigo-600 sm:text-sm/6 dark:bg-white/5 dark:text-white dark:outline-white/10 dark:placeholder:text-gray-500 dark:focus:outline-indigo-500" />
+                <input id="name" type="text" name="name" autocomplete="name" class="border border-1 block w-full rounded-md bg-white px-3 py-1.5 text-base text-gray-900 outline-1 -outline-offset-1 outline-gray-300 placeholder:text-gray-400 focus:outline-2 focus:-outline-offset-2 focus:outline-indigo-600 sm:text-sm/6 dark:bg-white/5 dark:text-white dark:outline-white/10 dark:placeholder:text-gray-500 dark:focus:outline-indigo-500" />
             </div>
             </div>
 
@@ -68,9 +67,9 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             <label for="gender" class="block text-sm/6 font-medium text-gray-900 dark:text-white">Gjinia</label>
             <div class="mt-2">
               <select id="gender" name="gender" autocomplete="sex" class="border block w-full rounded-md bg-white p-[7px] text-base text-gray-900 outline-gray-300 focus:outline-2 focus:outline-indigo-600 sm:text-sm dark:bg-white/5 dark:text-white dark:outline-white/10 dark:focus:outline-indigo-500">
-                <option value="male" <?= $row['gender'] === 'male' ? 'selected' : '' ?>>Mashkull</option>
-                <option value="female" <?= $row['gender'] === 'female' ? 'selected' : '' ?>>Femër</option>
-                <option value="other" <?= $row['gender'] === 'other' ? 'selected' : '' ?>>Tjetër</option>
+                <option value="male">Mashkull</option>
+                <option value="female">Femër</option>
+                <option value="other">Tjetër</option>
               </select>
             </div>
             </div>
@@ -100,8 +99,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             <label for="status" class="block text-sm/6 font-medium text-gray-900 dark:text-white">Statusi</label>
             <div class="mt-2">
               <select id="status" name="status" autocomplete="status" class="border block w-full rounded-md bg-white px-3 py-1.5 text-base text-gray-900 outline-gray-300 focus:outline-2 focus:outline-indigo-600 sm:text-sm dark:bg-white/5 dark:text-white dark:outline-white/10 dark:focus:outline-indigo-500">
-                  <option value="active" <?= $row['status'] === 'active' ? 'selected' : '' ?>>Aktive</option>
-                  <option value="inactive" <?= $row['status'] === 'inactive' ? 'selected' : '' ?>>Joaktive</option>
+                  <option value="active">Aktive</option>
+                  <option value="inactive">Joaktive</option>
               </select>
             </div>
             </div>

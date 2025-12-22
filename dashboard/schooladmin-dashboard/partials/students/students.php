@@ -50,13 +50,13 @@ $students = $stmt->fetchAll(PDO::FETCH_ASSOC);
                         <th scope="col" class="px-3 py-3.5 text-left text-sm font-semibold text-gray-900 dark:text-white">Data e krijimit</th>
                         <th scope="col" class="py-3.5 pr-4 pl-3 sm:pr-0">
                             <span class="sr-only">Edit</span>
-                        </th>
+                        </th>   
                     </tr>
                 </thead>
                 <?php foreach($students as $row): ?>
                 <tbody class="divide-y divide-gray-200 dark:divide-white/10">
                     <tr>
-                        <td class="py-4 pr-3 pl-4 text-sm font-medium whitespace-nowrap text-gray-900 sm:pl-0 dark:text-white"><?= htmlspecialchars($row['full_name']) ?></td>
+                        <td class="py-4 pr-3 pl-4 text-sm font-medium whitespace-nowrap text-gray-900 sm:pl-0 dark:text-white"><?= htmlspecialchars($row['name']) ?></td>
                         <td class="px-3 py-4 text-sm whitespace-nowrap text-gray-500 dark:text-gray-400">
                             <?php
                                 echo match ($row['gender']) {

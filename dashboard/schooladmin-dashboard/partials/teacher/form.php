@@ -9,17 +9,15 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     $name    = $_POST['name'];
     $email   = $_POST['email'];
     $phone   = $_POST['phone'];
-    $gender  = $_POST['gender'] ?? null;
+    $gender  = $_POST['gender'];
     $subject = $_POST['subject'];
     $status  = $_POST['status'];
     $password = $_POST['password']; 
-
     $schoolId = $_SESSION['user']['school_id'] ?? null;
 
     if (!$schoolId) {
         die('School ID missing from session');
     }
-
 
     $profile_photo = null;
 
