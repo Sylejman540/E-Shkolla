@@ -19,9 +19,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         die('School ID missing from session');
     }
 
-
-      $stmt = $pdo->prepare("INSERT INTO users (school_id, name, email, password, role, status) VALUES (?, ?, NULL, ?, 'student', ?)");
-      $stmt->execute([$schoolId, $name, $password, $status]);
+    $stmt = $pdo->prepare("INSERT INTO users (school_id, name, email, password, role, status) VALUES (?, ?, NULL, ?, 'student', ?)");
+    $stmt->execute([$schoolId, $name, $password, $status]);
 
     $stmt = $pdo->prepare("INSERT INTO students(school_id, name, gender, class, parent_name, parent_phone, status) VALUES(?, ?, ?, ?, ?, ?, ?)");
     $stmt->execute([$schoolId, $name, $gender, $class, $parent_name, $parent_phone, $status]);

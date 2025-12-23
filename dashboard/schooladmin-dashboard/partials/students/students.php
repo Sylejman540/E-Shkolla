@@ -48,9 +48,6 @@ $students = $stmt->fetchAll(PDO::FETCH_ASSOC);
                         <th scope="col" class="px-3 py-3.5 text-left text-sm font-semibold text-gray-900 dark:text-white">Numri i prindërit</th>
                         <th scope="col" class="px-3 py-3.5 text-left text-sm font-semibold text-gray-900 dark:text-white">Statusi</th>
                         <th scope="col" class="px-3 py-3.5 text-left text-sm font-semibold text-gray-900 dark:text-white">Data e krijimit</th>
-                        <th scope="col" class="py-3.5 pr-4 pl-3 sm:pr-0">
-                            <span class="sr-only">Edit</span>
-                        </th>   
                     </tr>
                 </thead>
                 <?php if(!empty($students)): ?>
@@ -92,7 +89,7 @@ $students = $stmt->fetchAll(PDO::FETCH_ASSOC);
                         </td>   
                         <td class="px-3 py-4 text-sm whitespace-nowrap text-gray-500 dark:text-gray-400"><?= htmlspecialchars($row['created_at']) ?></td>
                         <td class="py-4 pr-4 pl-3 text-right text-sm font-medium whitespace-nowrap sm:pr-0">
-                            <a href="#" class="text-indigo-600 hover:text-indigo-900 dark:text-indigo-400 dark:hover:text-indigo-300">Edit<span class="sr-only">, Lindsay Walton</span></a>
+                            <a href="/E-Shkolla/parents?student_id=<?= (int)$rows['student_id'] ?>" class="text-indigo-600 hover:text-indigo-900 dark:text-indigo-400 dark:hover:text-indigo-300">Shto prindër</a>
                         </td>
                     </tr>
                 </tbody>
