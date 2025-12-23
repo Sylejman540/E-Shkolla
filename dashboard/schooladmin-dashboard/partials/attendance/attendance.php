@@ -22,96 +22,25 @@ $teachers = $stmt->fetchAll(PDO::FETCH_ASSOC);
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
 </head>
 <body>
-<main class="lg:pl-72">
+<main class="lg:pl-72 ml-48 mr-48">
   <div class="xl:pl-18">
-    <div class="px-4 py-10 sm:px-6 lg:px-8 lg:py-6 relative">
-        <div class="px-4 sm:px-6 lg:px-8">
-        <div class="sm:flex sm:items-center">
-            <div class="sm:flex-auto">
-            <h1 class="text-base font-semibold text-gray-900 dark:text-white">Mësuesit</h1>
-            <p class="mt-2 text-sm text-gray-700 dark:text-gray-300">Lista e të gjithë mësuesve në sistemin tuaj, duke përfshirë lëndën dhe statusin e tyre.</p>
-            </div>
-            <div class="mt-4 sm:mt-0 sm:ml-16 sm:flex-none">
-                <button type="button" id="addSchoolBtn" class="block rounded-md bg-indigo-600 px-3 py-2 text-center text-sm font-semibold text-white shadow-xs hover:bg-indigo-500">Shto mësues</button>
-            </div>
-        </div>
-        <div class="mt-8 flow-root">
-            <div class="-mx-4 -my-2 overflow-x-auto sm:-mx-6 lg:-mx-8">
-            <div class="inline-block min-w-full py-2 align-middle sm:px-6 lg:px-8">
-                <table class="relative min-w-full divide-y divide-gray-300 dark:divide-white/15">
-                <thead>
-                    <tr>
-                        <th scope="col" class="px-3 py-3.5 text-left text-sm font-semibold text-gray-900 dark:text-white">Foto profili</th>
-                        <th scope="col" class="py-3.5 pr-3 pl-4 text-left text-sm font-semibold text-gray-900 sm:pl-0 dark:text-white">Emri dhe mbiemri</th>
-                        <th scope="col" class="px-3 py-3.5 text-left text-sm font-semibold text-gray-900 dark:text-white">Email</th>
-                        <th scope="col" class="px-3 py-3.5 text-left text-sm font-semibold text-gray-900 dark:text-white">Numri i telefonit</th>
-                        <th scope="col" class="px-3 py-3.5 text-left text-sm font-semibold text-gray-900 dark:text-white">Gjinia</th>
-                        <th scope="col" class="px-3 py-3.5 text-left text-sm font-semibold text-gray-900 dark:text-white">Lënda</th>
-                        <th scope="col" class="px-3 py-3.5 text-left text-sm font-semibold text-gray-900 dark:text-white">Statusi</th>
-                        <th scope="col" class="px-3 py-3.5 text-left text-sm font-semibold text-gray-900 dark:text-white">Data e krijimit</th>
-                    </tr>
-                </thead>
-                <?php if(!empty($teachers)): ?>
-                <?php foreach($teachers as $row): ?>
-                <tbody class="divide-y divide-gray-200 dark:divide-white/10">
-                    <tr>
-                        <td><img src="/E-Shkolla/<?= htmlspecialchars($row['profile_photo']) ?>" alt="<?= htmlspecialchars($row['name']) ?>" class="w-10 h-10 rounded-full ml-5 object-cover"/></td>
-                        <td class="py-4 pr-3 pl-4 text-sm font-medium whitespace-nowrap text-gray-900 sm:pl-0 dark:text-white"><?= htmlspecialchars($row['name']) ?></td>
-                        <td class="px-3 py-4 text-sm whitespace-nowrap text-gray-500 dark:text-gray-400"><?= htmlspecialchars($row['email']) ?></td>
-                        <td class="px-3 py-4 text-sm whitespace-nowrap text-gray-500 dark:text-gray-400"><?= htmlspecialchars($row['phone']) ?></td>
-                        <td class="px-3 py-4 text-sm whitespace-nowrap text-gray-500 dark:text-gray-400">
-                            <?php
-                                echo match ($row['gender']) {
-                                    'male'   => 'Mashkull',
-                                    'female' => 'Femër',
-                                    'other'  => 'Tjetër',
-                                    default  => '-',
-                                };
-                            ?>
-                        </td>
-                        <td class="px-3 py-4">
-                            <span class="inline-flex items-center rounded-full bg-indigo-50 px-2 py-1 text-xs font-medium text-indigo-700">
-                                <?= htmlspecialchars($row['subject_name']) ?>
-                            </span>
-                        </td>
-                        <td class="px-3 py-4 text-sm whitespace-nowrap text-gray-500 dark:text-gray-400">
-                            <?php
-                                $statusLabel = match ($row['status']) {
-                                    'active'   => 'Aktiv',
-                                    'inactive' => 'Joaktiv',
-                                    default    => '-',
-                                };
-
-                                $statusClass = match ($row['status']) {
-                                    'active'   => 'bg-green-200 text-green-700',
-                                    'inactive' => 'bg-red-200 text-red-700',
-                                    default    => 'bg-gray-200 text-gray-700',
-                                };
-                            ?>
-
-                            <span class="inline-block px-2 py-0.5 rounded-full text-xs font-semibold <?= $statusClass ?>">
-                                <?= $statusLabel ?>
-                            </span>
-                        </td>
-                        <td class="px-3 py-4 text-sm whitespace-nowrap text-gray-500 dark:text-gray-400"><?= htmlspecialchars($row['created_at']) ?></td>
-                    </tr>
-                </tbody>
-                <?php endforeach ?>
-
-                <?php else: ?>
-                    <tr>
-                        <td colspan="8" class="py-10 text-center text-sm text-gray-500 dark:text-gray-400">
-                            Tabela nuk përmban të dhëna
-                        </td>
-                    </tr>
-                <?php endif; ?>
-                </table>
-            </div>
-            </div>
-
-        <?php require_once 'form.php'; ?>
+    <ul role="list" class="divide-y divide-gray-100 dark:divide-white/5">
+    <?php foreach($teachers as $row): ?>
+     <li class="flex justify-between gap-x-6 py-5">
+        <div class="flex min-w-0 gap-x-4">
+        <img src="https://images.unsplash.com/photo-1494790108377-be9c29b29330?ixlib=rb-1.2.1&ixid=eyJhcHBfaWQiOjEyMDd9&auto=format&fit=facearea&facepad=2&w=256&h=256&q=80" alt="" class="size-12 flex-none rounded-full bg-gray-50 dark:bg-gray-800 dark:outline dark:-outline-offset-1 dark:outline-white/10" />
+        <div class="min-w-0 flex-auto">
+            <p class="text-sm/6 font-semibold text-gray-900 dark:text-white"><?= htmlspecialchars($row['name'])?></p>
+            <p class="mt-1 truncate text-xs/5 text-gray-500 dark:text-gray-400"><?= htmlspecialchars($row['email'])?></p>
         </div>
         </div>
+        <div class="hidden shrink-0 sm:flex sm:flex-col sm:items-end">
+        <p class="text-sm/6 text-gray-900 dark:text-white">Teacher</p>
+        <p class="mt-1 text-xs/5 text-gray-500 dark:text-gray-400">Active</time></p>
+        </div>
+     </li>
+    <?php endforeach; ?>
+    </ul>
     </div>
   </div>
 </main>
