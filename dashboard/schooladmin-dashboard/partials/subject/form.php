@@ -7,7 +7,6 @@ require_once __DIR__  . '/../../../../db.php';
 
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     $name = $_POST['name'];
-    $code = $_POST['code'];
     $description = $_POST['description'];
     $status = $_POST['status'];
     
@@ -17,8 +16,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
       $schoolId = $_SESSION['user']['school_id'];
     }
 
-    $stmt = $pdo->prepare("INSERT INTO subjects(school_id, name, code, description, status) VALUES(?, ?, ?, ?, ?)");
-    $stmt->execute([$schoolId, $name, $code, $description, $status]);
+    $stmt = $pdo->prepare("INSERT INTO subjects(school_id, name, description, status) VALUES(?, ?, ?, ?, ?)");
+    $stmt->execute([$schoolId, $name, $description, $status]);
 
     header("Location: /E-Shkolla/subjects");
     exit;
@@ -48,13 +47,6 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             <label for="name" class="block text-sm/6 font-medium text-gray-900 dark:text-white">Emri i lëndës</label>
             <div class="mt-2">
                 <input id="name" type="text" name="name" autocomplete="name" class="border border-1 block w-full rounded-md bg-white px-3 py-1.5 text-base text-gray-900 outline-1 -outline-offset-1 outline-gray-300 placeholder:text-gray-400 focus:outline-2 focus:-outline-offset-2 focus:outline-indigo-600 sm:text-sm/6 dark:bg-white/5 dark:text-white dark:outline-white/10 dark:placeholder:text-gray-500 dark:focus:outline-indigo-500" />
-            </div>
-            </div>
-
-            <div class="sm:col-span-3">
-            <label for="code" class="block text-sm/6 font-medium text-gray-900 dark:text-white">Kodi</label>
-            <div class="mt-2">
-                <input id="code" type="text" name="code" autocomplete="code" class="border border-1 block w-full rounded-md bg-white px-3 py-1.5 text-base text-gray-900 outline-1 -outline-offset-1 outline-gray-300 placeholder:text-gray-400 focus:outline-2 focus:-outline-offset-2 focus:outline-indigo-600 sm:text-sm/6 dark:bg-white/5 dark:text-white dark:outline-white/10 dark:placeholder:text-gray-500 dark:focus:outline-indigo-500" />
             </div>
             </div>
 

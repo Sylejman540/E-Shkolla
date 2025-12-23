@@ -71,7 +71,7 @@ $teachers = $stmt->fetchAll(PDO::FETCH_ASSOC);
                         </td>
                         <td class="px-3 py-4">
                             <span class="inline-flex items-center rounded-full bg-indigo-50 px-2 py-1 text-xs font-medium text-indigo-700">
-                                <?= htmlspecialchars($row['subject']) ?>
+                                <?= htmlspecialchars($row['subject_name']) ?>
                             </span>
                         </td>
                         <td class="px-3 py-4 text-sm whitespace-nowrap text-gray-500 dark:text-gray-400">

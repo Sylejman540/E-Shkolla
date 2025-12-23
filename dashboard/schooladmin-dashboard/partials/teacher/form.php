@@ -10,9 +10,10 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     $email   = $_POST['email'];
     $phone   = $_POST['phone'];
     $gender  = $_POST['gender'];
-    $subject = $_POST['subject'];
     $status  = $_POST['status'];
     $password = $_POST['password']; 
+    $subject_name = $_POST['subject_name'];
+    $description = $_POST['description'];
     $schoolId = $_SESSION['user']['school_id'] ?? null;
 
     if (!$schoolId) {
@@ -47,8 +48,11 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     $stmt = $pdo->prepare("INSERT INTO users (school_id, name, email, password, role, status) VALUES (?, ?, ?, ?, 'teacher', ?)");
     $stmt->execute([$schoolId, $name, $email, $password, $status]);
 
-    $stmt = $pdo->prepare("INSERT INTO teachers (school_id, name, email, phone, gender, subject, status, profile_photo) VALUES (?, ?, ?, ?, ?, ?, ?, ?)");
-    $stmt->execute([$schoolId, $name, $email, $phone, $gender, $subject, $status, $profile_photo]);
+    $stmt = $pdo->prepare("INSERT INTO teachers (school_id, name, email, phone, gender, subject_name, status, profile_photo) VALUES (?, ?, ?, ?, ?, ?, ?, ?)");
+    $stmt->execute([$schoolId, $name, $email, $phone, $gender, $subject_name, $status, $profile_photo]);
+
+    $stmt = $pdo->prepare("INSERT INTO subjects(school_id, subject_name, description, status) VALUES(?, ?, ?, ?)");
+    $stmt->execute([$schoolId, $subject_name, $description, $status]);
 
     header("Location: /E-Shkolla/teachers");
     exit;
@@ -114,9 +118,16 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             </div>
 
             <div class="sm:col-span-3">
-            <label for="subject" class="block text-sm/6 font-medium text-gray-900 dark:text-white">Lënda</label>
+            <label for="subject_name" class="block text-sm/6 font-medium text-gray-900 dark:text-white">Lënda</label>
             <div class="mt-2">
-                <input id="subject" type="text" name="subject" autocomplete="subject" class="border border-1 block w-full rounded-md bg-white px-3 py-1.5 text-base text-gray-900 outline-1 -outline-offset-1 outline-gray-300 placeholder:text-gray-400 focus:outline-2 focus:-outline-offset-2 focus:outline-indigo-600 sm:text-sm/6 dark:bg-white/5 dark:text-white dark:outline-white/10 dark:placeholder:text-gray-500 dark:focus:outline-indigo-500" />
+                <input id="subject_name" type="text" name="subject_name" autocomplete="subject" class="border border-1 block w-full rounded-md bg-white px-3 py-1.5 text-base text-gray-900 outline-1 -outline-offset-1 outline-gray-300 placeholder:text-gray-400 focus:outline-2 focus:-outline-offset-2 focus:outline-indigo-600 sm:text-sm/6 dark:bg-white/5 dark:text-white dark:outline-white/10 dark:placeholder:text-gray-500 dark:focus:outline-indigo-500" />
+            </div>
+            </div>
+
+            <div class="sm:col-span-4">
+            <label for="description" class="block text-sm/6 font-medium text-gray-900 dark:text-white">Përshkrimi rreth lëndës</label>
+            <div class="mt-2">
+                <input id="description" type="text" name="description" autocomplete="description" class="border border-1 block w-full rounded-md bg-white px-3 py-1.5 text-base text-gray-900 outline-1 -outline-offset-1 outline-gray-300 placeholder:text-gray-400 focus:outline-2 focus:-outline-offset-2 focus:outline-indigo-600 sm:text-sm/6 dark:bg-white/5 dark:text-white dark:outline-white/10 dark:placeholder:text-gray-500 dark:focus:outline-indigo-500" />
             </div>
             </div>
 
