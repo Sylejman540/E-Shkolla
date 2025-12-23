@@ -32,7 +32,7 @@ $classes = $stmt->fetchAll(PDO::FETCH_ASSOC);
             <p class="mt-2 text-sm text-gray-700 dark:text-gray-300">Lista e të gjithë klasave në shkollë</p>
             </div>
             <div class="mt-4 sm:mt-0 sm:ml-16 sm:flex-none">
-                <button type="button" id="addSchoolBtn" class="block rounded-md bg-indigo-600 px-3 py-2 text-center text-sm font-semibold text-white shadow-xs hover:bg-indigo-500">Add school</button>
+                <button type="button" id="addSchoolBtn" class="block rounded-md bg-indigo-600 px-3 py-2 text-center text-sm font-semibold text-white shadow-xs hover:bg-indigo-500">Shto klasë</button>
             </div>
         </div>
         <div class="mt-8 flow-root">
@@ -44,8 +44,6 @@ $classes = $stmt->fetchAll(PDO::FETCH_ASSOC);
                         <th scope="col" class="py-3.5 pr-3 pl-4 text-left text-sm font-semibold text-gray-900 sm:pl-0 dark:text-white">Viti akademik</th>
                         <th scope="col" class="px-3 py-3.5 text-left text-sm font-semibold text-gray-900 dark:text-white">Klasa</th>
                         <th scope="col" class="px-3 py-3.5 text-left text-sm font-semibold text-gray-900 dark:text-white">Seksioni</th>
-                        <th scope="col" class="px-3 py-3.5 text-left text-sm font-semibold text-gray-900 dark:text-white">Kodi i klases</th>
-                        <th scope="col" class="px-3 py-3.5 text-left text-sm font-semibold text-gray-900 dark:text-white">Nr i klasës</th>
                         <th scope="col" class="px-3 py-3.5 text-left text-sm font-semibold text-gray-900 dark:text-white">Nr i nxënësve</th>
                         <th scope="col" class="px-3 py-3.5 text-left text-sm font-semibold text-gray-900 dark:text-white">Statusi</th>
                         <th scope="col" class="px-3 py-3.5 text-left text-sm font-semibold text-gray-900 dark:text-white">Created At</th>
@@ -54,14 +52,14 @@ $classes = $stmt->fetchAll(PDO::FETCH_ASSOC);
                         </th>
                     </tr>
                 </thead>
+                <?php if(!empty($classes)): ?>
                 <?php foreach($classes as $row): ?>
                 <tbody class="divide-y divide-gray-200 dark:divide-white/10">
                     <tr>
                         <td class="py-4 pr-3 pl-4 text-sm font-medium whitespace-nowrap text-gray-900 sm:pl-0 dark:text-white"><?= htmlspecialchars($row['academic_year']) ?></td>
-                        <td class="px-3 py-4 text-sm whitespace-nowrap text-gray-500 dark:text-gray-400"><?= htmlspecialchars($row['year']) ?></td>
+                        <td class="px-3 py-4 text-sm whitespace-nowrap text-gray-500 dark:text-gray-400"><?= htmlspecialchars($row['grade']) ?></td>
                         <td class="px-3 py-4 text-sm whitespace-nowrap text-gray-500 dark:text-gray-400"><?= htmlspecialchars($row['section']) ?></td>
-                        <td class="px-3 py-4 text-sm whitespace-nowrap text-gray-500 dark:text-gray-400"><?= htmlspecialchars($row['class_code']) ?></td>
-                        <td class="px-3 py-4 text-sm whitespace-nowrap text-gray-500 dark:text-gray-400"><?= htmlspecialchars($row['']) ?></td>
+                        <td class="px-3 py-4 text-sm whitespace-nowrap text-gray-500 dark:text-gray-400"><?= htmlspecialchars($row['max_students']) ?></td>
                         <td class="px-3 py-4 text-sm whitespace-nowrap">
                             <p class="text-green-500 py-[1px] w-14 px-2 h-6 bg-green-200 rounded-xl">
                                 <?= htmlspecialchars($row['status']) ?>
@@ -74,6 +72,13 @@ $classes = $stmt->fetchAll(PDO::FETCH_ASSOC);
                     </tr>
                 </tbody>
                 <?php endforeach ?>
+                <?php else: ?>
+                    <tr>
+                        <td colspan="8" class="py-10 text-center text-sm text-gray-500 dark:text-gray-400">
+                            Tabela nuk përmban të dhëna
+                        </td>
+                    </tr>
+                <?php endif; ?>
                 </table>
             </div>
             </div>

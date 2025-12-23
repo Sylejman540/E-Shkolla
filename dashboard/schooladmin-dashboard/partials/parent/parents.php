@@ -31,9 +31,6 @@ $parents = $stmt->fetchAll(PDO::FETCH_ASSOC);
             <h1 class="text-base font-semibold text-gray-900 dark:text-white">Prindërit</h1>
             <p class="mt-2 text-sm text-gray-700 dark:text-gray-300">Lista e të gjithë prindërve në sistemin tuaj, duke përfshirë fëmijën dhe statusin e tyre.</p>
             </div>
-            <div class="mt-4 sm:mt-0 sm:ml-16 sm:flex-none">
-                <button type="button" id="addSchoolBtn" class="block rounded-md bg-indigo-600 px-3 py-2 text-center text-sm font-semibold text-white shadow-xs hover:bg-indigo-500">Shto prindër</button>
-            </div>
         </div>
         <div class="mt-8 flow-root">
             <div class="-mx-4 -my-2 overflow-x-auto sm:-mx-6 lg:-mx-8">
@@ -114,7 +111,7 @@ $parents = $stmt->fetchAll(PDO::FETCH_ASSOC);
   </div>
 </main>
 <script>
-  const btn = document.getElementById('addSchoolBtn');
+  const btn = document.getElementById('addParentBtn');
   const form = document.getElementById('addSchoolForm');
   const cancel = document.getElementById('cancel');
 
@@ -126,6 +123,19 @@ $parents = $stmt->fetchAll(PDO::FETCH_ASSOC);
   cancel?.addEventListener('click', () => {
     form.classList.add('hidden');
   });
+
+  document.addEventListener('DOMContentLoaded', function () {
+    const params = new URLSearchParams(window.location.search);
+    const shouldOpenForm = params.get('open_form');
+
+    if (shouldOpenForm === '1') {
+        const form = document.getElementById('addSchoolForm');
+        if (form) {
+            form.classList.remove('hidden');
+            form.scrollIntoView({ behavior: 'smooth', block: 'start' });
+        }
+    }
+});
 </script>
 
 </body>
