@@ -90,7 +90,6 @@ $subjects = $stmt->fetchAll(PDO::FETCH_ASSOC);
             </div>
             </div>
 
-        <?php require_once 'form.php'; ?>
         </div>
         </div>
     </div>
