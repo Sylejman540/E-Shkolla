@@ -7,37 +7,25 @@ require_once __DIR__  . '/../../../../db.php';
 
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     $name = $_POST['name'];
-    $phone = $_POST['phone'];
-    $email = $_POST['email'];
-    $relation = $_POST['relation'];
+    $gender = $_POST['gender'];
+    $class = $_POST['class'];
+    $parent_name = $_POST['parent_name'];
+    $parent_phone = $_POST['parent_phone'];
     $status = $_POST['status'];
     $password = $_POST['password'];
     $schoolId = $_SESSION['user']['school_id'] ?? null;
-    $parentId = $_SESSION['user']['parent_id'] ?? null;
 
     if (!$schoolId) {
         die('School ID missing from session');
     }
-    $studentId = (int)($_POST['student_id'] ?? 0);
 
-    if ($studentId <= 0) {
-        die('Student not specified');
-    }
+    $stmt = $pdo->prepare("INSERT INTO users (school_id, name, email, password, role, status) VALUES (?, ?, NULL, ?, 'student', ?)");
+    $stmt->execute([$schoolId, $name, $password, $status]);
 
-    
+    $stmt = $pdo->prepare("INSERT INTO students(school_id, name, gender, class, parent_name, parent_phone, status) VALUES(?, ?, ?, ?, ?, ?, ?)");
+    $stmt->execute([$schoolId, $name, $gender, $class, $parent_name, $parent_phone, $status]);
 
-    $stmt = $pdo->prepare("INSERT INTO users (school_id, name, email, password, role, status) VALUES (?, ?, ?, ?, 'parent', ?)");
-    $stmt->execute([$schoolId, $name, $email, $password, $status]);
-
-
-    $stmt = $pdo->prepare("INSERT INTO parents(school_id, name, phone, email, relation, status) VALUES(?, ?, ?, ?, ?, ?)");
-    $stmt->execute([$schoolId, $name, $phone, $email, $relation, $status]);
-   
-    $parentId = $pdo->lastInsertId();
-    $stmt = $pdo->prepare("INSERT INTO parent_student(parent_id, student_id) VALUES(?, ?)");
-    $stmt->execute([$parentId, $studentId]);
-
-    header("Location: /E-Shkolla/parents");
+    header("Location: /E-Shkolla/students");
     exit;
 }
 
@@ -50,19 +38,16 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         
         <div class="mb-8">
           <h2 class="text-xl font-semibold text-gray-900 dark:text-white">
-            Shto prindër të ri
+            Shto nxënës të ri
           </h2>
           <p class="mt-1 text-sm text-gray-600 dark:text-gray-400">
-            Plotësoni të dhënat bazë për prindërin.
+            Plotësoni të dhënat bazë për nxënësin.
           </p>
         </div>
 
         <div class="grid grid-cols-1 gap-x-8 gap-y-10 border-b border-gray-900/10 pb-8 md:grid-cols-3 dark:border-white/10">
             
-        <form action="/E-Shkolla/dashboard/schooladmin-dashboard/partials/parent/form.php" method="post" class="grid max-w-2xl grid-cols-1 gap-x-6 gap-y-8 sm:grid-cols-6 md:col-span-2">
-            <input type="hidden" name="student_id" value="<?= (int)($_GET['student_id'] ?? 0) ?>">
-
-        
+        <form action="/E-Shkolla/dashboard/schooladmin-dashboard/partials/students/form.php" method="post" class="grid max-w-2xl grid-cols-1 gap-x-6 gap-y-8 sm:grid-cols-6 md:col-span-2">
             <div class="sm:col-span-3">
             <label for="name" class="block text-sm/6 font-medium text-gray-900 dark:text-white">Emri dhe mbiemri</label>
             <div class="mt-2">
@@ -77,29 +62,35 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             </div>
             </div>
 
-
             <div class="sm:col-span-3">
-            <label for="phone" class="block text-sm/6 font-medium text-gray-900 dark:text-white">Numri i telefonit</label>
+            <label for="gender" class="block text-sm/6 font-medium text-gray-900 dark:text-white">Gjinia</label>
             <div class="mt-2">
-                <input id="phone" type="text" name="phone" autocomplete="phone" class="border border-1 block w-full rounded-md bg-white px-3 py-1.5 text-base text-gray-900 outline-1 -outline-offset-1 outline-gray-300 placeholder:text-gray-400 focus:outline-2 focus:-outline-offset-2 focus:outline-indigo-600 sm:text-sm/6 dark:bg-white/5 dark:text-white dark:outline-white/10 dark:placeholder:text-gray-500 dark:focus:outline-indigo-500" />
+              <select id="gender" name="gender" autocomplete="sex" class="border block w-full rounded-md bg-white p-[7px] text-base text-gray-900 outline-gray-300 focus:outline-2 focus:outline-indigo-600 sm:text-sm dark:bg-white/5 dark:text-white dark:outline-white/10 dark:focus:outline-indigo-500">
+                <option value="male">Mashkull</option>
+                <option value="female">Femër</option>
+                <option value="other">Tjetër</option>
+              </select>
             </div>
             </div>
 
             <div class="sm:col-span-4">
-            <label for="email" class="block text-sm/6 font-medium text-gray-900 dark:text-white">Email</label>
+            <label for="class" class="block text-sm/6 font-medium text-gray-900 dark:text-white">Klasa</label>
             <div class="mt-2">
-                <input id="email" type="class" name="email" autocomplete="email" class="border border-1 block w-full rounded-md bg-white px-3 py-1.5 text-base text-gray-900 outline-1 -outline-offset-1 outline-gray-300 placeholder:text-gray-400 focus:outline-2 focus:-outline-offset-2 focus:outline-indigo-600 sm:text-sm/6 dark:bg-white/5 dark:text-white dark:outline-white/10 dark:placeholder:text-gray-500 dark:focus:outline-indigo-500" />
+                <input id="class" type="class" name="class" autocomplete="class" class="border border-1 block w-full rounded-md bg-white px-3 py-1.5 text-base text-gray-900 outline-1 -outline-offset-1 outline-gray-300 placeholder:text-gray-400 focus:outline-2 focus:-outline-offset-2 focus:outline-indigo-600 sm:text-sm/6 dark:bg-white/5 dark:text-white dark:outline-white/10 dark:placeholder:text-gray-500 dark:focus:outline-indigo-500" />
             </div>
             </div>
 
             <div class="sm:col-span-3">
-            <label for="relation" class="block text-sm/6 font-medium text-gray-900 dark:text-white">Kujdestari/ja</label>
+            <label for="parent_name" class="block text-sm/6 font-medium text-gray-900 dark:text-white">Emri i prindërit</label>
             <div class="mt-2">
-              <select id="relation" name="relation" autocomplete="relation" class="border block w-full rounded-md bg-white px-3 py-1.5 text-base text-gray-900 outline-gray-300 focus:outline-2 focus:outline-indigo-600 sm:text-sm dark:bg-white/5 dark:text-white dark:outline-white/10 dark:focus:outline-indigo-500">
-                <option value="mother">Babai</option>
-                <option value="father">Nëna</option>
-                <option value="guard">Tjetër</option>
-              </select>
+                <input id="parent_name" type="text" name="parent_name" autocomplete="parent_name" class="border border-1 block w-full rounded-md bg-white px-3 py-1.5 text-base text-gray-900 outline-1 -outline-offset-1 outline-gray-300 placeholder:text-gray-400 focus:outline-2 focus:-outline-offset-2 focus:outline-indigo-600 sm:text-sm/6 dark:bg-white/5 dark:text-white dark:outline-white/10 dark:placeholder:text-gray-500 dark:focus:outline-indigo-500" />
+            </div>
+            </div>
+
+            <div class="sm:col-span-3">
+            <label for="parent_phone" class="block text-sm/6 font-medium text-gray-900 dark:text-white">Numri i prindërit</label>
+            <div class="mt-2">
+                <input id="parent_phone" type="text" name="parent_phone" autocomplete="parent_phone" class="border border-1 block w-full rounded-md bg-white px-3 py-1.5 text-base text-gray-900 outline-1 -outline-offset-1 outline-gray-300 placeholder:text-gray-400 focus:outline-2 focus:-outline-offset-2 focus:outline-indigo-600 sm:text-sm/6 dark:bg-white/5 dark:text-white dark:outline-white/10 dark:placeholder:text-gray-500 dark:focus:outline-indigo-500" />
             </div>
             </div>
 
@@ -107,8 +98,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             <label for="status" class="block text-sm/6 font-medium text-gray-900 dark:text-white">Statusi</label>
             <div class="mt-2">
               <select id="status" name="status" autocomplete="status" class="border block w-full rounded-md bg-white px-3 py-1.5 text-base text-gray-900 outline-gray-300 focus:outline-2 focus:outline-indigo-600 sm:text-sm dark:bg-white/5 dark:text-white dark:outline-white/10 dark:focus:outline-indigo-500">
-                <option value="active">Aktive</option>
-                <option value="inactive">Joaktive</option>
+                  <option value="active">Aktive</option>
+                  <option value="inactive">Joaktive</option>
               </select>
             </div>
             </div>
