@@ -9,8 +9,6 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     $day = $_POST['day'];
     $start_time = $_POST['start_time'];
     $end_time = $_POST['end_time'];
-    $subject_id = $_POST['subject_id'];
-    $teacher_id = $_POST['teacher_id'];
     $status = $_POST['status'];
     $schoolId = $_SESSION['user']['school_id'] ?? null;
     $subjectId = $_POST['subject_id'];
@@ -42,7 +40,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 
         <div class="grid grid-cols-1 gap-x-8 gap-y-10 border-b border-gray-900/10 pb-8 md:grid-cols-3 dark:border-white/10">
           
-          <form action="/E-Shkolla/dashboard/schooladmin-dashboard/partials/classes/form.php" method="post" class="grid max-w-2xl grid-cols-1 gap-x-6 gap-y-8 sm:grid-cols-6 md:col-span-2">
+          <form action="/E-Shkolla/dashboard/schooladmin-dashboard/partials/schedule/form.php?class_id=<?= $row['id'] ?>" method="post" class="grid max-w-2xl grid-cols-1 gap-x-6 gap-y-8 sm:grid-cols-6 md:col-span-2">
 
           <div class="sm:col-span-4">
               <label class="block text-sm font-medium text-gray-900 dark:text-white">Dita</label>
@@ -67,7 +65,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 
           <div class="sm:col-span-3">
               <label class="block text-sm font-medium text-gray-900 dark:text-white">Klasa</label>
-              <select name="class_id" class="mt-2 border block w-full rounded-md p-2">
+              <select name="class_id" class="mt-2 border block w-full round/\ ed-md p-2">
                   <?php
                   $teachers = $pdo->prepare("SELECT id, grade FROM classes WHERE school_id = ?");
                   $teachers->execute([$_SESSION['user']['school_id']]);

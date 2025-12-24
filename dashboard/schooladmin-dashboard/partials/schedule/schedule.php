@@ -74,46 +74,84 @@ $classes = $stmt->fetchAll(PDO::FETCH_ASSOC);
             </tr>
             <?php  
 
-            $classId = (int)$row['id'];
+                $classId = (int) $row['id'];
 
-            $stmt = $pdo->prepare("
-                SELECT * 
-                FROM class_schedule 
-                WHERE day = 'monday' 
-                AND class_id = ?
-            ");
-            $stmt->execute([$classId]);
+                $stmt = $pdo->prepare("
+                    SELECT 
+                        cs.day,
+                        cs.start_time,
+                        cs.end_time,
+                        s.subject_name,
+                        t.name AS teacher_name,
+                        c.grade AS class_name
+                    FROM class_schedule cs
+                    JOIN subjects s ON s.id = cs.subject_id
+                    JOIN teachers t ON t.id = cs.teacher_id
+                    JOIN classes c ON c.id = cs.class_id
+                    WHERE cs.class_id = ?
+                    ORDER BY cs.start_time
+                ");
+                $stmt->execute([$classId]);
 
-            $monday = $stmt->fetchAll(PDO::FETCH_ASSOC);
+                $schedule = $stmt->fetchAll(PDO::FETCH_ASSOC);
 
+                $grid = [];
+
+                foreach ($schedule as $lesson) {
+                    $timeKey = $lesson['start_time'] . ' - ' . $lesson['end_time'];
+                    $grid[$timeKey][$lesson['day']] = $lesson;
+                }
             
             ?>
-
             <tr id="schedule-<?= (int)$row['id'] ?>" class="hidden bg-gray-50 dark:bg-gray-900">
-                <td colspan="7" class="p-4">
-                    <table class="min-w-full text-sm divide-y divide-gray-200">
-                        <thead>
-                            <tr class="text-gray-500 uppercase text-xs">
-                                <th class="py-2 text-left">Ora</th>
-                                <th class="py-2">E Hënë</th>
-                                <th class="py-2">E Martë</th>
-                                <th class="py-2">E Mërkurë</th>
-                                <th class="py-2">E Enjte</th>
-                                <th class="py-2">E Premte</th>
+                <td colspan="8" class="p-4">
+                    <table class="min-w-full text-sm border border-gray-200 rounded-md overflow-hidden">
+                        <thead class="bg-gray-100">
+                            <tr class="uppercase text-xs text-gray-600">
+                                <th class="py-2 px-2 text-left">Ora</th>
+                                <th class="py-2 px-2 text-center">E Hënë</th>
+                                <th class="py-2 px-2 text-center">E Martë</th>
+                                <th class="py-2 px-2 text-center">E Mërkurë</th>
+                                <th class="py-2 px-2 text-center">E Enjte</th>
+                                <th class="py-2 px-2 text-center">E Premte</th>
                             </tr>
                         </thead>
+
                         <tbody>
-                        <?php foreach($monday as $lesson): ?>
+                        <?php if (!empty($grid)): ?>
+                            <?php foreach ($grid as $time => $days): ?>
+                                <tr class="border-t">
+                                    <td class="py-2 px-2 font-medium text-gray-700">
+                                        <?= htmlspecialchars($time) ?>
+                                    </td>
+
+                                    <?php foreach (['monday','tuesday','wednesday','thursday','friday'] as $day): ?>
+                                        <td class="py-2 px-2 text-center">
+                                            <?php if (isset($days[$day])): ?>
+                                                <div class="text-sm font-semibold">
+                                                    <?= htmlspecialchars($days[$day]['subject_name']) ?>
+                                                </div>
+                                                <div class="text-xs text-gray-500">
+                                                    <?= htmlspecialchars($days[$day]['teacher_name']) ?>
+                                                </div>
+                                                <div class="text-xs text-gray-500">
+                                                    <?= htmlspecialchars($days[$day]['class_name']) ?>
+                                                </div>
+                                            <?php else: ?>
+                                                <span class="text-gray-400">–</span>
+                                            <?php endif; ?>
+                                        </td>
+                                    <?php endforeach; ?>
+                                </tr>
+                            <?php endforeach; ?>
+                        <?php else: ?>
                             <tr>
-                                <td class="py-2 font-medium">08:00 - 08:45</td>
-                                <td><?= htmlspecialchars($lesson['start_time']) ?></td>
-                                <td><?= htmlspecialchars($lesson['end_time']) ?></td>
-                                <td>Biologji</td>
-                                <td>—</td>
-                                <td>Gjuhë Shqipe</td>
+                                <td colspan="6" class="py-4 text-center text-gray-500">
+                                    Nuk ka orar për këtë klasë
+                                </td>
                             </tr>
+                        <?php endif; ?>
                         </tbody>
-                        <?php endforeach; ?>
                     </table>
                 </td>
             </tr>
