@@ -37,63 +37,122 @@ $classes = $stmt->fetchAll(PDO::FETCH_ASSOC);
         <div class="mt-8 flow-root">
             <div class="-mx-4 -my-2 overflow-x-auto sm:-mx-6 lg:-mx-8">
             <div class="inline-block min-w-full py-2 align-middle sm:px-6 lg:px-8">
-                <table class="relative min-w-full divide-y divide-gray-300 dark:divide-white/15">
-                <thead>
-                    <tr>
-                        <th scope="col" class="py-3.5 pr-3 pl-4 text-left text-sm font-semibold text-gray-900 sm:pl-0 dark:text-white">Viti akademik</th>
-                        <th scope="col" class="px-3 py-3.5 text-left text-sm font-semibold text-gray-900 dark:text-white">Klasa</th>
-                        <th scope="col" class="px-3 py-3.5 text-left text-sm font-semibold text-gray-900 dark:text-white">Seksioni</th>
-                        <th scope="col" class="px-3 py-3.5 text-left text-sm font-semibold text-gray-900 dark:text-white">Nr i nxënësve</th>
-                        <th scope="col" class="px-3 py-3.5 text-left text-sm font-semibold text-gray-900 dark:text-white">Statusi</th>
-                        <th scope="col" class="px-3 py-3.5 text-left text-sm font-semibold text-gray-900 dark:text-white">Created At</th>
-                        <th scope="col" class="py-3.5 pr-4 pl-3 sm:pr-0">
-                            <span class="sr-only">Edit</span>
-                        </th>
-                    </tr>
-                </thead>
-                <?php if(!empty($classes)): ?>
-                <?php foreach($classes as $row): ?>
-                <tbody class="divide-y divide-gray-200 dark:divide-white/10">
-                    <tr>
-                        <td class="py-4 pr-3 pl-4 text-sm font-medium whitespace-nowrap text-gray-900 sm:pl-0 dark:text-white"><?= htmlspecialchars($row['academic_year']) ?></td>
-                        <td class="px-3 py-4 text-sm whitespace-nowrap text-gray-500 dark:text-gray-400"><?= htmlspecialchars($row['grade']) ?></td>
-                        <td class="px-3 py-4 text-sm whitespace-nowrap text-gray-500 dark:text-gray-400"><?= htmlspecialchars($row['section']) ?></td>
-                        <td class="px-3 py-4 text-sm whitespace-nowrap text-gray-500 dark:text-gray-400"><?= htmlspecialchars($row['max_students']) ?></td>
-                        <td class="px-3 py-4 text-sm whitespace-nowrap">
-                            <p class="text-green-500 py-[1px] w-14 px-2 h-6 bg-green-200 rounded-xl">
-                                <?= htmlspecialchars($row['status']) ?>
-                            </p>
-                        </td>
-                        <td class="px-3 py-4 text-sm whitespace-nowrap text-gray-500 dark:text-gray-400"><?= htmlspecialchars($row['created_at']) ?></td>
-                        <td class="py-4 pr-4 pl-3 text-right text-sm font-medium whitespace-nowrap sm:pr-0">
-                            <button type="button" id="addSchoolBtn" class="text-indigo-600 hover:text-indigo-900 dark:text-indigo-400 dark:hover:text-indigo-300">Shto orar</button>
-                        </td>
-                    </tr>
-                </tbody>
-                <?php endforeach ?>
-                <?php else: ?>
-                    <tr>
-                        <td colspan="8" class="py-10 text-center text-sm text-gray-500 dark:text-gray-400">
-                            Tabela nuk përmban të dhëna
-                        </td>
-                    </tr>
-                <?php endif; ?>
-                </table>
-            </div>
-            </div>
+                <table class="min-w-full divide-y divide-gray-300 dark:divide-white/15">
+        <thead>
+            <tr>
+                <th class="py-3.5 pl-4 text-left text-sm font-semibold">Viti akademik</th>
+                <th class="px-3 py-3.5 text-left text-sm font-semibold">Klasa</th>
+                <th class="px-3 py-3.5 text-left text-sm font-semibold">Seksioni</th>
+                <th class="px-3 py-3.5 text-left text-sm font-semibold">Nr i nxënësve</th>
+                <th class="px-3 py-3.5 text-left text-sm font-semibold">Statusi</th>
+                <th class="px-3 py-3.5 text-left text-sm font-semibold">Created At</th>
+                <th class="py-3.5 pr-4 text-right"></th>
+            </tr>
+        </thead>
 
-        <?php require_once 'form.php'; ?>
-        </div>
-        </div>
+        <tbody class="divide-y divide-gray-200 dark:divide-white/10">
+        <?php if (!empty($classes)): ?>
+            <?php foreach ($classes as $row): ?>
+
+            <tr>
+                <td class="py-4 pl-4 font-medium"><?= htmlspecialchars($row['academic_year']) ?></td>
+                <td class="px-3 py-4"><?= htmlspecialchars($row['grade']) ?></td>
+                <td class="px-3 py-4"><?= htmlspecialchars($row['section']) ?></td>
+                <td class="px-3 py-4"><?= htmlspecialchars($row['max_students']) ?></td>
+                <td class="px-3 py-4">
+                    <span class="px-2 py-1 rounded-xl bg-green-200 text-green-700 text-xs">
+                        <?= htmlspecialchars($row['status']) ?>
+                    </span>
+                </td>
+                <td class="px-3 py-4"><?= htmlspecialchars($row['created_at']) ?></td>
+                <td class="py-4 pr-4 text-right">
+                    <button type="button" class="text-indigo-600 hover:text-indigo-900" onclick="toggleSchedule(<?= (int)$row['id'] ?>)">Shiko orarin</button>
+                </td>
+                <td class="py-4 pr-4 text-right">
+                    <button type="button" class="addScheduleBtn text-indigo-600 hover:text-indigo-900" data-class-id="<?= (int)$row['id'] ?>">Shto orar</button>
+                </td>
+            </tr>
+            <?php  
+
+            $classId = (int)$row['id'];
+
+            $stmt = $pdo->prepare("
+                SELECT * 
+                FROM class_schedule 
+                WHERE day = 'monday' 
+                AND class_id = ?
+            ");
+            $stmt->execute([$classId]);
+
+            $monday = $stmt->fetchAll(PDO::FETCH_ASSOC);
+
+            
+            ?>
+
+            <tr id="schedule-<?= (int)$row['id'] ?>" class="hidden bg-gray-50 dark:bg-gray-900">
+                <td colspan="7" class="p-4">
+                    <table class="min-w-full text-sm divide-y divide-gray-200">
+                        <thead>
+                            <tr class="text-gray-500 uppercase text-xs">
+                                <th class="py-2 text-left">Ora</th>
+                                <th class="py-2">E Hënë</th>
+                                <th class="py-2">E Martë</th>
+                                <th class="py-2">E Mërkurë</th>
+                                <th class="py-2">E Enjte</th>
+                                <th class="py-2">E Premte</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                        <?php foreach($monday as $lesson): ?>
+                            <tr>
+                                <td class="py-2 font-medium">08:00 - 08:45</td>
+                                <td><?= htmlspecialchars($lesson['start_time']) ?></td>
+                                <td><?= htmlspecialchars($lesson['end_time']) ?></td>
+                                <td>Biologji</td>
+                                <td>—</td>
+                                <td>Gjuhë Shqipe</td>
+                            </tr>
+                        </tbody>
+                        <?php endforeach; ?>
+                    </table>
+                </td>
+            </tr>
+            <?php endforeach; ?>
+        <?php else: ?>
+            <tr>
+                <td colspan="7" class="py-10 text-center text-gray-500">
+                    Tabela nuk përmban të dhëna
+                </td>
+            </tr>
+        <?php endif; ?>
+        </tbody>
+    </table>
+    </div>
+    </div>
+
+    <?php require_once 'form.php'; ?>
+
+    </div>
+    </div>
     </div>
   </div>
 </main>
 <script>
-  const btn = document.getElementById('addSchoolBtn');
+document.addEventListener('DOMContentLoaded', function () {
   const form = document.getElementById('addSchoolForm');
   const cancel = document.getElementById('cancel');
 
-  btn?.addEventListener('click', () => {
+  document.addEventListener('click', function (e) {
+    const btn = e.target.closest('.addScheduleBtn');
+    if (!btn) return;
+
+    const classId = btn.dataset.classId;
+
+    const classInput = form.querySelector('input[name="class_id"]');
+    if (classInput) {
+      classInput.value = classId;
+    }
+
     form.classList.remove('hidden');
     form.scrollIntoView({ behavior: 'smooth', block: 'start' });
   });
@@ -102,18 +161,18 @@ $classes = $stmt->fetchAll(PDO::FETCH_ASSOC);
     form.classList.add('hidden');
   });
 
-  document.addEventListener('DOMContentLoaded', function () {
-    const params = new URLSearchParams(window.location.search);
-    const shouldOpenForm = params.get('open_form');
-
-    if (shouldOpenForm === '1') {
-        const form = document.getElementById('addSchoolForm');
-        if (form) {
-            form.classList.remove('hidden');
-            form.scrollIntoView({ behavior: 'smooth', block: 'start' });
-        }
-    }
+  const params = new URLSearchParams(window.location.search);
+  if (params.get('open_form') === '1') {
+    form.classList.remove('hidden');
+    form.scrollIntoView({ behavior: 'smooth', block: 'start' });
+  }
 });
+
+
+function toggleSchedule(classId) {
+    const row = document.getElementById('schedule-' + classId);
+    row.classList.toggle('hidden');
+}
 </script>
 
 </body>
