@@ -7,8 +7,10 @@ require_once __DIR__ . '/../../index.php';
 
 require_once __DIR__ . '/../../../../db.php';
 
-$stmt = $pdo->prepare("SELECT * FROM parents ORDER BY created_at DESC");
-$stmt->execute();
+$user_id = $_SESSION['user']['id'] ?? null;
+
+$stmt = $pdo->prepare("SELECT * FROM parents WHERE user_id = ?");
+$stmt->execute([$user_id]);
 
 $parents = $stmt->fetchAll(PDO::FETCH_ASSOC);
 ?>

@@ -7,8 +7,10 @@ require_once __DIR__ . '/../../index.php';
 
 require_once __DIR__ . '/../../../../db.php';
 
-$stmt = $pdo->prepare("SELECT * FROM teachers ORDER BY created_at DESC");
-$stmt->execute();
+$user_id = $_SESSION['user']['id'] ?? null;
+
+$stmt = $pdo->prepare("SELECT * FROM teachers WHERE user_id = ?");
+$stmt->execute([$user_id]);
 
 $teachers = $stmt->fetchAll(PDO::FETCH_ASSOC);
 ?>

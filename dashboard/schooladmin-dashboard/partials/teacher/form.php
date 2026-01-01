@@ -15,6 +15,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     $subject_name = $_POST['subject_name'];
     $description = $_POST['description'];
     $schoolId = $_SESSION['user']['school_id'] ?? null;
+    $user_id = $_SESSION['user']['id'] ?? null;
 
     if (!$schoolId) {
         die('School ID missing from session');
@@ -48,11 +49,11 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     $stmt = $pdo->prepare("INSERT INTO users (school_id, name, email, password, role, status) VALUES (?, ?, ?, ?, 'teacher', ?)");
     $stmt->execute([$schoolId, $name, $email, $password, $status]);
 
-    $stmt = $pdo->prepare("INSERT INTO teachers (school_id, name, email, phone, gender, subject_name, status, profile_photo) VALUES (?, ?, ?, ?, ?, ?, ?, ?)");
-    $stmt->execute([$schoolId, $name, $email, $phone, $gender, $subject_name, $status, $profile_photo]);
+    $stmt = $pdo->prepare("INSERT INTO teachers (school_id, user_id, name, email, phone, gender, subject_name, status, profile_photo) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)");
+    $stmt->execute([$schoolId, $user_id, $name, $email, $phone, $gender, $subject_name, $status, $profile_photo]);
 
-    $stmt = $pdo->prepare("INSERT INTO subjects(school_id, subject_name, description, status) VALUES(?, ?, ?, ?)");
-    $stmt->execute([$schoolId, $subject_name, $description, $status]);
+    $stmt = $pdo->prepare("INSERT INTO subjects(school_id, user_id, subject_name, description, status) VALUES(?, ?, ?, ?, ?)");
+    $stmt->execute([$schoolId, $user_id, $subject_name, $description, $status]);
 
     header("Location: /E-Shkolla/teachers");
     exit;
@@ -78,6 +79,9 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         <div class="grid grid-cols-1 gap-x-8 gap-y-10 border-b border-gray-900/10 pb-8 md:grid-cols-3 dark:border-white/10">
             
         <form action="/E-Shkolla/dashboard/schooladmin-dashboard/partials/teacher/form.php" method="post" enctype="multipart/form-data"  class="grid max-w-2xl grid-cols-1 gap-x-6 gap-y-8 sm:grid-cols-6 md:col-span-2">
+    <input type="hidden" name="user_id" value="<?= $userId ?>">
+
+
             <div class="sm:col-span-3">
             <label for="name" class="block text-sm/6 font-medium text-gray-900 dark:text-white">Emri dhe mbiemri</label>
             <div class="mt-2">
