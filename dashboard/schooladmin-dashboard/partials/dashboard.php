@@ -1,28 +1,41 @@
-<?php require_once __DIR__ . '/../index.php'; ?>
 <?php
-require_once __DIR__  . '/../../../db.php';   
+require_once __DIR__ . '/../index.php';
+require_once __DIR__ . '/../../../db.php';
 
-$totalParents = $pdo->query("SELECT COUNT(*) FROM parents")->fetchColumn();
+$schoolId = $_SESSION['user']['school_id'] ?? null;
 
-$stmt = $pdo->prepare("SELECT COUNT(*) FROM parents WHERE status = ?");
-$stmt->execute(['Active']);
+if (!$schoolId) {
+    die('School ID missing');
+}
+
+$stmt = $pdo->prepare("SELECT COUNT(*) FROM parents WHERE school_id = ?");
+$stmt->execute([$schoolId]);
+$totalParents = $stmt->fetchColumn();
+
+$stmt = $pdo->prepare("SELECT COUNT(*) FROM parents WHERE school_id = ? AND status = ?");
+$stmt->execute([$schoolId, 'Active']);
 $activeParents = $stmt->fetchColumn();
 
-$stmt->execute(['Inactive']);
+$stmt->execute([$schoolId, 'Inactive']);
 $inactiveParents = $stmt->fetchColumn();
 
-$totalStudents = $pdo->query("SELECT COUNT(*) FROM students")->fetchColumn();
+$stmt = $pdo->prepare("SELECT COUNT(*) FROM students WHERE school_id = ?");
+$stmt->execute([$schoolId]);
+$totalStudents = $stmt->fetchColumn();
 
-$stmt = $pdo->query("SELECT status, COUNT(*) as total FROM students GROUP BY status");
+$stmt = $pdo->prepare("SELECT status, COUNT(*) AS total FROM students WHERE school_id = ? GROUP BY status");
+$stmt->execute([$schoolId]);
 
-$totalTeachers = $pdo->query("SELECT COUNT(*) FROM teachers")->fetchColumn();
+$studentsByStatus = $stmt->fetchAll(PDO::FETCH_KEY_PAIR);
 
-$stmt = $pdo->query("SELECT status, COUNT(*) as total FROM teachers GROUP BY status");
+$stmt = $pdo->prepare("SELECT COUNT(*) FROM teachers WHERE school_id = ?");
+$stmt->execute([$schoolId]);
+$totalTeachers = $stmt->fetchColumn();
 
-$usersByRole = [];
-while ($row = $stmt->fetch(PDO::FETCH_ASSOC)) {
-    $usersByRole[$row['status']] = $row['total'];
-}
+$stmt = $pdo->prepare("SELECT status, COUNT(*) AS total FROM teachers WHERE school_id = ? GROUP BY status");
+$stmt->execute([$schoolId]);
+
+$teachersByStatus = $stmt->fetchAll(PDO::FETCH_KEY_PAIR);
 ?>
 
 <!DOCTYPE html>

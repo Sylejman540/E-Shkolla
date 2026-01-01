@@ -7,8 +7,10 @@ require_once __DIR__ . '/../../index.php';
 
 require_once __DIR__ . '/../../../../db.php';
 
-$stmt = $pdo->prepare("SELECT * FROM subjects ORDER BY created_at DESC");
-$stmt->execute();
+$user_id = $_SESSION['user']['id'] ?? null;
+
+$stmt = $pdo->prepare("SELECT * FROM subjects WHERE user_id = ?");
+$stmt->execute([$user_id]);
 
 $subjects = $stmt->fetchAll(PDO::FETCH_ASSOC);
 ?>
@@ -38,6 +40,7 @@ $subjects = $stmt->fetchAll(PDO::FETCH_ASSOC);
                 <table class="relative min-w-full divide-y divide-gray-300 dark:divide-white/15">
                 <thead>
                     <tr>
+                        <th scope="col" class="py-3.5 pr-3 pl-4 text-left text-sm font-semibold text-gray-900 sm:pl-0 dark:text-white">Mësimdhënësi</th>
                         <th scope="col" class="py-3.5 pr-3 pl-4 text-left text-sm font-semibold text-gray-900 sm:pl-0 dark:text-white">Emri i lëndës</th>
                         <th scope="col" class="px-3 py-3.5 text-left text-sm font-semibold text-gray-900 dark:text-white">Përshkrimi</th>
                         <th scope="col" class="px-3 py-3.5 text-left text-sm font-semibold text-gray-900 dark:text-white">Statusi</th>
@@ -51,6 +54,7 @@ $subjects = $stmt->fetchAll(PDO::FETCH_ASSOC);
                 <?php foreach($subjects as $row): ?>
                 <tbody class="divide-y divide-gray-200 dark:divide-white/10">
                     <tr>
+                        <td class="py-4 pr-3 pl-4 text-sm font-medium whitespace-nowrap text-gray-900 sm:pl-0 dark:text-white"><?= htmlspecialchars($row['name']) ?></td>
                         <td class="py-4 pr-3 pl-4 text-sm font-medium whitespace-nowrap text-gray-900 sm:pl-0 dark:text-white"><?= htmlspecialchars($row['subject_name']) ?></td>
                         <td class="px-3 py-4 text-sm whitespace-nowrap text-gray-500 dark:text-gray-400"><?= htmlspecialchars($row['description']) ?></td>
                         <td class="px-3 py-4 text-sm whitespace-nowrap text-gray-500 dark:text-gray-400">

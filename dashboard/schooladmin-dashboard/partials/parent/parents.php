@@ -13,6 +13,11 @@ $stmt = $pdo->prepare("SELECT * FROM parents WHERE user_id = ?");
 $stmt->execute([$user_id]);
 
 $parents = $stmt->fetchAll(PDO::FETCH_ASSOC);
+
+$openForm = isset($_GET['open_form']) && $_GET['open_form'] == '1';
+$studentId = isset($_GET['student_id']) ? (int)$_GET['student_id'] : null;
+
+
 ?>
 <!DOCTYPE html>
 <html lang="en">
@@ -105,39 +110,30 @@ $parents = $stmt->fetchAll(PDO::FETCH_ASSOC);
                 </table>
             </div>
             </div>
-
+            <?php require_once 'form.php'; ?>
         </div>
         </div>
     </div>
   </div>
 </main>
 <script>
-  const btn = document.getElementById('addParentBtn');
-  const form = document.getElementById('addSchoolForm');
-  const cancel = document.getElementById('cancel');
+document.addEventListener('DOMContentLoaded', () => {
+    const modal = document.getElementById('addSchoolForm');
+    const cancelBtns = document.querySelectorAll('#cancel, #cancelBtn');
 
-  btn?.addEventListener('click', () => {
-    form.classList.remove('hidden');
-    form.scrollIntoView({ behavior: 'smooth', block: 'start' });
-  });
+    cancelBtns.forEach(btn => {
+        btn.addEventListener('click', () => {
+            modal.classList.add('hidden');
 
-  cancel?.addEventListener('click', () => {
-    form.classList.add('hidden');
-  });
-
-  document.addEventListener('DOMContentLoaded', function () {
-    const params = new URLSearchParams(window.location.search);
-    const shouldOpenForm = params.get('open_form');
-
-    if (shouldOpenForm === '1') {
-        const form = document.getElementById('addSchoolForm');
-        if (form) {
-            form.classList.remove('hidden');
-            form.scrollIntoView({ behavior: 'smooth', block: 'start' });
-        }
-    }
+            // Remove open_form from URL
+            const url = new URL(window.location);
+            url.searchParams.delete('open_form');
+            window.history.replaceState({}, '', url);
+        });
+    });
 });
 </script>
+
 
 </body>
 </html>

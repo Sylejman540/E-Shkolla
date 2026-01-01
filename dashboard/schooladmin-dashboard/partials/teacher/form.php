@@ -52,8 +52,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     $stmt = $pdo->prepare("INSERT INTO teachers (school_id, user_id, name, email, phone, gender, subject_name, status, profile_photo) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)");
     $stmt->execute([$schoolId, $user_id, $name, $email, $phone, $gender, $subject_name, $status, $profile_photo]);
 
-    $stmt = $pdo->prepare("INSERT INTO subjects(school_id, user_id, subject_name, description, status) VALUES(?, ?, ?, ?, ?)");
-    $stmt->execute([$schoolId, $user_id, $subject_name, $description, $status]);
+    $stmt = $pdo->prepare("INSERT INTO subjects(school_id, user_id, name, subject_name, description, status) VALUES(?, ?, ?, ?, ?, ?)");
+    $stmt->execute([$schoolId, $user_id, $name, $subject_name, $description, $status]);
 
     header("Location: /E-Shkolla/teachers");
     exit;
@@ -80,7 +80,6 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             
         <form action="/E-Shkolla/dashboard/schooladmin-dashboard/partials/teacher/form.php" method="post" enctype="multipart/form-data"  class="grid max-w-2xl grid-cols-1 gap-x-6 gap-y-8 sm:grid-cols-6 md:col-span-2">
             <input type="hidden" name="user_id" value="<?= $user_id ?>">
-
 
             <div class="sm:col-span-3">
             <label for="name" class="block text-sm/6 font-medium text-gray-900 dark:text-white">Emri dhe mbiemri</label>

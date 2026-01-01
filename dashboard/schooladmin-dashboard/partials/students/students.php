@@ -90,9 +90,15 @@ $students = $stmt->fetchAll(PDO::FETCH_ASSOC);
                             </span>
                         </td>   
                         <td class="px-3 py-4 text-sm whitespace-nowrap text-gray-500 dark:text-gray-400"><?= htmlspecialchars($row['created_at']) ?></td>
-                        <td class="py-4 pr-4 pl-3 text-right text-sm font-medium whitespace-nowrap sm:pr-0">
-                            <a id="addParentBtn" href="/E-Shkolla/parents?student_id=<?= (int)$row['student_id'] ?>&open_form=1" class="text-indigo-600 hover:text-indigo-900 dark:text-indigo-400 dark:hover:text-indigo-300">Shto prindër</a>
-                        </td>
+<td class="py-4 pr-4 pl-3 text-right text-sm font-medium whitespace-nowrap sm:pr-0">
+    <a
+        href="/E-Shkolla/parents?student_id=<?= (int)$row['student_id'] ?>&open_form=1"
+        class="text-indigo-600 hover:text-indigo-900 dark:text-indigo-400 dark:hover:text-indigo-300"
+    >
+        Shto prindër
+    </a>
+</td>
+
                     </tr>
                 </tbody>
                 <?php endforeach ?>

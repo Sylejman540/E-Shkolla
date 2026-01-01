@@ -6,13 +6,13 @@ if(session_status() === PHP_SESSION_NONE){
 require_once __DIR__  . '/../../../../db.php';
 
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
+
     $name = $_POST['name'];
     $phone = $_POST['phone'];
     $email = $_POST['email'];
     $password = $_POST['password'];
     $relation = $_POST['relation'];
     $status = $_POST['status'];
-    $role = $_POST['role'];
     $schoolId = $_SESSION['user']['school_id'] ?? null;
     $user_id = $_SESSION['user']['id'] ?? null;
 
@@ -20,8 +20,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         die('School ID missing from session');
     }
 
-    $stmt = $pdo->prepare("INSERT INTO users (school_id, name, email, password, role, status) VALUES (?, ?, NULL, ?, 'parent', ?)");
-    $stmt->execute([$schoolId, $name, $password, $status]);
+    $stmt = $pdo->prepare("INSERT INTO users (school_id, name, password, email, role, status) VALUES (?, ?, ?, ?, 'parent', ?)");
+    $stmt->execute([$schoolId, $name, $password, $email, $status]);
 
     $stmt = $pdo->prepare("INSERT INTO parents(school_id, user_id, name, phone, email, relation, status) VALUES(?, ?, ?, ?, ?, ?, ?)");
     $stmt->execute([$schoolId, $user_id, $name, $phone, $email, $relation, $status]);
@@ -31,7 +31,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 }
 
 ?>
-<div id="addSchoolForm" class="hidden fixed inset-0 z-50 flex items-start justify-center bg-black/30 overflow-y-auto pt-10">
+<div id="addSchoolForm" class="<?= $openForm ? '' : 'hidden' ?> fixed inset-0 z-50 flex items-start justify-center bg-black/30 overflow-y-auto pt-10">
+
      
     <div class="w-full max-w-3xl px-4">
 
@@ -39,10 +40,10 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         
         <div class="mb-8">
           <h2 class="text-xl font-semibold text-gray-900 dark:text-white">
-            Shto nxënës të ri
+            Shto prindër të ri
           </h2>
           <p class="mt-1 text-sm text-gray-600 dark:text-gray-400">
-            Plotësoni të dhënat bazë për nxënësin.
+            Plotësoni të dhënat bazë për prindërin.
           </p>
         </div>
 
@@ -90,7 +91,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
               </select>
             </div>
             </div>
-            
+
             <div class="sm:col-span-2">
             <label for="status" class="block text-sm/6 font-medium text-gray-900 dark:text-white">Statusi</label>
             <div class="mt-2">

@@ -102,11 +102,23 @@
           </li>
           </ul>
         </li>
+        <?php
+          require_once __DIR__  . '/../../db.php';
+
+          $id = $_SESSION['user']['id'];
+
+          $stmt = $pdo->prepare("SELECT * FROM users WHERE id = ?");
+          $stmt->execute([$id]);
+
+          $schoolAdmin = $stmt->fetchAll(PDO::FETCH_ASSOC);
+        ?>
         <li class="-mx-6 mt-auto">
           <a href="#" class="flex items-center gap-x-4 px-6 py-3 text-sm/6 font-semibold text-gray-900 hover:bg-gray-50 dark:text-white dark:hover:bg-white/5">
             <img src="https://images.unsplash.com/photo-1472099645785-5658abf4ff4e?ixlib=rb-1.2.1&ixid=eyJhcHBfaWQiOjEyMDd9&auto=format&fit=facearea&facepad=2&w=256&h=256&q=80" alt="" class="size-8 rounded-full bg-gray-50 outline -outline-offset-1 outline-black/5 dark:bg-gray-800 dark:outline-white/10" />
+            <?php foreach($schoolAdmin as $row): ?>
             <span class="sr-only">Your profile</span>
-            <span aria-hidden="true">School Admin</span>
+            <span aria-hidden="true"><?= htmlspecialchars($row['name'])?></span>
+            <?php endforeach; ?>
           </a>
         </li>
       </ul>
