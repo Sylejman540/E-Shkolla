@@ -79,7 +79,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         <div class="grid grid-cols-1 gap-x-8 gap-y-10 border-b border-gray-900/10 pb-8 md:grid-cols-3 dark:border-white/10">
             
         <form action="/E-Shkolla/dashboard/schooladmin-dashboard/partials/teacher/form.php" method="post" enctype="multipart/form-data"  class="grid max-w-2xl grid-cols-1 gap-x-6 gap-y-8 sm:grid-cols-6 md:col-span-2">
-    <input type="hidden" name="user_id" value="<?= $userId ?>">
+            <input type="hidden" name="user_id" value="<?= $user_id ?>">
 
 
             <div class="sm:col-span-3">

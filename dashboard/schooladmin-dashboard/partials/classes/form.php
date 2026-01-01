@@ -11,11 +11,11 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     $section = $_POST['section'];
     $max_students = $_POST['max_students'];
     $status = $_POST['status'];
+    $schoolId = $_SESSION['user']['school_id'] ?? null;
+    $user_id = $_SESSION['user']['id'] ?? null;
 
-    $schoolId = $_SESSION['user']['school_id'];
-
-    $stmt = $pdo->prepare("INSERT INTO classes(school_id, academic_year, grade, section, max_students, status) VALUES(?, ?, ?, ?, ?, ?)");
-    $stmt->execute([$schoolId, $academic_year, $grade, $section, $max_students, $status]);
+    $stmt = $pdo->prepare("INSERT INTO classes(school_id, user_id, academic_year, grade, section, max_students, status) VALUES(?, ?, ?, ?, ?, ?, ?)");
+    $stmt->execute([$schoolId, $user_id, $academic_year, $grade, $section, $max_students, $status]);
 
     header("Location: /E-Shkolla/classes");
     exit;
@@ -40,6 +40,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         <div class="grid grid-cols-1 gap-x-8 gap-y-10 border-b border-gray-900/10 pb-8 md:grid-cols-3 dark:border-white/10">
             
         <form action="/E-Shkolla/dashboard/schooladmin-dashboard/partials/classes/form.php" method="post" class="grid max-w-2xl grid-cols-1 gap-x-6 gap-y-8 sm:grid-cols-6 md:col-span-2">
+            <input type="hidden" name="user_id" value="<?= $user_id ?>">
+
             <div class="sm:col-span-3">
             <label for="academic_year" class="block text-sm/6 font-medium text-gray-900 dark:text-white">Viti akademik</label>
             <div class="mt-2">

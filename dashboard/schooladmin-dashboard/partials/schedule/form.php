@@ -14,9 +14,10 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     $subjectId = $_POST['subject_id'];
     $teacherId = $_POST['teacher_id'];    
     $classId = $_POST['class_id'];
+    $user_id = $_SESSION['user']['id'] ?? null;
 
-    $stmt = $pdo->prepare("INSERT INTO class_schedule (school_id, class_id, day, start_time, end_time, subject_id, teacher_id, status) VALUES (?, ?, ?, ?, ?, ?, ?, ?)");
-    $stmt->execute([$schoolId, $classId, $day, $start_time, $end_time, $subjectId, $teacherId, $status]);
+    $stmt = $pdo->prepare("INSERT INTO class_schedule (school_id, user_id, class_id, day, start_time, end_time, subject_id, teacher_id, status) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)");
+    $stmt->execute([$schoolId, $user_id, $classId, $day, $start_time, $end_time, $subjectId, $teacherId, $status]);
 
     header("Location: /E-Shkolla/schedule");
     exit;
@@ -41,7 +42,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         <div class="grid grid-cols-1 gap-x-8 gap-y-10 border-b border-gray-900/10 pb-8 md:grid-cols-3 dark:border-white/10">
           
           <form action="/E-Shkolla/dashboard/schooladmin-dashboard/partials/schedule/form.php?class_id=<?= $row['id'] ?>" method="post" class="grid max-w-2xl grid-cols-1 gap-x-6 gap-y-8 sm:grid-cols-6 md:col-span-2">
-
+          <input type="hidden" name="user_id" value="<?= $user_id ?>">
+          
           <div class="sm:col-span-4">
               <label class="block text-sm font-medium text-gray-900 dark:text-white">Dita</label>
               <select name="day" class="mt-2 border block w-full rounded-md p-2">

@@ -14,6 +14,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     $status = $_POST['status'];
     $password = $_POST['password'];
     $schoolId = $_SESSION['user']['school_id'] ?? null;
+    $user_id = $_SESSION['user']['id'] ?? null;
 
     if (!$schoolId) {
         die('School ID missing from session');
@@ -22,8 +23,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     $stmt = $pdo->prepare("INSERT INTO users (school_id, name, email, password, role, status) VALUES (?, ?, NULL, ?, 'student', ?)");
     $stmt->execute([$schoolId, $name, $password, $status]);
 
-    $stmt = $pdo->prepare("INSERT INTO students(school_id, name, gender, class, parent_name, parent_phone, status) VALUES(?, ?, ?, ?, ?, ?, ?)");
-    $stmt->execute([$schoolId, $name, $gender, $class, $parent_name, $parent_phone, $status]);
+    $stmt = $pdo->prepare("INSERT INTO students(school_id, user_id, name, gender, class, parent_name, parent_phone, status) VALUES(?, ?, ?, ?, ?, ?, ?, ?)");
+    $stmt->execute([$schoolId, $user_id, $name, $gender, $class, $parent_name, $parent_phone, $status]);
 
     header("Location: /E-Shkolla/students");
     exit;
@@ -48,6 +49,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         <div class="grid grid-cols-1 gap-x-8 gap-y-10 border-b border-gray-900/10 pb-8 md:grid-cols-3 dark:border-white/10">
             
         <form action="/E-Shkolla/dashboard/schooladmin-dashboard/partials/students/form.php" method="post" class="grid max-w-2xl grid-cols-1 gap-x-6 gap-y-8 sm:grid-cols-6 md:col-span-2">
+            <input type="hidden" name="user_id" value="<?= $user_id ?>">
+
             <div class="sm:col-span-3">
             <label for="name" class="block text-sm/6 font-medium text-gray-900 dark:text-white">Emri dhe mbiemri</label>
             <div class="mt-2">
