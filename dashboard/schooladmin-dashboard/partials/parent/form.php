@@ -20,11 +20,22 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         die('School ID missing from session');
     }
 
+    $studentId = isset($_POST['student_id']) ? (int) $_POST['student_id'] : null;
+
+    if (!$studentId) {
+        die('Student ID missing or invalid');
+    }
+
     $stmt = $pdo->prepare("INSERT INTO users (school_id, name, password, email, role, status) VALUES (?, ?, ?, ?, 'parent', ?)");
     $stmt->execute([$schoolId, $name, $password, $email, $status]);
 
     $stmt = $pdo->prepare("INSERT INTO parents(school_id, user_id, name, phone, email, relation, status) VALUES(?, ?, ?, ?, ?, ?, ?)");
     $stmt->execute([$schoolId, $user_id, $name, $phone, $email, $relation, $status]);
+
+    $parentId = $pdo->lastInsertId();
+
+    $stmt = $pdo->prepare("INSERT INTO parent_student(parent_id, student_id) VALUES(?, ?)");
+    $stmt->execute([$parentId, $studentId]);
 
     header("Location: /E-Shkolla/parents");
     exit;
@@ -50,6 +61,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         <div class="grid grid-cols-1 gap-x-8 gap-y-10 border-b border-gray-900/10 pb-8 md:grid-cols-3 dark:border-white/10">
             
         <form action="/E-Shkolla/dashboard/schooladmin-dashboard/partials/parent/form.php" method="post" class="grid max-w-2xl grid-cols-1 gap-x-6 gap-y-8 sm:grid-cols-6 md:col-span-2">
+            <input type="hidden" name="student_id" value="<?= $studentId ?>">
             <input type="hidden" name="user_id" value="<?= $user_id ?>">
 
             <div class="sm:col-span-3">
