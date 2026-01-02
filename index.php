@@ -29,7 +29,8 @@ $routes = [
     '/schedule' => 'dashboard/schooladmin-dashboard/partials/schedule/schedule.php',
     '/teacher-dashboard' => 'dashboard/teacher-dashboard/partials/dashboard.php',
     '/teacher-classes' => 'dashboard/teacher-dashboard/partials/classes/classes.php',
-    '/teacher-assignments' => 'dashboard/teacher-dashboard/partials/assignments/assignments.php',
+    '/class-assignments' => 'dashboard/teacher-dashboard/partials/assignments/assignments.php',
+    '/show-classes' => 'dashboard/teacher-dashboard/partials/show-classes/index.php',
 ];
 
 if (array_key_exists($uri, $routes)) {

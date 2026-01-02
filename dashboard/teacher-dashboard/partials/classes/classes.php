@@ -27,47 +27,43 @@ $classes = $stmt->fetchAll(PDO::FETCH_ASSOC);
   <div class="xl:pl-18">
     <div class="px-4 py-10 sm:px-6 lg:px-8 lg:py-6 relative">
       <div class="px-4 sm:px-6 lg:px-8">
-        <div class="mb-6">
-          <h2 class="text-base font-semibold text-gray-900 dark:text-white">
-            Klasat e Mia
-          </h2>
-          <p class="mt-1 text-sm text-gray-600 dark:text-gray-400">
-            Klasat që ju janë caktuar për këtë vit shkollor
-          </p>
+        <div class="sm:flex sm:items-center">
+          <div class="sm:flex-auto">
+            <h1 class="text-base font-semibold text-gray-900 dark:text-white">Klasat</h1>
+            <p class="mt-2 text-sm text-gray-700 dark:text-gray-300">Tabela që përmban të dhëna të klasave</p>
+          </div>
         </div>
-        <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
-
-          <div class="rounded-xl bg-white p-6 shadow-sm hover:shadow-md transition dark:bg-gray-800/75 dark:inset-ring dark:inset-ring-white/10">
-            
-            <?php foreach($classes as $class): ?>  
-            <div class="flex items-center justify-between">
-              <h3 class="text-lg font-semibold text-gray-900 dark:text-white">
-                <?= htmlspecialchars($class['grade']) ?>
-              </h3>
-              <span class="inline-flex items-center rounded-full bg-indigo-50 px-2 py-1 text-xs font-medium text-indigo-700 dark:bg-indigo-500/10 dark:text-indigo-300">
-                <?= htmlspecialchars($row['subject_name']) ?>
-              </span>
-            </div>
-
-            <!-- Info -->
-            <div class="mt-3 space-y-1 text-sm text-gray-600 dark:text-gray-400">
-              <p><?= htmlspecialchars($class['academic_year']) ?></p>
-              <p><?= htmlspecialchars($class['max_students']) ?></p>
-            </div>
-
-            <!-- Actions -->
-            <div class="mt-5 grid grid-cols-3 gap-2">
-              <button class="rounded-md bg-green-600 px-3 py-2 text-sm font-semibold text-white hover:bg-green-500">
-                Prezenca
-              </button>
-              <button class="rounded-md bg-blue-600 px-3 py-2 text-sm font-semibold text-white hover:bg-blue-500">
-                Detyrat
-              </button>
-              <button class="rounded-md bg-indigo-600 px-3 py-2 text-sm font-semibold text-white hover:bg-indigo-500">
-                Notat
-              </button>
-            </div>
-            <?php endforeach; ?>
+        <div class="-mx-4 mt-10 ring-1 ring-gray-300 sm:mx-0 sm:rounded-lg dark:ring-white/15">
+          <table class="relative min-w-full divide-y divide-gray-300 dark:divide-white/15">
+            <thead>
+              <tr>
+                <th scope="col" class="py-3.5 pr-3 pl-4 text-left text-sm font-semibold text-gray-900 sm:pl-6 dark:text-white">Klasa</th>
+                <th scope="col" class="hidden px-3 py-3.5 text-left text-sm font-semibold text-gray-900 lg:table-cell dark:text-white">Lënda</th>
+                <th scope="col" class="hidden px-3 py-3.5 text-left text-sm font-semibold text-gray-900 lg:table-cell dark:text-white">Nxënës</th>
+                <th scope="col" class="py-3.5 pr-4 pl-3 sm:pr-6">
+                  <span class="sr-only">Hyr/Prezenca</span>
+                </th>
+              </tr>
+            </thead>
+            <?php foreach($classes as $row): ?>
+            <tbody>
+              <tr>
+                <td class="flex relative py-4 pr-3 pl-4 text-sm sm:pl-6">
+                <div><?= htmlspecialchars($row['grade'])?></div>
+                /
+                <div><?= htmlspecialchars($row['section'])?></div>
+                </td>
+                 <td class="hidden px-3 py-3.5 text-sm text-gray-500 lg:table-cell dark:text-gray-400">Gjeografi</td>
+                <td class="hidden px-3 py-3.5 text-sm text-gray-500 lg:table-cell dark:text-gray-400"><?= htmlspecialchars($row['max_students'])?></td>
+                <td class="relative py-3.5 pr-4 pl-3 text-right text-sm font-medium sm:pr-6">
+                  <a href="/E-Shkolla/show-classes">
+                    <button type="button" class="inline-flex items-center rounded-md bg-white px-2.5 py-1.5 text-sm font-semibold text-gray-900 shadow-xs inset-ring inset-ring-gray-300 hover:bg-gray-50 disabled:cursor-not-allowed disabled:opacity-30 disabled:hover:bg-white dark:bg-white/10 dark:text-white dark:inset-ring-white/10 dark:hover:bg-white/15 dark:disabled:hover:bg-white/10">Hyr në klasë</button>
+                  </a>
+                </td>
+              </tr>
+              <?php endforeach; ?>
+            </tbody>
+          </table>
         </div>
       </div>
     </div>

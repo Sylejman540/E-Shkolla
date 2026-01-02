@@ -5,7 +5,7 @@ if(session_status() === PHP_SESSION_NONE){
 
 require_once __DIR__ . '/../../index.php'; 
 
-require_once __DIR__ . '/../../../../db.php';
+require_once __DIR__ . '/../../../../../db.php';
 
 $stmt = $pdo->prepare("SELECT * FROM assignments ORDER BY created_at DESC");
 $stmt->execute([]);
