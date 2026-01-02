@@ -18,7 +18,7 @@
         <li>
           <ul role="list" class="-mx-2 space-y-1">
             <li>
-            <a href="/E-Shkolla/class-dashboard"
+            <a href="/E-Shkolla/show-classes"
                 class="group flex gap-x-3 rounded-md bg-gray-50 p-2 text-sm/6 font-semibold text-indigo-600 dark:bg-white/5 dark:text-white">
                 📊
                 Paneli

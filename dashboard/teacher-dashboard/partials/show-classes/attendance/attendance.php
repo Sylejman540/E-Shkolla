@@ -7,15 +7,32 @@ require_once __DIR__ . '/../index.php';
 
 require_once __DIR__ . '/../../../../../db.php';
 
+if ($_SERVER['REQUEST_METHOD'] === 'POST') {
+
+    $present = $_POST['present'] ?? null;
+    $missing = $_POST['missing'] ?? null;
+
+    $stmt = $pdo->prepare("
+        INSERT INTO attendance (present, missing)
+        VALUES (:present, :missing)
+    ");
+
+    $stmt->execute([
+        ':present' => $present,
+        ':missing' => $missing
+    ]);
+}
+
+
 
 $stmt = $pdo->prepare("SELECT * FROM students ORDER BY created_at DESC");
 $stmt->execute();
 
-$classes = $stmt->fetchAll(PDO::FETCH_ASSOC);
+$students = $stmt->fetchAll(PDO::FETCH_ASSOC);
 ?>
 <!DOCTYPE html>
 <html lang="en">
-<head>
+<head> 
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>E-Shkolla</title>
@@ -52,8 +69,8 @@ $classes = $stmt->fetchAll(PDO::FETCH_ASSOC);
                         </th>
                     </tr>
                 </thead>
-                <?php if(!empty($classes)): ?>
-                <?php foreach($classes as $row): ?>
+                <?php if(!empty($students)): ?>
+                <?php foreach($students as $row): ?>
                 <tbody class="divide-y divide-gray-200 dark:divide-white/10">
                     <tr>
                         <td class="py-4 pr-3 pl-4 text-sm font-medium whitespace-nowrap text-gray-900 sm:pl-0 dark:text-white"><?= htmlspecialchars($row['name']) ?></td>
@@ -66,9 +83,11 @@ $classes = $stmt->fetchAll(PDO::FETCH_ASSOC);
                         </td>
                         <td class="px-3 py-4 text-sm whitespace-nowrap">
                             <div class="flex gap-2">
-                                <button class="px-3 py-1.5 text-xs font-medium rounded-full bg-blue-100 text-blue-800 hover:bg-blue-200 transition">Prezent</button>
+                            <form action="/E-Shkolla/class-attendance" method="post">
+                                <button name="present" value="present" class="px-3 py-1.5 text-xs font-medium rounded-full bg-blue-100 text-blue-800 hover:bg-blue-200 transition">Prezent</button>
 
-                                <button class="px-3 py-1.5 text-xs font-medium rounded-full bg-red-100 text-red-800 hover:bg-red-200 transition">Mungon</button>
+                                <button name="missing" value="missing" class="px-3 py-1.5 text-xs font-medium rounded-full bg-red-100 text-red-800 hover:bg-red-200 transition">Mungon</button>
+                            </form>
                             </div>
                         </td>
                     </tr>
