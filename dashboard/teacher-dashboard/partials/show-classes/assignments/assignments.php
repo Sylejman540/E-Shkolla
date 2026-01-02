@@ -37,7 +37,7 @@ $assignments = $stmt->fetchAll(PDO::FETCH_ASSOC);
         Menaxho detyrat për klasat e tua
       </p>
     </div>
-
+=
     <button id="addSchoolBtn" class="rounded-md bg-indigo-600 px-4 py-2 text-sm font-semibold text-white hover:bg-indigo-500">
       + Shto Detyrë
     </button>
