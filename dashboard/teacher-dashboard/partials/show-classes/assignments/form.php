@@ -19,7 +19,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     $stmt = $pdo->prepare("INSERT INTO assignments(title, description, due_date) VALUES(?, ?, ?)");
     $stmt->execute([$title, $description, $due_date]);
 
-    header("Location: /E-Shkolla/teacher-assignments");
+    header("Location: /E-Shkolla/class-assignments");
     exit;
 }
 
@@ -42,7 +42,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 
         <div class="grid grid-cols-1 gap-x-8 gap-y-10 border-b border-gray-900/10 pb-8 md:grid-cols-3 dark:border-white/10">
             
-        <form action="/E-Shkolla/dashboard/teacher-dashboard/partials/assignments/form.php" method="post" enctype="multipart/form-data"  class="grid max-w-2xl grid-cols-1 gap-x-6 gap-y-8 sm:grid-cols-6 md:col-span-2">
+        <form action="/E-Shkolla/dashboard/teacher-dashboard/partials/show-classes/assignments/form.php" method="post" enctype="multipart/form-data"  class="grid max-w-2xl grid-cols-1 gap-x-6 gap-y-8 sm:grid-cols-6 md:col-span-2">
             <div class="sm:col-span-3">
             <label for="title" class="block text-sm/6 font-medium text-gray-900 dark:text-white">Klasa</label>
             <div class="mt-2">

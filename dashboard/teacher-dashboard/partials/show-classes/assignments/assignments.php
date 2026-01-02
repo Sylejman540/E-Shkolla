@@ -37,46 +37,48 @@ $assignments = $stmt->fetchAll(PDO::FETCH_ASSOC);
         Menaxho detyrat për klasat e tua
       </p>
     </div>
-=
+
     <button id="addSchoolBtn" class="rounded-md bg-indigo-600 px-4 py-2 text-sm font-semibold text-white hover:bg-indigo-500">
       + Shto Detyrë
     </button>
     </div>
-    <?php foreach($assignments as $row): ?>
-    <div class="space-y-4">
-        <div class="rounded-xl bg-white p-5 shadow-sm dark:bg-gray-800/75">
-        <div class="flex items-start justify-between">
-            <div>
-            <h3 class="text-sm font-semibold text-gray-900 dark:text-white">
-                <?= htmlspecialchars($row['description']) ?>
-            </h3>
-            <p class="mt-1 text-sm text-gray-600 dark:text-gray-400">
-                <?= htmlspecialchars($row['title']) ?>
-                <?= htmlspecialchars($row['due_date']) ?>
-            </p>
+    <div>
+      <h2 class="text-sm font-medium text-gray-500 dark:text-gray-400">Pinned Projects</h2>
+
+      <ul role="list" class="mt-3 grid grid-cols-1 gap-5 sm:grid-cols-2 sm:gap-6 lg:grid-cols-4">
+        <?php foreach($assignments as $row): ?>
+          <li class="col-span-1 flex rounded-md shadow-xs dark:shadow-none">
+            
+            <div class="flex w-16 shrink-0 items-center justify-center rounded-l-md bg-pink-600 text-sm font-medium text-white dark:bg-pink-700">
+              <?= htmlspecialchars($row['title']) ?>
             </div>
 
-            <span class="inline-flex rounded-full bg-green-100 px-2 py-1 text-xs font-medium text-green-700">
-            E hapur
-            </span>
-        </div>
-    <?php endforeach; ?>
-        <div class="mt-4 flex gap-2">
-            <button class="rounded-md bg-blue-600 px-3 py-1.5 text-sm text-white hover:bg-blue-500">
-            Shiko
-            </button>
-            <button class="rounded-md bg-gray-200 px-3 py-1.5 text-sm text-gray-700 hover:bg-gray-300">
-            Edit
-            </button>
-            <button class="rounded-md bg-red-100 px-3 py-1.5 text-sm text-red-600 hover:bg-red-200">
-            Fshi
-            </button>
-        </div>
-        </div>
+            <div class="flex flex-1 items-center justify-between truncate rounded-r-md border-t border-r border-b border-gray-200 bg-white dark:border-white/10 dark:bg-gray-800/50">
+              <div class="flex-1 truncate px-4 py-2 text-sm">
+                <a href="#" class="font-medium text-gray-900 hover:text-gray-600 dark:text-white dark:hover:text-gray-200">
+                  <?= htmlspecialchars($row['description']) ?>
+                </a>
+                <p class="text-gray-500 dark:text-gray-400">
+                  <?= htmlspecialchars($row['due_date']) ?>
+                </p>
+              </div>
+
+              <div class="shrink-0 pr-2">
+                <button type="button" class="inline-flex size-8 items-center justify-center rounded-full text-gray-400 hover:text-gray-500 focus:outline-2 focus:outline-offset-2 focus:outline-indigo-600 dark:hover:text-white dark:focus:outline-white">
+                  <span class="sr-only">Open options</span>
+                  <svg viewBox="0 0 20 20" fill="currentColor" aria-hidden="true" class="size-5">
+                    <path d="M10 3a1.5 1.5 0 1 1 0 3ZM10 8.5a1.5 1.5 0 1 1 0 3ZM11.5 15.5a1.5 1.5 0 1 0-3 0Z" />
+                  </svg>
+                </button>
+              </div>
+            </div>
+
+          </li>
+        <?php endforeach; ?>
+      </ul>
     </div>
-    </div>
-    </div>
-        <?php require_once 'form.php'; ?>  </div>
+  <?php require_once 'form.php'; ?>  
+  </div>
 </main>
 <script>
   const btn = document.getElementById('addSchoolBtn');
