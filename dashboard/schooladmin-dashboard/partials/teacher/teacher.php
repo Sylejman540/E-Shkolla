@@ -7,10 +7,10 @@ require_once __DIR__ . '/../../index.php';
 
 require_once __DIR__ . '/../../../../db.php';
 
-$user_id = $_SESSION['user']['id'] ?? null;
+$schoolId = $_SESSION['user']['school_id'] ?? null;
 
-$stmt = $pdo->prepare("SELECT * FROM teachers WHERE user_id = ?");
-$stmt->execute([$user_id]);
+$stmt = $pdo->prepare("SELECT * FROM teachers WHERE school_id = ?");
+$stmt->execute([$schoolId]);
 
 $teachers = $stmt->fetchAll(PDO::FETCH_ASSOC);
 ?>

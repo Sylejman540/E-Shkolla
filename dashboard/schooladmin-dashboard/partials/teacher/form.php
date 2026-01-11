@@ -46,21 +46,56 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         }
     }
 
-    $stmt = $pdo->prepare("INSERT INTO users (school_id, name, email, password, role, status) VALUES (?, ?, ?, ?, 'teacher', ?)");
-    $stmt->execute([$schoolId, $name, $email, $password, $status]);
+$stmt = $pdo->prepare("
+    INSERT INTO users (school_id, name, email, password, role, status)
+    VALUES (?, ?, ?, ?, 'teacher', ?)
+");
+$stmt->execute([$schoolId, $name, $email, $password, $status]);
 
-    $stmt = $pdo->prepare("INSERT INTO teachers (school_id, user_id, name, email, phone, gender, subject_name, status, profile_photo) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)");
-    $stmt->execute([$schoolId, $user_id, $name, $email, $phone, $gender, $subject_name, $status, $profile_photo]);
+$newUserId = $pdo->lastInsertId(); // ✅ THIS WAS MISSING
 
-    $stmt = $pdo->prepare("INSERT INTO subjects(school_id, user_id, name, subject_name, description, status) VALUES(?, ?, ?, ?, ?, ?)");
-    $stmt->execute([$schoolId, $user_id, $name, $subject_name, $description, $status]);
 
-    $class_id = $_POST['class'];
+$stmt = $pdo->prepare("
+    INSERT INTO teachers
+    (school_id, user_id, name, email, phone, gender, subject_name, status, profile_photo)
+    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
+");
+$stmt->execute([
+    $schoolId,
+    $newUserId, // ✅ NOT session user
+    $name,
+    $email,
+    $phone,
+    $gender,
+    $subject_name,
+    $status,
+    $profile_photo
+]);
 
-    $teacher_id = $pdo->lastInsertId();
+$teacher_id = $pdo->lastInsertId(); // ✅ REAL teacher ID
 
-    $stmt = $pdo->prepare("INSERT INTO teacher_class (school_id, teacher_id, class_id) VALUES (?, ?, ?)");
-    $stmt->execute([$schoolId, $teacher_id, $class_id]); 
+
+$stmt = $pdo->prepare("
+    INSERT INTO subjects (school_id, user_id, name, subject_name, description, status)
+    VALUES (?, ?, ?, ?, ?, ?)
+");
+$stmt->execute([
+    $schoolId,
+    $newUserId,
+    $name,
+    $subject_name,
+    $description,
+    $status
+]);
+
+$class_id = $_POST['class'];
+
+$stmt = $pdo->prepare("
+    INSERT INTO teacher_class (school_id, teacher_id, class_id)
+    VALUES (?, ?, ?)
+");
+$stmt->execute([$schoolId, $teacher_id, $class_id]);
+
 
     header("Location: /E-Shkolla/teachers");
     exit;
