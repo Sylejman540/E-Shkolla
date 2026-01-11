@@ -118,36 +118,8 @@ $active = $total - $completed;
                 <tbody class="divide-y divide-gray-200 dark:divide-white/10">
                     <tr>
                         <td class="py-4 pr-3 pl-4 text-sm font-medium whitespace-nowrap text-gray-900 sm:pl-0 dark:text-white"><?= htmlspecialchars($row['name']) ?></td>
-<td class="py-4 px-3 text-sm whitespace-nowrap">
-    <input
-        id="title"
-        type="text"
-        name="title"
-        autocomplete="title"
-        placeholder="Nota"
-        class="w-20 text-center font-semibold
-               rounded-md border border-gray-300
-               bg-white px-2 py-1.5 text-sm text-gray-900
-               focus:outline-none focus:ring-2 focus:ring-indigo-500/30
-               dark:bg-white/5 dark:border-white/10 dark:text-white"
-    />
-</td>
-
-<td class="py-4 px-3 text-sm">
-    <input
-        id="title"
-        type="text"
-        name="title"
-        autocomplete="title"
-        placeholder="Koment"
-        class="block w-full rounded-md
-               border border-gray-300
-               bg-white px-3 py-1.5 text-sm text-gray-900
-               focus:outline-none focus:ring-2 focus:ring-indigo-500/30
-               dark:bg-white/5 dark:border-white/10 dark:text-white"
-    />
-</td>
-
+                        <td class="py-4 pr-3 pl-4 text-sm font-medium whitespace-nowrap text-gray-900 sm:pl-0 dark:text-white"><input id="title" type="text" name="title" autocomplete="title" class="border border-1 block w-full rounded-md bg-white px-3 py-1.5 text-base text-gray-900 outline-1 -outline-offset-1 outline-gray-300 placeholder:text-gray-400 focus:outline-2 focus:-outline-offset-2 focus:outline-indigo-600 sm:text-sm/6 dark:bg-white/5 dark:text-white dark:outline-white/10 dark:placeholder:text-gray-500 dark:focus:outline-indigo-500" /></td>
+                        <td class="py-4 pr-3 pl-4 text-sm font-medium whitespace-nowrap text-gray-900 sm:pl-0 dark:text-white"><input id="title" type="text" name="title" autocomplete="title" class="border border-1 block w-full rounded-md bg-white px-3 py-1.5 text-base text-gray-900 outline-1 -outline-offset-1 outline-gray-300 placeholder:text-gray-400 focus:outline-2 focus:-outline-offset-2 focus:outline-indigo-600 sm:text-sm/6 dark:bg-white/5 dark:text-white dark:outline-white/10 dark:placeholder:text-gray-500 dark:focus:outline-indigo-500" /></td>
                         <td class="px-3 py-4 text-sm whitespace-nowrap">
                             <p class="text-green-500 py-[1px] w-14 px-2 h-6 bg-green-200 rounded-xl">
                                 <?= htmlspecialchars($row['status']) ?>
