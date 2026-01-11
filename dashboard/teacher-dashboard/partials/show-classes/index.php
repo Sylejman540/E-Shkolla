@@ -1,3 +1,8 @@
+<?php
+$classId = $_GET['class_id'] ?? null;
+$query = $classId ? '?class_id=' . (int)$classId : '';
+
+?>
 <!DOCTYPE html>
 <html lang="en" class="h-full bg-white dark:bg-gray-900"> 
 <head>
@@ -17,39 +22,37 @@
       <ul role="list" class="flex flex-1 flex-col gap-y-7">
         <li>
           <ul role="list" class="-mx-2 space-y-1">
-            <li>
-            <a href="/E-Shkolla/show-classes"
-                class="group flex gap-x-3 rounded-md bg-gray-50 p-2 text-sm/6 font-semibold text-indigo-600 dark:bg-white/5 dark:text-white">
-                📊
-                Paneli
-            </a>
-            </li>
 
+  <li>
+    <a href="/E-Shkolla/show-classes<?= $query ?>"
+       class="group flex gap-x-3 rounded-md bg-gray-50 p-2 text-sm font-semibold text-indigo-600">
+      📊 Paneli
+    </a>
+  </li>
 
-            <li>
-            <a href="/E-Shkolla/class-attendance"
-                class="group flex gap-x-3 rounded-md p-2 text-sm/6 font-semibold text-gray-700 hover:bg-gray-50 hover:text-indigo-600 dark:text-gray-400 dark:hover:bg-white/5 dark:hover:text-white">
-                📝
-                Prezenca
-            </a>
-            </li>
+  <li>
+    <a href="/E-Shkolla/class-attendance<?= $query ?>"
+       class="group flex gap-x-3 rounded-md p-2 text-sm font-semibold text-gray-700 hover:bg-gray-50 hover:text-indigo-600">
+      📝 Prezenca
+    </a>
+  </li>
 
-            <li>
-            <a href="/E-Shkolla/class-assignments"
-                class="group flex gap-x-3 rounded-md p-2 text-sm/6 font-semibold text-gray-700 hover:bg-gray-50 hover:text-indigo-600 dark:text-gray-400 dark:hover:bg-white/5 dark:hover:text-white">
-                📄
-                Detyrat
-            </a>
-            </li>
+  <li>
+    <a href="/E-Shkolla/class-assignments<?= $query ?>"
+       class="group flex gap-x-3 rounded-md p-2 text-sm font-semibold text-gray-700 hover:bg-gray-50 hover:text-indigo-600">
+      📄 Detyrat
+    </a>
+  </li>
 
-            <li>
-            <a href="/E-Shkolla/class-grades"
-                class="group flex gap-x-3 rounded-md p-2 text-sm/6 font-semibold text-gray-700 hover:bg-gray-50 hover:text-indigo-600 dark:text-gray-400 dark:hover:text-white">
-                🎓
-                Notat
-            </a>
-            </li>
-          </ul>
+  <li>
+    <a href="/E-Shkolla/class-grades<?= $query ?>"
+       class="group flex gap-x-3 rounded-md p-2 text-sm font-semibold text-gray-700 hover:bg-gray-50 hover:text-indigo-600">
+      🎓 Notat
+    </a>
+  </li>
+
+</ul>
+
         </li>
         <li>
         </li>

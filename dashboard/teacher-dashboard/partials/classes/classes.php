@@ -3,7 +3,7 @@ if(session_status() === PHP_SESSION_NONE){
     session_start();
 }
 
-require_once __DIR__ . '/../../index.php'; 
+require_once __DIR__ . '/../index.php'; 
 
 require_once __DIR__ . '/../../../../db.php';
 
@@ -69,8 +69,7 @@ $classes = $stmt->fetchAll(PDO::FETCH_ASSOC);
                  <td class="hidden px-3 py-3.5 text-sm text-gray-500 lg:table-cell dark:text-gray-400"><div><?= htmlspecialchars($row['subject_name'])?></div></td>
                 <td class="hidden px-3 py-3.5 text-sm text-gray-500 lg:table-cell dark:text-gray-400"><?= htmlspecialchars($row['max_students'])?></td>
                 <td class="relative py-3.5 pr-4 pl-3 text-right text-sm font-medium sm:pr-6">
-<a href="/E-Shkolla/show-classes?class_id=<?= (int)$row['class_id'] ?>">
-
+                  <a href="/E-Shkolla/show-classes?class_id=<?= (int)$row['class_id'] ?>">
                     <button type="button" class="inline-flex items-center rounded-md bg-white px-2.5 py-1.5 text-sm font-semibold text-gray-900 shadow-xs inset-ring inset-ring-gray-300 hover:bg-gray-50 disabled:cursor-not-allowed disabled:opacity-30 disabled:hover:bg-white dark:bg-white/10 dark:text-white dark:inset-ring-white/10 dark:hover:bg-white/15 dark:disabled:hover:bg-white/10">Hyr në klasë</button>
                   </a>
                 </td>

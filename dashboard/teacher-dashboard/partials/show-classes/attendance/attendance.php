@@ -23,12 +23,29 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     ]);
 }
 
+$classId = (int)($_GET['class_id'] ?? 0);
 
+if ($classId <= 0) {
+    die('Invalid class ID');
+}
 
-$stmt = $pdo->prepare("SELECT * FROM students ORDER BY created_at DESC");
-$stmt->execute();
+$stmt = $pdo->prepare("
+    SELECT 
+        sc.id AS student_class_id,
+        sc.class_id,
+        s.student_id,
+        s.name,
+        s.email,
+        s.status
+    FROM student_class sc
+    INNER JOIN students s ON s.student_id = sc.student_id
+    WHERE sc.class_id = ?
+    ORDER BY s.name ASC
+");
 
+$stmt->execute([$classId]);
 $students = $stmt->fetchAll(PDO::FETCH_ASSOC);
+
 ?>
 <!DOCTYPE html>
 <html lang="en">
@@ -49,9 +66,6 @@ $students = $stmt->fetchAll(PDO::FETCH_ASSOC);
             <h1 class="text-base font-semibold text-gray-900 dark:text-white">Nxënës</h1>
             <p class="mt-2 text-sm text-gray-700 dark:text-gray-300">Lista e të gjithë nxënësve në klasë</p>
             </div>
-            <div class="mt-4 sm:mt-0 sm:ml-16 sm:flex-none">
-                <button type="button" id="addSchoolBtn" class="block rounded-md bg-indigo-600 px-3 py-2 text-center text-sm font-semibold text-white shadow-xs hover:bg-indigo-500">Shto klasë</button>
-            </div>
         </div>
         <div class="mt-8 flow-root">
             <div class="-mx-4 -my-2 overflow-x-auto sm:-mx-6 lg:-mx-8">
@@ -60,7 +74,6 @@ $students = $stmt->fetchAll(PDO::FETCH_ASSOC);
                 <thead>
                     <tr>
                         <th scope="col" class="py-3.5 pr-3 pl-4 text-left text-sm font-semibold text-gray-900 sm:pl-0 dark:text-white">Emri</th>
-                        <th scope="col" class="px-3 py-3.5 text-left text-sm font-semibold text-gray-900 dark:text-white">Klasa</th>
                         <th scope="col" class="px-3 py-3.5 text-left text-sm font-semibold text-gray-900 dark:text-white">Email</th>
                         <th scope="col" class="px-3 py-3.5 text-left text-sm font-semibold text-gray-900 dark:text-white">Statusi</th>
                         <th scope="col" class="px-3 py-3.5 text-left text-sm font-semibold text-gray-900 dark:text-white">Veprime</th>
@@ -74,7 +87,6 @@ $students = $stmt->fetchAll(PDO::FETCH_ASSOC);
                 <tbody class="divide-y divide-gray-200 dark:divide-white/10">
                     <tr>
                         <td class="py-4 pr-3 pl-4 text-sm font-medium whitespace-nowrap text-gray-900 sm:pl-0 dark:text-white"><?= htmlspecialchars($row['name']) ?></td>
-                        <td class="px-3 py-4 text-sm whitespace-nowrap text-gray-500 dark:text-gray-400"><?= htmlspecialchars($row['class_name']) ?></td>
                         <td class="px-3 py-4 text-sm whitespace-nowrap text-gray-500 dark:text-gray-400"><?= htmlspecialchars($row['email']) ?></td>
                         <td class="px-3 py-4 text-sm whitespace-nowrap">
                             <p class="text-green-500 py-[1px] w-14 px-2 h-6 bg-green-200 rounded-xl">

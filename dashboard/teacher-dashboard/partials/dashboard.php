@@ -1,5 +1,5 @@
 <?php
-require_once __DIR__ . '/../index.php';
+require_once __DIR__ . '/index.php';
 require_once __DIR__ . '/../../../db.php';
 
 /* ===== FAKE / DEMO DATA (later replace with real queries) ===== */

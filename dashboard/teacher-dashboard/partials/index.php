@@ -61,7 +61,7 @@
         </li>
         <li class="-mx-6 mt-auto">
         <?php
-            require_once __DIR__  . '/../../db.php';
+            require_once __DIR__  . '/../../../db.php';
 
             $user_id = $_SESSION['user']['id'];
 
