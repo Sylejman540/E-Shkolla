@@ -80,9 +80,10 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             <div class="mt-2">
               <select id="role" name="role" autocomplete="role" class="border block w-full rounded-md bg-white px-3 py-1.5 text-base text-gray-900 outline-gray-300 focus:outline-2 focus:outline-indigo-600 sm:text-sm dark:bg-white/5 dark:text-white dark:outline-white/10 dark:focus:outline-indigo-500">
                 <option value="super_admin">Super Admin</option>
+                <option value="school_admin">School Admin</option>
                 <option value="teacher">Teacher</option>
                 <option value="parent">Parent</option>
-                <option value="super_admin">Student</option>
+                <option value="student">Student</option>
               </select>
             </div>
             </div>

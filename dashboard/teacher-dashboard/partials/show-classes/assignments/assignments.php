@@ -1,98 +1,161 @@
 <?php 
-if(session_status() === PHP_SESSION_NONE){
+if (session_status() === PHP_SESSION_NONE) {
     session_start();
 }
 
 require_once __DIR__ . '/../index.php'; 
-
 require_once __DIR__ . '/../../../../../db.php';
 
 $stmt = $pdo->prepare("SELECT * FROM assignments ORDER BY created_at DESC");
-$stmt->execute([]);
-
+$stmt->execute();
 $assignments = $stmt->fetchAll(PDO::FETCH_ASSOC);
+
+// simple stats
+$total = count($assignments);
+$completed = 0; // later you can calculate real values
+$active = $total - $completed;
 ?>
 <!DOCTYPE html>
-<html lang="en">
+<html lang="sq">
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>E-Shkolla</title>
-    <script src="https://cdn.tailwindcss.com"></script>
-    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>E-Shkolla | Detyrat</title>
+
+  <script src="https://cdn.tailwindcss.com"></script>
 </head>
-<body>
+
+<body class="bg-gray-50">
 <main class="lg:pl-72">
-  <div class="xl:pl-18">
-    <div class="px-4 py-10 sm:px-6 lg:px-8 lg:py-6 relative">
-        <div class="px-4 sm:px-6 lg:px-8">
-<div class="px-4 sm:px-6 lg:px-8">
+  <div class="px-4 py-8 sm:px-6 lg:px-8">
 
-  <div class="flex items-center justify-between mb-6">
-    <div>
-      <h2 class="text-base font-semibold text-gray-900 dark:text-white">
-        Detyrat
+    <!-- HEADER -->
+    <div class="flex items-center justify-between mb-8">
+      <div>
+        <h1 class="text-2xl font-bold text-gray-900">Detyrat</h1>
+        <p class="mt-1 text-sm text-gray-600">
+          Menaxho detyrat për klasat e tua
+        </p>
+      </div>
+
+      <button id="addSchoolBtn"
+        class="rounded-lg bg-indigo-600 px-5 py-2.5 text-sm font-semibold text-white shadow hover:bg-indigo-500">
+        + Shto Detyrë
+      </button>
+    </div>
+
+    <!-- STATS -->
+    <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6 mb-10">
+      <div class="rounded-xl bg-white p-5 shadow">
+        <p class="text-sm text-gray-500">Totali i Detyrave</p>
+        <p class="mt-2 text-2xl font-bold text-gray-900"><?= $total ?></p>
+      </div>
+
+      <div class="rounded-xl bg-white p-5 shadow">
+        <p class="text-sm text-gray-500">Detyra Aktive</p>
+        <p class="mt-2 text-2xl font-bold text-indigo-600"><?= $active ?></p>
+      </div>
+
+      <div class="rounded-xl bg-white p-5 shadow">
+        <p class="text-sm text-gray-500">Të Përfunduara</p>
+        <p class="mt-2 text-2xl font-bold text-green-600"><?= $completed ?></p>
+      </div>
+
+      <div class="rounded-xl bg-white p-5 shadow">
+        <p class="text-sm text-gray-500">Angazhimi</p>
+        <p class="mt-2 text-2xl font-bold text-pink-600">—</p>
+      </div>
+    </div>
+
+    <!-- PINNED -->
+    <section class="mb-10">
+      <h2 class="text-sm font-semibold text-gray-700 mb-4">
+        ⭐ Detyrat e Fiksuara
       </h2>
-      <p class="mt-1 text-sm text-gray-600 dark:text-gray-400">
-        Menaxho detyrat për klasat e tua
-      </p>
-    </div>
 
-    <button id="addSchoolBtn" class="rounded-md bg-indigo-600 px-4 py-2 text-sm font-semibold text-white hover:bg-indigo-500">
-      + Shto Detyrë
-    </button>
-    </div>
-    <div>
-      <h2 class="text-sm font-medium text-gray-500 dark:text-gray-400">Pinned Projects</h2>
+      <?php if (!$assignments): ?>
+        <div class="rounded-xl bg-white p-10 text-center shadow">
+          <p class="text-gray-500">Nuk ka ende detyra</p>
+        </div>
+      <?php else: ?>
+        <ul class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
+          <?php foreach ($assignments as $row): ?>
+            <li class="rounded-xl bg-white shadow hover:shadow-md transition">
+              
+              <div class="flex items-center gap-4 p-5">
+                <div class="flex h-12 w-12 items-center justify-center rounded-lg bg-pink-600 text-white font-semibold">
+                  <?= htmlspecialchars($row['class'] ?? 'X') ?>
+                </div>
 
-      <ul role="list" class="mt-3 grid grid-cols-1 gap-5 sm:grid-cols-2 sm:gap-6 lg:grid-cols-4">
-        <?php foreach($assignments as $row): ?>
-          <li class="col-span-1 flex rounded-md shadow-xs dark:shadow-none">
-            
-            <div class="flex w-16 shrink-0 items-center justify-center rounded-l-md bg-pink-600 text-sm font-medium text-white dark:bg-pink-700">
-              <?= htmlspecialchars($row['title']) ?>
-            </div>
+                <div class="flex-1">
+                  <h3 class="font-semibold text-gray-900 truncate">
+                    <?= htmlspecialchars($row['title']) ?>
+                  </h3>
+                  <p class="text-sm text-gray-500 truncate">
+                    <?= htmlspecialchars($row['description']) ?>
+                  </p>
+                </div>
 
-            <div class="flex flex-1 items-center justify-between truncate rounded-r-md border-t border-r border-b border-gray-200 bg-white dark:border-white/10 dark:bg-gray-800/50">
-              <div class="flex-1 truncate px-4 py-2 text-sm">
-                <a href="#" class="font-medium text-gray-900 hover:text-gray-600 dark:text-white dark:hover:text-gray-200">
-                  <?= htmlspecialchars($row['description']) ?>
-                </a>
-                <p class="text-gray-500 dark:text-gray-400">
-                  <?= htmlspecialchars($row['due_date']) ?>
-                </p>
-              </div>
-
-              <div class="shrink-0 pr-2">
-                <button type="button" class="inline-flex size-8 items-center justify-center rounded-full text-gray-400 hover:text-gray-500 focus:outline-2 focus:outline-offset-2 focus:outline-indigo-600 dark:hover:text-white dark:focus:outline-white">
-                  <span class="sr-only">Open options</span>
-                  <svg viewBox="0 0 20 20" fill="currentColor" aria-hidden="true" class="size-5">
-                    <path d="M10 3a1.5 1.5 0 1 1 0 3ZM10 8.5a1.5 1.5 0 1 1 0 3ZM11.5 15.5a1.5 1.5 0 1 0-3 0Z" />
+                <button class="text-gray-400 hover:text-gray-600">
+                  <svg viewBox="0 0 20 20" fill="currentColor" class="h-5 w-5">
+                    <path d="M10 3a1.5 1.5 0 1 1 0 3Zm0 5a1.5 1.5 0 1 1 0 3Zm0 5a1.5 1.5 0 1 1 0 3Z"/>
                   </svg>
                 </button>
               </div>
-            </div>
 
-          </li>
+              <div class="border-t px-5 py-3 text-sm text-gray-500 flex justify-between">
+                <span>Afati</span>
+                <span><?= htmlspecialchars($row['due_date']) ?></span>
+              </div>
+            </li>
+          <?php endforeach; ?>
+        </ul>
+      <?php endif; ?>
+    </section>
+
+    <!-- ALL TASKS -->
+    <section>
+      <h2 class="text-sm font-semibold text-gray-700 mb-4">
+        📋 Të gjitha detyrat
+      </h2>
+
+      <div class="rounded-xl bg-white shadow divide-y">
+        <?php foreach ($assignments as $row): ?>
+          <div class="flex items-center justify-between p-5 hover:bg-gray-50">
+            <div>
+              <p class="font-medium text-gray-900">
+                <?= htmlspecialchars($row['title']) ?>
+              </p>
+              <p class="text-sm text-gray-500">
+                <?= htmlspecialchars($row['description']) ?>
+              </p>
+            </div>
+            <span class="text-sm text-gray-500">
+              <?= htmlspecialchars($row['due_date']) ?>
+            </span>
+          </div>
         <?php endforeach; ?>
-      </ul>
-    </div>
-  <?php require_once 'form.php'; ?>  
+      </div>
+    </section>
+
+    <?php require_once 'form.php'; ?>
+
   </div>
 </main>
+
 <script>
-  const btn = document.getElementById('addSchoolBtn');
-  const form = document.getElementById('addSchoolForm');
-  const cancel = document.getElementById('cancel');
+const btn = document.getElementById('addSchoolBtn');
+const form = document.getElementById('addSchoolForm');
+const cancel = document.getElementById('cancel');
 
-  btn?.addEventListener('click', () => {
-    form.classList.remove('hidden');
-    form.scrollIntoView({ behavior: 'smooth', block: 'start' });
-  });
+btn?.addEventListener('click', () => {
+  form.classList.remove('hidden');
+  form.scrollIntoView({ behavior: 'smooth', block: 'start' });
+});
 
-  cancel?.addEventListener('click', () => {
-    form.classList.add('hidden');
-  });
+cancel?.addEventListener('click', () => {
+  form.classList.add('hidden');
+});
 </script>
 
 </body>

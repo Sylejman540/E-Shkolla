@@ -23,8 +23,15 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     $stmt = $pdo->prepare("INSERT INTO users (school_id, name, email, password, role, status) VALUES (?, ?, ?, ?, 'student', ?)");
     $stmt->execute([$schoolId, $name, $email, $password, $status]);
 
-    $stmt = $pdo->prepare("INSERT INTO students(school_id, user_id, name, gender, class, date_birth, email, status) VALUES(?, ?, ?, ?, ?, ?, ?, ?)");
-    $stmt->execute([$schoolId, $user_id, $name, $gender, $class, $date_birth, $email, $status]);
+    $class_id = $_POST['class'];
+
+    $stmt = $pdo->prepare("INSERT INTO students (school_id, user_id, name, gender, class, date_birth, email, status) VALUES (?, ?, ?, ?, ?, ?, ?, ?)");
+    $stmt->execute([$schoolId, $user_id, $name, $gender, $class_id, $date_birth, $email, $status]);
+
+    $student_id = $pdo->lastInsertId();
+
+    $stmt = $pdo->prepare("INSERT INTO student_class (school_id, student_id, class_id) VALUES (?, ?, ?)");
+    $stmt->execute([$schoolId, $student_id, $class_id]); 
 
     header("Location: /E-Shkolla/students");
     exit;
@@ -89,13 +96,22 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 <input id="date_birth" type="text" name="date_birth" autocomplete="date_birth" class="border border-1 block w-full rounded-md bg-white px-3 py-1.5 text-base text-gray-900 outline-1 -outline-offset-1 outline-gray-300 placeholder:text-gray-400 focus:outline-2 focus:-outline-offset-2 focus:outline-indigo-600 sm:text-sm/6 dark:bg-white/5 dark:text-white dark:outline-white/10 dark:placeholder:text-gray-500 dark:focus:outline-indigo-500" />
             </div>
             </div>
+            
 
-            <div class="sm:col-span-3">
-            <label for="class" class="block text-sm/6 font-medium text-gray-900 dark:text-white">Klasa</label>
-            <div class="mt-2">
-                <input id="class" type="text" name="class" autocomplete="class" class="border border-1 block w-full rounded-md bg-white px-3 py-1.5 text-base text-gray-900 outline-1 -outline-offset-1 outline-gray-300 placeholder:text-gray-400 focus:outline-2 focus:-outline-offset-2 focus:outline-indigo-600 sm:text-sm/6 dark:bg-white/5 dark:text-white dark:outline-white/10 dark:placeholder:text-gray-500 dark:focus:outline-indigo-500" />
-            </div>
-            </div>
+          <div class="sm:col-span-3">
+              <label class="block text-sm font-medium text-gray-900 dark:text-white">Klasa</label>
+              <select name="class" class="mt-2 border block w-full round/\ ed-md p-2">
+                  <?php
+                  $classes = $pdo->prepare("SELECT id, grade FROM classes WHERE school_id = ?");
+                  $classes->execute([$_SESSION['user']['school_id']]);
+                  foreach ($classes as $c):
+                  ?>
+                      <option value="<?= $c['id'] ?>">
+                          <?= htmlspecialchars($c['grade']) ?>
+                      </option>
+                  <?php endforeach; ?>
+              </select>
+          </div>
 
             <div class="sm:col-span-3">
             <label for="status" class="block text-sm/6 font-medium text-gray-900 dark:text-white">Statusi</label>

@@ -34,8 +34,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 
     $parentId = $pdo->lastInsertId();
 
-    $stmt = $pdo->prepare("INSERT INTO parent_student(parent_id, student_id) VALUES(?, ?)");
-    $stmt->execute([$parentId, $studentId]);
+    $stmt = $pdo->prepare("INSERT INTO parent_student(school_id, parent_id, student_id) VALUES(?, ?, ?)");
+    $stmt->execute([$schoolId, $parentId, $studentId]);
 
     header("Location: /E-Shkolla/parents");
     exit;
