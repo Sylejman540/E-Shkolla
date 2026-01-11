@@ -46,6 +46,14 @@ $stmt = $pdo->prepare("
 $stmt->execute([$classId]);
 $students = $stmt->fetchAll(PDO::FETCH_ASSOC);
 
+$stmt = $pdo->prepare("SELECT * FROM assignments ORDER BY created_at DESC");
+$stmt->execute();
+$assignments = $stmt->fetchAll(PDO::FETCH_ASSOC);
+
+// simple stats
+$total = count($assignments);
+$completed = 0; // later you can calculate real values
+$active = $total - $completed;
 ?>
 <!DOCTYPE html>
 <html lang="en">
@@ -63,20 +71,43 @@ $students = $stmt->fetchAll(PDO::FETCH_ASSOC);
         <div class="px-4 sm:px-6 lg:px-8">
         <div class="sm:flex sm:items-center">
             <div class="sm:flex-auto">
-            <h1 class="text-base font-semibold text-gray-900 dark:text-white">Nxënës</h1>
-            <p class="mt-2 text-sm text-gray-700 dark:text-gray-300">Lista e të gjithë nxënësve në klasë</p>
+            <h1 class="text-base font-semibold text-gray-900 dark:text-white">Notat</h1>
+            <p class="mt-2 text-sm text-gray-700 dark:text-gray-300">Lista e të gjithë notave në klasë</p>
             </div>
         </div>
+
+        <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6 mb-10 mt-4">
+          <div class="rounded-xl bg-white p-5 shadow">
+            <p class="text-sm text-gray-500">Mesatarja e notave në klasë</p>
+            <p class="mt-2 text-2xl font-bold text-gray-900"><?= $total ?></p>
+          </div>
+
+          <div class="rounded-xl bg-white p-5 shadow">
+            <p class="text-sm text-gray-500">Nxënës pa notë</p>
+            <p class="mt-2 text-2xl font-bold text-indigo-600"><?= $active ?></p>
+          </div>
+
+          <div class="rounded-xl bg-white p-5 shadow">
+            <p class="text-sm text-gray-500">Nota më e lartë</p>
+            <p class="mt-2 text-2xl font-bold text-green-600"><?= $completed ?></p>
+          </div>
+
+          <div class="rounded-xl bg-white p-5 shadow">
+            <p class="text-sm text-gray-500">Nota më e ulët</p>
+            <p class="mt-2 text-2xl font-bold text-pink-600">—</p>
+          </div>
+        </div>
+
         <div class="mt-8 flow-root">
             <div class="-mx-4 -my-2 overflow-x-auto sm:-mx-6 lg:-mx-8">
             <div class="inline-block min-w-full py-2 align-middle sm:px-6 lg:px-8">
                 <table class="relative min-w-full divide-y divide-gray-300 dark:divide-white/15">
                 <thead>
                     <tr>
-                        <th scope="col" class="py-3.5 pr-3 pl-4 text-left text-sm font-semibold text-gray-900 sm:pl-0 dark:text-white">Emri</th>
-                        <th scope="col" class="px-3 py-3.5 text-left text-sm font-semibold text-gray-900 dark:text-white">Email</th>
+                        <th scope="col" class="py-3.5 pr-3 pl-4 text-left text-sm font-semibold text-gray-900 sm:pl-0 dark:text-white">Emri i nxënësit</th>
+                        <th scope="col" class="px-3 py-3.5 text-left text-sm font-semibold text-gray-900 dark:text-white">Nota</th>
+                        <th scope="col" class="px-3 py-3.5 text-left text-sm font-semibold text-gray-900 dark:text-white">Koment</th>
                         <th scope="col" class="px-3 py-3.5 text-left text-sm font-semibold text-gray-900 dark:text-white">Statusi</th>
-                        <th scope="col" class="px-3 py-3.5 text-left text-sm font-semibold text-gray-900 dark:text-white">Veprime</th>
                         <th scope="col" class="py-3.5 pr-4 pl-3 sm:pr-0">
                             <span class="sr-only">Edit</span>
                         </th>
@@ -87,20 +118,40 @@ $students = $stmt->fetchAll(PDO::FETCH_ASSOC);
                 <tbody class="divide-y divide-gray-200 dark:divide-white/10">
                     <tr>
                         <td class="py-4 pr-3 pl-4 text-sm font-medium whitespace-nowrap text-gray-900 sm:pl-0 dark:text-white"><?= htmlspecialchars($row['name']) ?></td>
-                        <td class="px-3 py-4 text-sm whitespace-nowrap text-gray-500 dark:text-gray-400"><?= htmlspecialchars($row['email']) ?></td>
+<td class="py-4 px-3 text-sm whitespace-nowrap">
+    <input
+        id="title"
+        type="text"
+        name="title"
+        autocomplete="title"
+        placeholder="Nota"
+        class="w-20 text-center font-semibold
+               rounded-md border border-gray-300
+               bg-white px-2 py-1.5 text-sm text-gray-900
+               focus:outline-none focus:ring-2 focus:ring-indigo-500/30
+               dark:bg-white/5 dark:border-white/10 dark:text-white"
+    />
+</td>
+
+<td class="py-4 px-3 text-sm">
+    <input
+        id="title"
+        type="text"
+        name="title"
+        autocomplete="title"
+        placeholder="Koment"
+        class="block w-full rounded-md
+               border border-gray-300
+               bg-white px-3 py-1.5 text-sm text-gray-900
+               focus:outline-none focus:ring-2 focus:ring-indigo-500/30
+               dark:bg-white/5 dark:border-white/10 dark:text-white"
+    />
+</td>
+
                         <td class="px-3 py-4 text-sm whitespace-nowrap">
                             <p class="text-green-500 py-[1px] w-14 px-2 h-6 bg-green-200 rounded-xl">
                                 <?= htmlspecialchars($row['status']) ?>
                             </p>
-                        </td>
-                        <td class="px-3 py-4 text-sm whitespace-nowrap">
-                            <div class="flex gap-2">
-                            <form action="/E-Shkolla/class-attendance" method="post">
-                                <button name="present" value="present" class="px-3 py-1.5 text-xs font-medium rounded-full bg-blue-100 text-blue-800 hover:bg-blue-200 transition">Prezent</button>
-
-                                <button name="missing" value="missing" class="px-3 py-1.5 text-xs font-medium rounded-full bg-red-100 text-red-800 hover:bg-red-200 transition">Mungon</button>
-                            </form>
-                            </div>
                         </td>
                     </tr>
                 </tbody>

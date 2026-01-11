@@ -22,37 +22,34 @@ $query = $classId ? '?class_id=' . (int)$classId : '';
       <ul role="list" class="flex flex-1 flex-col gap-y-7">
         <li>
           <ul role="list" class="-mx-2 space-y-1">
+          <li>
+            <a href="/E-Shkolla/show-classes<?= $query ?>"
+              class="group flex gap-x-3 rounded-md bg-gray-50 p-2 text-sm font-semibold text-indigo-600">
+              📊 Paneli
+            </a>
+          </li>
 
-  <li>
-    <a href="/E-Shkolla/show-classes<?= $query ?>"
-       class="group flex gap-x-3 rounded-md bg-gray-50 p-2 text-sm font-semibold text-indigo-600">
-      📊 Paneli
-    </a>
-  </li>
+          <li>
+            <a href="/E-Shkolla/class-attendance<?= $query ?>"
+              class="group flex gap-x-3 rounded-md p-2 text-sm font-semibold text-gray-700 hover:bg-gray-50 hover:text-indigo-600">
+              📝 Prezenca
+            </a>
+          </li>
 
-  <li>
-    <a href="/E-Shkolla/class-attendance<?= $query ?>"
-       class="group flex gap-x-3 rounded-md p-2 text-sm font-semibold text-gray-700 hover:bg-gray-50 hover:text-indigo-600">
-      📝 Prezenca
-    </a>
-  </li>
+          <li>
+            <a href="/E-Shkolla/class-assignments<?= $query ?>"
+              class="group flex gap-x-3 rounded-md p-2 text-sm font-semibold text-gray-700 hover:bg-gray-50 hover:text-indigo-600">
+              📄 Detyrat
+            </a>
+          </li>
 
-  <li>
-    <a href="/E-Shkolla/class-assignments<?= $query ?>"
-       class="group flex gap-x-3 rounded-md p-2 text-sm font-semibold text-gray-700 hover:bg-gray-50 hover:text-indigo-600">
-      📄 Detyrat
-    </a>
-  </li>
-
-  <li>
-    <a href="/E-Shkolla/class-grades<?= $query ?>"
-       class="group flex gap-x-3 rounded-md p-2 text-sm font-semibold text-gray-700 hover:bg-gray-50 hover:text-indigo-600">
-      🎓 Notat
-    </a>
-  </li>
-
-</ul>
-
+          <li>
+            <a href="/E-Shkolla/class-grades<?= $query ?>"
+              class="group flex gap-x-3 rounded-md p-2 text-sm font-semibold text-gray-700 hover:bg-gray-50 hover:text-indigo-600">
+              🎓 Notat
+            </a>
+          </li>
+        </ul>
         </li>
         <li>
         </li>

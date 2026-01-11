@@ -67,52 +67,6 @@ $active = $total - $completed;
       </div>
     </div>
 
-    <!-- PINNED -->
-    <section class="mb-10">
-      <h2 class="text-sm font-semibold text-gray-700 mb-4">
-        ⭐ Detyrat e Fiksuara
-      </h2>
-
-      <?php if (!$assignments): ?>
-        <div class="rounded-xl bg-white p-10 text-center shadow">
-          <p class="text-gray-500">Nuk ka ende detyra</p>
-        </div>
-      <?php else: ?>
-        <ul class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
-          <?php foreach ($assignments as $row): ?>
-            <li class="rounded-xl bg-white shadow hover:shadow-md transition">
-              
-              <div class="flex items-center gap-4 p-5">
-                <div class="flex h-12 w-12 items-center justify-center rounded-lg bg-pink-600 text-white font-semibold">
-                  <?= htmlspecialchars($row['class'] ?? 'X') ?>
-                </div>
-
-                <div class="flex-1">
-                  <h3 class="font-semibold text-gray-900 truncate">
-                    <?= htmlspecialchars($row['title']) ?>
-                  </h3>
-                  <p class="text-sm text-gray-500 truncate">
-                    <?= htmlspecialchars($row['description']) ?>
-                  </p>
-                </div>
-
-                <button class="text-gray-400 hover:text-gray-600">
-                  <svg viewBox="0 0 20 20" fill="currentColor" class="h-5 w-5">
-                    <path d="M10 3a1.5 1.5 0 1 1 0 3Zm0 5a1.5 1.5 0 1 1 0 3Zm0 5a1.5 1.5 0 1 1 0 3Z"/>
-                  </svg>
-                </button>
-              </div>
-
-              <div class="border-t px-5 py-3 text-sm text-gray-500 flex justify-between">
-                <span>Afati</span>
-                <span><?= htmlspecialchars($row['due_date']) ?></span>
-              </div>
-            </li>
-          <?php endforeach; ?>
-        </ul>
-      <?php endif; ?>
-    </section>
-
     <!-- ALL TASKS -->
     <section>
       <h2 class="text-sm font-semibold text-gray-700 mb-4">
