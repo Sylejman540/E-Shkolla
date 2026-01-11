@@ -1,37 +1,116 @@
 <?php
-if(session_status() === PHP_SESSION_NONE){
+if (session_status() === PHP_SESSION_NONE) {
     session_start();
 }
 
-require_once __DIR__  . '/../../../../db.php';
+require_once __DIR__ . '/../../../../db.php';
 
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
-    $name = $_POST['name'];
-    $gender = $_POST['gender'];
-    $class = $_POST['class'];
-    $date_birth = $_POST['date_birth'];
-    $email = $_POST['email'];
-    $status = $_POST['status'];
-    $password = $_POST['password'];
-    $schoolId = $_SESSION['user']['school_id'] ?? null;
-    $user_id = $_SESSION['user']['id'] ?? null;
 
-    if (!$schoolId) {
-        die('School ID missing from session');
+    try {
+        $pdo->beginTransaction();
+
+        /* =====================
+           INPUTS
+        ===================== */
+        $name        = $_POST['name'] ?? null;
+        $gender      = $_POST['gender'] ?? null;
+        $class_id    = $_POST['class'] ?? null;
+        $date_birth  = $_POST['date_birth'] ?? null;
+        $email       = $_POST['email'] ?? null;
+        $status      = $_POST['status'] ?? 'active';
+        $password    = $_POST['password'] ?? null;
+
+        $schoolId = $_SESSION['user']['school_id'] ?? null;
+
+        if (!$schoolId) {
+            throw new Exception('School ID missing');
+        }
+
+        if (!$class_id) {
+            throw new Exception('Class not selected');
+        }
+
+        /* =====================
+           GET CLASS NAME (X/3)
+        ===================== */
+        $stmt = $pdo->prepare("
+            SELECT grade
+            FROM classes
+            WHERE id = ? AND school_id = ?
+        ");
+        $stmt->execute([$class_id, $schoolId]);
+
+        $classRow = $stmt->fetch(PDO::FETCH_ASSOC);
+
+        if (!$classRow) {
+            throw new Exception('Invalid class selected');
+        }
+
+        $class_name = $classRow['grade']; // e.g. X/3
+
+        /* =====================
+           1️⃣ CREATE USER
+        ===================== */
+        $stmt = $pdo->prepare("
+            INSERT INTO users (school_id, name, email, password, role, status)
+            VALUES (?, ?, ?, ?, 'student', ?)
+        ");
+        $stmt->execute([
+            $schoolId,
+            $name,
+            $email,
+            $password,
+            $status
+        ]);
+
+        $newUserId = $pdo->lastInsertId();
+
+        /* =====================
+           2️⃣ CREATE STUDENT
+           (CLASS NAME ONLY)
+        ===================== */
+        $stmt = $pdo->prepare("
+            INSERT INTO students
+            (school_id, user_id, name, gender, class_name, date_birth, email, status)
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+        ");
+        $stmt->execute([
+            $schoolId,
+            $newUserId,
+            $name,
+            $gender,
+            $class_name,
+            $date_birth,
+            $email,
+            $status
+        ]);
+
+        $student_id = $pdo->lastInsertId();
+
+        /* =====================
+           3️⃣ LINK STUDENT ↔ CLASS
+           (ID ONLY)
+        ===================== */
+        $stmt = $pdo->prepare("
+            INSERT INTO student_class (school_id, student_id, class_id)
+            VALUES (?, ?, ?)
+        ");
+        $stmt->execute([
+            $schoolId,
+            $student_id,
+            $class_id
+        ]);
+
+        $pdo->commit();
+
+        header("Location: /E-Shkolla/students");
+        exit;
+
+    } catch (Exception $e) {
+        $pdo->rollBack();
+        die('Error: ' . $e->getMessage());
     }
-
-    $stmt = $pdo->prepare("INSERT INTO users (school_id, name, email, password, role, status) VALUES (?, ?, ?, ?, 'student', ?)");
-    $stmt->execute([$schoolId, $name, $email, $password, $status]);
-
-    $class_id = $_POST['class'];
-
-    $stmt = $pdo->prepare("INSERT INTO students (school_id, user_id, name, gender, class, date_birth, email, status) VALUES (?, ?, ?, ?, ?, ?, ?, ?)");
-    $stmt->execute([$schoolId, $user_id, $name, $gender, $class_id, $date_birth, $email, $status]);
-
-    $student_id = $pdo->lastInsertId();
-
-    $stmt = $pdo->prepare("INSERT INTO student_class (school_id, student_id, class_id) VALUES (?, ?, ?)");
-    $stmt->execute([$schoolId, $student_id, $class_id]); 
 
     header("Location: /E-Shkolla/students");
     exit;

@@ -7,11 +7,25 @@ require_once __DIR__ . '/../../index.php';
 
 require_once __DIR__ . '/../../../../db.php';
 
-$stmt = $pdo->prepare("SELECT * FROM classes ORDER BY created_at DESC");
+$userId = $_SESSION['user']['id']; // users.id
+$stmt = $pdo->prepare("
+    SELECT 
+        tc.id,
+        c.grade AS class_name,
+        c.max_students,
+        t.subject_name,
+        tc.created_at
+    FROM teacher_class tc
+    INNER JOIN teachers t ON t.id = tc.teacher_id
+    INNER JOIN classes c ON c.id = tc.class_id
+    WHERE t.user_id = ?
+");
 
-$stmt->execute([]);
+
+$stmt->execute([$userId]);
 
 $classes = $stmt->fetchAll(PDO::FETCH_ASSOC);
+
 ?>
 <!DOCTYPE html>
 <html lang="en">
@@ -49,11 +63,9 @@ $classes = $stmt->fetchAll(PDO::FETCH_ASSOC);
             <tbody>
               <tr>
                 <td class="flex relative py-4 pr-3 pl-4 text-sm sm:pl-6">
-                <div><?= htmlspecialchars($row['grade'])?></div>
-                /
-                <div><?= htmlspecialchars($row['section'])?></div>
+                <div><?= htmlspecialchars($row['class_name'])?></div>
                 </td>
-                 <td class="hidden px-3 py-3.5 text-sm text-gray-500 lg:table-cell dark:text-gray-400">Gjeografi</td>
+                 <td class="hidden px-3 py-3.5 text-sm text-gray-500 lg:table-cell dark:text-gray-400"><div><?= htmlspecialchars($row['subject_name'])?></div></td>
                 <td class="hidden px-3 py-3.5 text-sm text-gray-500 lg:table-cell dark:text-gray-400"><?= htmlspecialchars($row['max_students'])?></td>
                 <td class="relative py-3.5 pr-4 pl-3 text-right text-sm font-medium sm:pr-6">
                   <a href="/E-Shkolla/show-classes">
