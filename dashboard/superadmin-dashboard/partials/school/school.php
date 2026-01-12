@@ -22,6 +22,18 @@ $schools = $stmt->fetchAll(PDO::FETCH_ASSOC);
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
 </head>
 <body>
+                        <!-- <tr>
+                        <td class="py-4 pr-3 pl-4 text-sm font-medium whitespace-nowrap text-gray-900 sm:pl-0 dark:text-white"><?= htmlspecialchars($row['school_name']) ?></td>
+                        <td class="px-3 py-4 text-sm whitespace-nowrap text-gray-500 dark:text-gray-400"><?= htmlspecialchars($row['name']) ?></td>
+                        <td class="px-3 py-4 text-sm whitespace-nowrap text-gray-500 dark:text-gray-400"><?= htmlspecialchars($row['city']) ?></td>
+                        <td class="px-3 py-4 text-sm whitespace-nowrap text-gray-500 dark:text-gray-400"><?= htmlspecialchars($row['email']) ?></td>
+                        <td class="px-3 py-4 text-sm whitespace-nowrap">
+                            <p class="text-green-500 py-[1px] w-14 px-2 h-6 bg-green-200 rounded-xl">
+                                <?= htmlspecialchars($row['status']) ?>
+                            </p>
+                        </td>
+                        <td class="px-3 py-4 text-sm whitespace-nowrap text-gray-500 dark:text-gray-400"><?= htmlspecialchars($row['created_at']) ?></td>
+                    </tr> -->
 <main class="lg:pl-72">
   <div class="xl:pl-18">
     <div class="px-4 py-10 sm:px-6 lg:px-8 lg:py-6">
@@ -50,22 +62,70 @@ $schools = $stmt->fetchAll(PDO::FETCH_ASSOC);
                     </tr>
                 </thead>
                 <?php if(!empty($schools)): ?>
-                <?php foreach($schools as $row): ?>
-                <tbody class="divide-y divide-gray-200 dark:divide-white/10">
-                    <tr>
-                        <td class="py-4 pr-3 pl-4 text-sm font-medium whitespace-nowrap text-gray-900 sm:pl-0 dark:text-white"><?= htmlspecialchars($row['school_name']) ?></td>
-                        <td class="px-3 py-4 text-sm whitespace-nowrap text-gray-500 dark:text-gray-400"><?= htmlspecialchars($row['name']) ?></td>
-                        <td class="px-3 py-4 text-sm whitespace-nowrap text-gray-500 dark:text-gray-400"><?= htmlspecialchars($row['city']) ?></td>
-                        <td class="px-3 py-4 text-sm whitespace-nowrap text-gray-500 dark:text-gray-400"><?= htmlspecialchars($row['email']) ?></td>
-                        <td class="px-3 py-4 text-sm whitespace-nowrap">
-                            <p class="text-green-500 py-[1px] w-14 px-2 h-6 bg-green-200 rounded-xl">
-                                <?= htmlspecialchars($row['status']) ?>
-                            </p>
-                        </td>
-                        <td class="px-3 py-4 text-sm whitespace-nowrap text-gray-500 dark:text-gray-400"><?= htmlspecialchars($row['created_at']) ?></td>
-                    </tr>
-                </tbody>
+                <tbody class="divide-y">
+                <?php foreach ($schools as $row): ?>
+                <tr class="hover:bg-gray-50">
+
+                <td class="py-4 pr-3 pl-4 text-sm font-medium whitespace-nowrap text-gray-900 sm:pl-0 dark:text-white">
+                    <span contenteditable
+                        class="editable inline-block min-w-[10rem] px-2 py-1 rounded outline-none hover:bg-gray-100 focus:bg-indigo-50 focus:ring-2 focus:ring-indigo-500 transition"
+                        data-id="<?= $row['id'] ?>"
+                        data-field="school_name">
+                    <?= htmlspecialchars($row['school_name']) ?>
+                    </span>
+                </td>
+
+                <td class="px-3 py-4 text-sm whitespace-nowrap text-gray-500 dark:text-gray-400">
+                    <span contenteditable
+                        class="editable inline-block min-w-[10rem] px-2 py-1 rounded outline-none hover:bg-gray-100 focus:bg-indigo-50 focus:ring-2 focus:ring-indigo-500 transition"
+                        data-id="<?= $row['id'] ?>"
+                        data-field="name">
+                    <?= htmlspecialchars($row['name']) ?>
+                    </span>
+                </td>
+
+                <td class="px-3 py-4 text-sm whitespace-nowrap text-gray-500 dark:text-gray-400">
+                    <span contenteditable
+                        class="editable inline-block min-w-[10rem] px-2 py-1 rounded outline-none hover:bg-gray-100 focus:bg-indigo-50 focus:ring-2 focus:ring-indigo-500 transition"
+                        data-id="<?= $row['id'] ?>"
+                        data-field="city">
+                    <?= htmlspecialchars($row['city']) ?>
+                    </span>
+                </td>
+
+                <td class="px-3 py-4 text-sm whitespace-nowrap text-gray-500 dark:text-gray-400">
+                    <span contenteditable
+                        class="editable inline-block min-w-[10rem] px-2 py-1 rounded outline-none hover:bg-gray-100 focus:bg-indigo-50 focus:ring-2 focus:ring-indigo-500 transition"
+                        data-id="<?= $row['id'] ?>"
+                        data-field="email">
+                    <?= htmlspecialchars($row['email']) ?>
+                    </span>
+                </td>
+
+                <td class="px-3 py-4 text-sm whitespace-nowrap text-gray-500 dark:text-gray-400">
+                    <?php if ($row['id'] != $_SESSION['user']['id']): ?>
+                    <button class="status-toggle px-3 py-1 rounded-full text-xs font-semibold
+                        <?= $row['status']==='active'
+                        ? 'bg-green-100 text-green-700'
+                        : 'bg-red-100 text-red-600' ?>"
+                        data-id="<?= $row['id'] ?>"
+                        data-field="status"
+                        data-value="<?= $row['status'] ?>">
+                        <?= ucfirst($row['status']) ?>
+                    </button>
+                    <?php else: ?>
+                    <span class="px-3 py-1 rounded-full text-xs bg-green-100 text-green-700">
+                        Active
+                    </span>
+                    <?php endif; ?>
+                </td>
+                <td class="px-3 py-4 text-sm text-gray-400">
+                    <?= date('Y-m-d', strtotime($row['created_at'])) ?>
+                </td>
+
+                </tr>
                 <?php endforeach; ?>
+                </tbody>
                 <?php else: ?>
                     <tr>
                         <td colspan="6" class="py-10 text-center text-sm text-gray-500 dark:text-gray-400">
@@ -75,8 +135,7 @@ $schools = $stmt->fetchAll(PDO::FETCH_ASSOC);
                 <?php endif; ?>
                 </table>
             </div>
-            </div>
-
+        </div>
         <?php require_once 'form.php'; ?>
         </div>
         </div>
