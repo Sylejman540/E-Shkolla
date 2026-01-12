@@ -59,24 +59,18 @@ $stmt = $pdo->prepare("
     FROM student_class sc
     INNER JOIN students s ON s.student_id = sc.student_id
     WHERE sc.class_id = ?
-    ORDER BY s.name ASC
-");
+ ORDER BY s.name ASC");
 
 $stmt->execute([$classId]);
 $students = $stmt->fetchAll(PDO::FETCH_ASSOC);
 
-$gradesStmt = $pdo->prepare("
-    SELECT student_id, grade, comment
-    FROM grades
-    WHERE class_id = ?
-");
+$gradesStmt = $pdo->prepare("SELECT student_id, grade, comment FROM grades WHERE class_id = ?");
 $gradesStmt->execute([$classId]);
 
 $grades = [];
 foreach ($gradesStmt->fetchAll(PDO::FETCH_ASSOC) as $g) {
     $grades[$g['student_id']] = $g;
 }
-
 ?>
 <!DOCTYPE html>
 <html lang="en">
