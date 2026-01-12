@@ -23,6 +23,25 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     ]);
 }
 
+if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['student_id'])) {
+
+    $studentId = (int) $_POST['student_id'];
+    $classId   = (int) $_POST['class_id'];
+    $grade     = $_POST['grade'] ?? null;
+    $comment   = $_POST['comment'] ?? null;
+
+    $stmt = $pdo->prepare("
+        INSERT INTO grades (student_id, class_id, grade, comment)
+        VALUES (?, ?, ?, ?)
+        ON DUPLICATE KEY UPDATE
+            grade = VALUES(grade),
+            comment = VALUES(comment)
+    ");
+
+    $stmt->execute([$studentId, $classId, $grade, $comment]);
+}
+
+
 $classId = (int)($_GET['class_id'] ?? 0);
 
 if ($classId <= 0) {
@@ -46,14 +65,18 @@ $stmt = $pdo->prepare("
 $stmt->execute([$classId]);
 $students = $stmt->fetchAll(PDO::FETCH_ASSOC);
 
-$stmt = $pdo->prepare("SELECT * FROM assignments ORDER BY created_at DESC");
-$stmt->execute();
-$assignments = $stmt->fetchAll(PDO::FETCH_ASSOC);
+$gradesStmt = $pdo->prepare("
+    SELECT student_id, grade, comment
+    FROM grades
+    WHERE class_id = ?
+");
+$gradesStmt->execute([$classId]);
 
-// simple stats
-$total = count($assignments);
-$completed = 0; // later you can calculate real values
-$active = $total - $completed;
+$grades = [];
+foreach ($gradesStmt->fetchAll(PDO::FETCH_ASSOC) as $g) {
+    $grades[$g['student_id']] = $g;
+}
+
 ?>
 <!DOCTYPE html>
 <html lang="en">
@@ -79,17 +102,17 @@ $active = $total - $completed;
         <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6 mb-10 mt-4">
           <div class="rounded-xl bg-white p-5 shadow">
             <p class="text-sm text-gray-500">Mesatarja e notave në klasë</p>
-            <p class="mt-2 text-2xl font-bold text-gray-900"><?= $total ?></p>
+            <p class="mt-2 text-2xl font-bold text-gray-900">-</p>
           </div>
 
           <div class="rounded-xl bg-white p-5 shadow">
             <p class="text-sm text-gray-500">Nxënës pa notë</p>
-            <p class="mt-2 text-2xl font-bold text-indigo-600"><?= $active ?></p>
+            <p class="mt-2 text-2xl font-bold text-indigo-600">-</p>
           </div>
 
           <div class="rounded-xl bg-white p-5 shadow">
             <p class="text-sm text-gray-500">Nota më e lartë</p>
-            <p class="mt-2 text-2xl font-bold text-green-600"><?= $completed ?></p>
+            <p class="mt-2 text-2xl font-bold text-green-600">-</p>
           </div>
 
           <div class="rounded-xl bg-white p-5 shadow">
@@ -116,16 +139,51 @@ $active = $total - $completed;
                 <?php if(!empty($students)): ?>
                 <?php foreach($students as $row): ?>
                 <tbody class="divide-y divide-gray-200 dark:divide-white/10">
-                    <tr>
-                        <td class="py-4 pr-3 pl-4 text-sm font-medium whitespace-nowrap text-gray-900 sm:pl-0 dark:text-white"><?= htmlspecialchars($row['name']) ?></td>
-                        <td class="py-4 pr-3 pl-4 text-sm font-medium whitespace-nowrap text-gray-900 sm:pl-0 dark:text-white"><input id="title" type="text" name="title" autocomplete="title" class="border border-1 block w-full rounded-md bg-white px-3 py-1.5 text-base text-gray-900 outline-1 -outline-offset-1 outline-gray-300 placeholder:text-gray-400 focus:outline-2 focus:-outline-offset-2 focus:outline-indigo-600 sm:text-sm/6 dark:bg-white/5 dark:text-white dark:outline-white/10 dark:placeholder:text-gray-500 dark:focus:outline-indigo-500" /></td>
-                        <td class="py-4 pr-3 pl-4 text-sm font-medium whitespace-nowrap text-gray-900 sm:pl-0 dark:text-white"><input id="title" type="text" name="title" autocomplete="title" class="border border-1 block w-full rounded-md bg-white px-3 py-1.5 text-base text-gray-900 outline-1 -outline-offset-1 outline-gray-300 placeholder:text-gray-400 focus:outline-2 focus:-outline-offset-2 focus:outline-indigo-600 sm:text-sm/6 dark:bg-white/5 dark:text-white dark:outline-white/10 dark:placeholder:text-gray-500 dark:focus:outline-indigo-500" /></td>
-                        <td class="px-3 py-4 text-sm whitespace-nowrap">
-                            <p class="text-green-500 py-[1px] w-14 px-2 h-6 bg-green-200 rounded-xl">
-                                <?= htmlspecialchars($row['status']) ?>
-                            </p>
-                        </td>
-                    </tr>
+                <tr>
+                <form method="POST">
+                    <input type="hidden" name="student_id" value="<?= $row['student_id'] ?>">
+                    <input type="hidden" name="class_id" value="<?= $classId ?>">
+
+                    <td class="py-4 pr-3 pl-4 text-sm font-medium text-gray-900 sm:pl-0 dark:text-white">
+                        <?= htmlspecialchars($row['name']) ?>
+                    </td>
+
+                    <td class="py-4 px-3">
+                        <input
+                            type="text"
+                            name="grade"
+                            value="<?= htmlspecialchars($grades[$row['student_id']]['grade'] ?? '') ?>"
+                            class="w-20 rounded-md border px-3 py-1.5 text-sm focus:outline-indigo-600"
+                            placeholder="1–5"
+                        />
+                    </td>
+
+                    <td class="py-4 px-3">
+                        <input
+                            type="text"
+                            name="comment"
+                            value="<?= htmlspecialchars($grades[$row['student_id']]['comment'] ?? '') ?>"
+                            class="w-full rounded-md border px-3 py-1.5 text-sm focus:outline-indigo-600"
+                            placeholder="Koment"
+                        />
+                    </td>
+
+                    <td class="px-3 py-4 text-sm">
+                        <span class="inline-flex items-center rounded-xl bg-green-100 px-2 py-1 text-green-700">
+                            <?= htmlspecialchars($row['status']) ?>
+                        </span>
+                    </td>
+
+                    <td class="py-4 pr-4 text-right">
+                        <button
+                            type="submit"
+                            class="rounded-md bg-indigo-600 px-3 py-1.5 text-sm text-white hover:bg-indigo-700"
+                        >
+                            Ruaj
+                        </button>
+                    </td>
+                </form>
+                </tr>
                 </tbody>
                 <?php endforeach ?>
                 <?php else: ?>
