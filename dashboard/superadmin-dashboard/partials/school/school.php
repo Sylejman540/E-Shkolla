@@ -84,19 +84,63 @@ $schools = $stmt->fetchAll(PDO::FETCH_ASSOC);
   </div>
 </main>
 <script>
-  const btn = document.getElementById('addSchoolBtn');
-  const form = document.getElementById('addSchoolForm');
-  const cancel = document.getElementById('cancel');
+    const btn = document.getElementById('addSchoolBtn');
+    const form = document.getElementById('addSchoolForm');
+    const cancel = document.getElementById('cancel');
 
-  btn?.addEventListener('click', () => {
-    form.classList.remove('hidden');
-    form.scrollIntoView({ behavior: 'smooth', block: 'start' });
-  });
+    btn?.addEventListener('click', () => {
+        form.classList.remove('hidden');
+        form.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    });
 
-  cancel?.addEventListener('click', () => {
-    form.classList.add('hidden');
-  });
+    cancel?.addEventListener('click', () => {
+        form.classList.add('hidden');
+    });
+
+    document.querySelectorAll('.editable').forEach(el => {
+    el.addEventListener('keydown', e => {
+        if (e.key === 'Enter') {
+        e.preventDefault();
+        el.blur();
+        }
+    });
+    el.addEventListener('blur', () => saveSchool(el));
+    });
+
+    document.querySelectorAll('.editable-select').forEach(el => {
+    el.addEventListener('change', () => saveSchool(el));
+    });
+
+    document.querySelectorAll('.status-toggle').forEach(btn => {
+    btn.addEventListener('click', () => {
+        const newStatus = btn.dataset.value === 'active'
+        ? 'inactive'
+        : 'active';
+        saveSchool(btn, newStatus);
+    });
+    });
+
+    function saveSchool(el, forcedValue = null) {
+    const schoolId = el.dataset.id;
+    const field    = el.dataset.field;
+
+    let value;
+    if (forcedValue !== null) {
+        value = forcedValue;
+    } else if (el.tagName === 'SELECT') {
+        value = el.value;
+    } else {
+        value = el.innerText.trim();
+    }
+
+    fetch('/E-Shkolla/dashboard/superadmin-dashboard/partials/school/update-inline.php', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ schoolId, field, value })
+    }).then(() => location.reload());
+    }
 </script>
+
 
 </body>
 </html>
