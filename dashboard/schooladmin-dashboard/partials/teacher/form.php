@@ -121,99 +121,99 @@ $stmt->execute([$schoolId, $teacher_id, $class_id]);
         <div class="grid grid-cols-1 gap-x-8 gap-y-10 border-b border-gray-900/10 pb-8 md:grid-cols-3 dark:border-white/10">
             
         <form action="/E-Shkolla/dashboard/schooladmin-dashboard/partials/teacher/form.php" method="post" enctype="multipart/form-data"  class="grid max-w-2xl grid-cols-1 gap-x-6 gap-y-8 sm:grid-cols-6 md:col-span-2">
-            <input type="hidden" name="user_id" value="<?= $user_id ?>">
+                <input type="hidden" name="user_id" value="<?= $user_id ?>">
 
-            <div class="sm:col-span-3">
-            <label for="name" class="block text-sm/6 font-medium text-gray-900 dark:text-white">Emri dhe mbiemri</label>
-            <div class="mt-2">
-                <input id="name" type="text" name="name" autocomplete="name" class="border border-1 block w-full rounded-md bg-white px-3 py-1.5 text-base text-gray-900 outline-1 -outline-offset-1 outline-gray-300 placeholder:text-gray-400 focus:outline-2 focus:-outline-offset-2 focus:outline-indigo-600 sm:text-sm/6 dark:bg-white/5 dark:text-white dark:outline-white/10 dark:placeholder:text-gray-500 dark:focus:outline-indigo-500" />
-            </div>
+                <div class="sm:col-span-3">
+                <label for="name" class="block text-sm/6 font-medium text-gray-900 dark:text-white">Emri dhe mbiemri</label>
+                <div class="mt-2">
+                    <input id="name" type="text" name="name" autocomplete="name" class="border border-1 block w-full rounded-md bg-white px-3 py-1.5 text-base text-gray-900 outline-1 -outline-offset-1 outline-gray-300 placeholder:text-gray-400 focus:outline-2 focus:-outline-offset-2 focus:outline-indigo-600 sm:text-sm/6 dark:bg-white/5 dark:text-white dark:outline-white/10 dark:placeholder:text-gray-500 dark:focus:outline-indigo-500" />
+                </div>
+                </div>
+
+                <div class="sm:col-span-3">
+                <label for="email" class="block text-sm/6 font-medium text-gray-900 dark:text-white">Email</label>
+                <div class="mt-2">
+                    <input id="email" type="text" name="email" autocomplete="email" class="border border-1 block w-full rounded-md bg-white px-3 py-1.5 text-base text-gray-900 outline-1 -outline-offset-1 outline-gray-300 placeholder:text-gray-400 focus:outline-2 focus:-outline-offset-2 focus:outline-indigo-600 sm:text-sm/6 dark:bg-white/5 dark:text-white dark:outline-white/10 dark:placeholder:text-gray-500 dark:focus:outline-indigo-500" />
+                </div>
+                </div>
+
+                <div class="sm:col-span-3">
+                <label for="password" class="block text-sm/6 font-medium text-gray-900 dark:text-white">Password</label>
+                <div class="mt-2">
+                    <input id="password" type="text" name="password" autocomplete="password" class="border border-1 block w-full rounded-md bg-white px-3 py-1.5 text-base text-gray-900 outline-1 -outline-offset-1 outline-gray-300 placeholder:text-gray-400 focus:outline-2 focus:-outline-offset-2 focus:outline-indigo-600 sm:text-sm/6 dark:bg-white/5 dark:text-white dark:outline-white/10 dark:placeholder:text-gray-500 dark:focus:outline-indigo-500" />
+                </div>
+                </div>
+
+                <div class="sm:col-span-3">
+                <label for="phone" class="block text-sm/6 font-medium text-gray-900 dark:text-white">Numri i telefonit</label>
+                <div class="mt-2">
+                    <input id="phone" type="phone" name="phone" autocomplete="phone" class="border border-1 block w-full rounded-md bg-white px-3 py-1.5 text-base text-gray-900 outline-1 -outline-offset-1 outline-gray-300 placeholder:text-gray-400 focus:outline-2 focus:-outline-offset-2 focus:outline-indigo-600 sm:text-sm/6 dark:bg-white/5 dark:text-white dark:outline-white/10 dark:placeholder:text-gray-500 dark:focus:outline-indigo-500" />
+                </div>
+                </div>
+
+                <div class="sm:col-span-3">
+                    <label class="block text-sm/6 font-medium text-gray-900 dark:text-white mt-1">Klasa</label>
+                    <select name="class" class="border block w-full rounded-md p-[7px] mt-1">
+                        <?php
+                        $classes = $pdo->prepare("SELECT id, grade FROM classes WHERE school_id = ?");
+                        $classes->execute([$_SESSION['user']['school_id']]);
+                        foreach ($classes as $c):
+                        ?>
+                            <option value="<?= $c['id'] ?>">
+                                <?= htmlspecialchars($c['grade']) ?>
+                            </option>
+                        <?php endforeach; ?>
+                    </select>
+                </div>
+
+                <div class="sm:col-span-3">
+                <label for="gender" class="block text-sm/6 font-medium text-gray-900 dark:text-white">Gjinia</label>
+                <div class="mt-2">
+                    <select id="gender" name="gender" class="border block w-full rounded-md p-[7px] mt-1">
+                    <option value="male">Mashkull</option>
+                    <option value="female">Femër</option>
+                    <option value="other">Tjetër</option>
+                    </select>
+                </div>
+                </div>
+
+                <div class="sm:col-span-3">
+                <label for="subject_name" class="block text-sm/6 font-medium text-gray-900 dark:text-white">Lënda</label>
+                <div class="mt-2">
+                    <input id="subject_name" type="text" name="subject_name" autocomplete="subject" class="border border-1 block w-full rounded-md bg-white px-3 py-1.5 text-base text-gray-900 outline-1 -outline-offset-1 outline-gray-300 placeholder:text-gray-400 focus:outline-2 focus:-outline-offset-2 focus:outline-indigo-600 sm:text-sm/6 dark:bg-white/5 dark:text-white dark:outline-white/10 dark:placeholder:text-gray-500 dark:focus:outline-indigo-500" />
+                </div>
+                </div>
+
+                <div class="sm:col-span-4">
+                <label for="description" class="block text-sm/6 font-medium text-gray-900 dark:text-white">Përshkrimi rreth lëndës</label>
+                <div class="mt-2">
+                    <input id="description" type="text" name="description" autocomplete="description" class="border border-1 block w-full rounded-md bg-white px-3 py-1.5 text-base text-gray-900 outline-1 -outline-offset-1 outline-gray-300 placeholder:text-gray-400 focus:outline-2 focus:-outline-offset-2 focus:outline-indigo-600 sm:text-sm/6 dark:bg-white/5 dark:text-white dark:outline-white/10 dark:placeholder:text-gray-500 dark:focus:outline-indigo-500" />
+                </div>
+                </div>
+
+                <div class="sm:col-span-3">
+                <label for="profile_photo" class="block text-sm/6 font-medium text-gray-900 dark:text-white">Foto e profilit</label>
+                <div class="mt-2">
+                    <input id="profile_photo" type="file" name="profile_photo" autocomplete="profile_photo" class="border border-1 block w-full rounded-md bg-white px-3 py-1.5 text-base text-gray-900 outline-1 -outline-offset-1 outline-gray-300 placeholder:text-gray-400 focus:outline-2 focus:-outline-offset-2 focus:outline-indigo-600 sm:text-sm/6 dark:bg-white/5 dark:text-white dark:outline-white/10 dark:placeholder:text-gray-500 dark:focus:outline-indigo-500" />
+                </div>
+                </div>
+
+                <div class="sm:col-span-2">
+                <label for="status" class="block text-sm/6 font-medium text-gray-900 dark:text-white">Statusi</label>
+                <div class="mt-2">
+                    <select id="status" name="status" class="border block w-full rounded-md p-[9px] mt-1">
+                    <option value="active">Aktive</option>
+                    <option value="inactive">Joaktive</option>
+                    </select>
+                </div>
+                </div>
             </div>
 
-            <div class="sm:col-span-3">
-            <label for="email" class="block text-sm/6 font-medium text-gray-900 dark:text-white">Email</label>
-            <div class="mt-2">
-                <input id="email" type="text" name="email" autocomplete="email" class="border border-1 block w-full rounded-md bg-white px-3 py-1.5 text-base text-gray-900 outline-1 -outline-offset-1 outline-gray-300 placeholder:text-gray-400 focus:outline-2 focus:-outline-offset-2 focus:outline-indigo-600 sm:text-sm/6 dark:bg-white/5 dark:text-white dark:outline-white/10 dark:placeholder:text-gray-500 dark:focus:outline-indigo-500" />
-            </div>
-            </div>
+            <div class="mt-6 flex justify-end gap-x-4">
+                <button type="button" id="cancel" class="text-sm font-semibold text-gray-700 hover:text-gray-900 dark:text-gray-300">Cancel</button>
 
-            <div class="sm:col-span-3">
-            <label for="password" class="block text-sm/6 font-medium text-gray-900 dark:text-white">Password</label>
-            <div class="mt-2">
-                <input id="password" type="text" name="password" autocomplete="password" class="border border-1 block w-full rounded-md bg-white px-3 py-1.5 text-base text-gray-900 outline-1 -outline-offset-1 outline-gray-300 placeholder:text-gray-400 focus:outline-2 focus:-outline-offset-2 focus:outline-indigo-600 sm:text-sm/6 dark:bg-white/5 dark:text-white dark:outline-white/10 dark:placeholder:text-gray-500 dark:focus:outline-indigo-500" />
+                <button type="submit" class="rounded-md bg-indigo-600 px-4 py-2 text-sm font-semibold text-white shadow hover:bg-indigo-500 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-indigo-600 dark:bg-indigo-500">Save</button>
             </div>
-            </div>
-
-            <div class="sm:col-span-3">
-            <label for="phone" class="block text-sm/6 font-medium text-gray-900 dark:text-white">Numri i telefonit</label>
-            <div class="mt-2">
-                <input id="phone" type="phone" name="phone" autocomplete="phone" class="border border-1 block w-full rounded-md bg-white px-3 py-1.5 text-base text-gray-900 outline-1 -outline-offset-1 outline-gray-300 placeholder:text-gray-400 focus:outline-2 focus:-outline-offset-2 focus:outline-indigo-600 sm:text-sm/6 dark:bg-white/5 dark:text-white dark:outline-white/10 dark:placeholder:text-gray-500 dark:focus:outline-indigo-500" />
-            </div>
-            </div>
-
-          <div class="sm:col-span-4">
-              <label class="block text-sm font-medium text-gray-900 dark:text-white">Klasa</label>
-              <select name="class" class="mt-2 border block w-full round/\ ed-md p-2">
-                  <?php
-                  $classes = $pdo->prepare("SELECT id, grade FROM classes WHERE school_id = ?");
-                  $classes->execute([$_SESSION['user']['school_id']]);
-                  foreach ($classes as $c):
-                  ?>
-                      <option value="<?= $c['id'] ?>">
-                          <?= htmlspecialchars($c['grade']) ?>
-                      </option>
-                  <?php endforeach; ?>
-              </select>
-          </div>
-
-            <div class="sm:col-span-3">
-            <label for="gender" class="block text-sm/6 font-medium text-gray-900 dark:text-white">Gjinia</label>
-            <div class="mt-2">
-                <select id="gender" name="gender" class="border block w-full rounded-md p-[7px] mt-1">
-                  <option value="male">Mashkull</option>
-                  <option value="female">Femër</option>
-                  <option value="other">Tjetër</option>
-                </select>
-            </div>
-            </div>
-
-            <div class="sm:col-span-3">
-            <label for="subject_name" class="block text-sm/6 font-medium text-gray-900 dark:text-white">Lënda</label>
-            <div class="mt-2">
-                <input id="subject_name" type="text" name="subject_name" autocomplete="subject" class="border border-1 block w-full rounded-md bg-white px-3 py-1.5 text-base text-gray-900 outline-1 -outline-offset-1 outline-gray-300 placeholder:text-gray-400 focus:outline-2 focus:-outline-offset-2 focus:outline-indigo-600 sm:text-sm/6 dark:bg-white/5 dark:text-white dark:outline-white/10 dark:placeholder:text-gray-500 dark:focus:outline-indigo-500" />
-            </div>
-            </div>
-
-            <div class="sm:col-span-4">
-            <label for="description" class="block text-sm/6 font-medium text-gray-900 dark:text-white">Përshkrimi rreth lëndës</label>
-            <div class="mt-2">
-                <input id="description" type="text" name="description" autocomplete="description" class="border border-1 block w-full rounded-md bg-white px-3 py-1.5 text-base text-gray-900 outline-1 -outline-offset-1 outline-gray-300 placeholder:text-gray-400 focus:outline-2 focus:-outline-offset-2 focus:outline-indigo-600 sm:text-sm/6 dark:bg-white/5 dark:text-white dark:outline-white/10 dark:placeholder:text-gray-500 dark:focus:outline-indigo-500" />
-            </div>
-            </div>
-
-            <div class="sm:col-span-3">
-            <label for="profile_photo" class="block text-sm/6 font-medium text-gray-900 dark:text-white">Foto e profilit</label>
-            <div class="mt-2">
-                <input id="profile_photo" type="file" name="profile_photo" autocomplete="profile_photo" class="border border-1 block w-full rounded-md bg-white px-3 py-1.5 text-base text-gray-900 outline-1 -outline-offset-1 outline-gray-300 placeholder:text-gray-400 focus:outline-2 focus:-outline-offset-2 focus:outline-indigo-600 sm:text-sm/6 dark:bg-white/5 dark:text-white dark:outline-white/10 dark:placeholder:text-gray-500 dark:focus:outline-indigo-500" />
-            </div>
-            </div>
-
-            <div class="sm:col-span-2">
-            <label for="status" class="block text-sm/6 font-medium text-gray-900 dark:text-white">Statusi</label>
-            <div class="mt-2">
-                <select id="status" name="status" class="border block w-full rounded-md p-[9px] mt-1">
-                  <option value="active">Aktive</option>
-                  <option value="inactive">Joaktive</option>
-                </select>
-            </div>
-            </div>
-        </div>
-
-        <div class="mt-6 flex justify-end gap-x-4">
-            <button type="button" id="cancel" class="text-sm font-semibold text-gray-700 hover:text-gray-900 dark:text-gray-300">Cancel</button>
-
-            <button type="submit" class="rounded-md bg-indigo-600 px-4 py-2 text-sm font-semibold text-white shadow hover:bg-indigo-500 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-indigo-600 dark:bg-indigo-500">Save</button>
-        </div>
         </form>
     </div>
   </div>

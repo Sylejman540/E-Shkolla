@@ -179,7 +179,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 
           <div class="sm:col-span-3">
               <label class="block text-sm font-medium text-gray-900 dark:text-white">Klasa</label>
-              <select name="class" class="mt-2 border block w-full round/\ ed-md p-2">
+              <select name="class" class="mt-2 border block w-full rounded-md p-2">
                   <?php
                   $classes = $pdo->prepare("SELECT id, grade FROM classes WHERE school_id = ?");
                   $classes->execute([$_SESSION['user']['school_id']]);
