@@ -65,7 +65,7 @@ $students = $stmt->fetchAll(PDO::FETCH_ASSOC);
                             </span>
                         </td>
 
-<td class="px-3 py-4 text-sm whitespace-nowrap">
+                        <td class="px-3 py-4 text-sm whitespace-nowrap">
                         <select
                             class="editable-select
                                 rounded-full

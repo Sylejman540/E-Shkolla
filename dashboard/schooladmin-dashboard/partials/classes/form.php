@@ -8,14 +8,13 @@ require_once __DIR__  . '/../../../../db.php';
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     $academic_year = $_POST['academic_year'];
     $grade = $_POST['grade'];
-    $section = $_POST['section'];
     $max_students = $_POST['max_students'];
     $status = $_POST['status'];
     $schoolId = $_SESSION['user']['school_id'] ?? null;
     $user_id = $_SESSION['user']['id'] ?? null;
 
-    $stmt = $pdo->prepare("INSERT INTO classes(school_id, user_id, academic_year, grade, section, max_students, status) VALUES(?, ?, ?, ?, ?, ?, ?)");
-    $stmt->execute([$schoolId, $user_id, $academic_year, $grade, $section, $max_students, $status]);
+    $stmt = $pdo->prepare("INSERT INTO classes(school_id, user_id, academic_year, grade, max_students, status) VALUES(?, ?, ?, ?, ?, ?)");
+    $stmt->execute([$schoolId, $user_id, $academic_year, $grade, $max_students, $status]);
 
     header("Location: /E-Shkolla/classes");
     exit;
@@ -53,13 +52,6 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             <label for="grade" class="block text-sm/6 font-medium text-gray-900 dark:text-white">Klasa</label>
             <div class="mt-2">
                 <input id="grade" type="text" name="grade" autocomplete="school_admin" class="border border-1 block w-full rounded-md bg-white px-3 py-1.5 text-base text-gray-900 outline-1 -outline-offset-1 outline-gray-300 placeholder:text-gray-400 focus:outline-2 focus:-outline-offset-2 focus:outline-indigo-600 sm:text-sm/6 dark:bg-white/5 dark:text-white dark:outline-white/10 dark:placeholder:text-gray-500 dark:focus:outline-indigo-500" />
-            </div>
-            </div>
-
-            <div class="sm:col-span-4">
-            <label for="section" class="block text-sm/6 font-medium text-gray-900 dark:text-white">Paralelja</label>
-            <div class="mt-2">
-                <input id="section" type="text" name="section" autocomplete="section" class="border border-1 block w-full rounded-md bg-white px-3 py-1.5 text-base text-gray-900 outline-1 -outline-offset-1 outline-gray-300 placeholder:text-gray-400 focus:outline-2 focus:-outline-offset-2 focus:outline-indigo-600 sm:text-sm/6 dark:bg-white/5 dark:text-white dark:outline-white/10 dark:placeholder:text-gray-500 dark:focus:outline-indigo-500" />
             </div>
             </div>
 

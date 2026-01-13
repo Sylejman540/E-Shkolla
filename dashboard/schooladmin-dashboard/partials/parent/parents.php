@@ -51,51 +51,84 @@ $studentId = isset($_GET['student_id']) ? (int)$_GET['student_id'] : null;
                         <th scope="col" class="px-3 py-3.5 text-left text-sm font-semibold text-gray-900 dark:text-white">Kujdestari/ja</th>
                         <th scope="col" class="px-3 py-3.5 text-left text-sm font-semibold text-gray-900 dark:text-white">Statusi</th>
                         <th scope="col" class="px-3 py-3.5 text-left text-sm font-semibold text-gray-900 dark:text-white">Data e krijimit</th>
-                        <th scope="col" class="py-3.5 pr-4 pl-3 sm:pr-0">
-                            <span class="sr-only">Edit</span>
-                        </th>
                     </tr>
                 </thead>
                 <?php if(!empty($parents)): ?>
                 <?php foreach($parents as $row): ?>
                 <tbody class="divide-y divide-gray-200 dark:divide-white/10">
                     <tr>
-                        <td class="py-4 pr-3 pl-4 text-sm font-medium whitespace-nowrap text-gray-900 sm:pl-0 dark:text-white"><?= htmlspecialchars($row['name']) ?></td>
-                        <td class="px-3 py-4 text-sm whitespace-nowrap text-gray-500 dark:text-gray-400"><?= htmlspecialchars($row['phone']) ?></td>
-                        <td class="px-3 py-4 text-sm whitespace-nowrap text-gray-500 dark:text-gray-400"><?= htmlspecialchars($row['email']) ?></td>
-                        <td class="px-3 py-4 text-sm whitespace-nowrap text-gray-500 dark:text-gray-400">
-                            <?php
-                                echo match ($row['relation']) {
-                                    'father'   => 'Babai',
-                                    'mother' => 'Nëna',
-                                    'guardian' => "Kujestar",
-                                    'other'  => 'Tjetër',
-                                    default  => '-',
-                                };
-                            ?>
-                        </td>
-                        <td class="px-3 py-4 text-sm whitespace-nowrap text-gray-500 dark:text-gray-400">
-                            <?php
-                                $statusLabel = match ($row['status']) {
-                                    'active'   => 'Aktiv',
-                                    'inactive' => 'Joaktiv',
-                                    default    => '-',
-                                };
-
-                                $statusClass = match ($row['status']) {
-                                    'active'   => 'bg-green-200 text-green-700',
-                                    'inactive' => 'bg-red-200 text-red-700',
-                                    default    => 'bg-gray-200 text-gray-700',
-                                };
-                            ?>
-
-                            <span class="inline-block px-2 py-0.5 rounded-full text-xs font-semibold <?= $statusClass ?>">
-                                <?= $statusLabel ?>
+                        <td class="py-4 pr-3 pl-4 text-sm font-medium whitespace-nowrap text-gray-900 sm:pl-0 dark:text-white">
+                            <span contenteditable
+                                class="editable inline-block min-w-[10rem] px-2 py-1 rounded outline-none hover:bg-gray-100 focus:bg-indigo-50 focus:ring-2 focus:ring-indigo-500 transition"
+                                 data-id="<?= (int)$row['user_id'] ?>"
+                                data-field="name">
+                            <?= htmlspecialchars($row['name']) ?>
                             </span>
                         </td>
-                        <td class="px-3 py-4 text-sm whitespace-nowrap text-gray-500 dark:text-gray-400"><?= htmlspecialchars($row['created_at']) ?></td>
-                        <td class="py-4 pr-4 pl-3 text-right text-sm font-medium whitespace-nowrap sm:pr-0">
-                            <a href="#" class="text-indigo-600 hover:text-indigo-900 dark:text-indigo-400 dark:hover:text-indigo-300">Edit<span class="sr-only">, Lindsay Walton</span></a>
+                        
+                        <td class="px-3 py-4 text-sm whitespace-nowrap text-gray-500 dark:text-gray-400">
+                            <span contenteditable
+                                class="editable inline-block min-w-[10rem] px-2 py-1 rounded outline-none hover:bg-gray-100 focus:bg-indigo-50 focus:ring-2 focus:ring-indigo-500 transition"
+                                 data-id="<?= (int)$row['user_id'] ?>"
+                                data-field="email">
+                            <?= htmlspecialchars($row['email']) ?>
+                            </span>
+                        </td>
+                        
+                        <td class="px-3 py-4 text-sm whitespace-nowrap text-gray-500 dark:text-gray-400">
+                            <span contenteditable
+                                class="editable inline-block min-w-[10rem] px-2 py-1 rounded outline-none hover:bg-gray-100 focus:bg-indigo-50 focus:ring-2 focus:ring-indigo-500 transition"
+                                data-id="<?= $row['user_id'] ?>"
+                                data-field="phone">
+                            <?= htmlspecialchars($row['phone']) ?>
+                            </span>
+                        </td>
+
+                        <td class="px-3 py-4 text-sm whitespace-nowrap">
+                        <select
+                            class="editable-select
+                                rounded-full
+                                px-3 py-1
+                                text-xs font-medium
+                                border border-gray-300
+                                bg-gray-50
+                                text-gray-700
+                                focus:outline-none
+                                focus:ring-2
+                                focus:ring-indigo-500
+                                focus:border-indigo-500
+                                transition appearance-none"
+                            data-id="<?= $row['user_id'] ?>"
+                            data-field="relation"
+                            <?= $row['user_id'] == $_SESSION['user']['id'] ? 'opacity-50 cursor-not-allowed' : '' ?>
+                        >
+                            <?php foreach (['father', 'mother','guardian','other'] as $role): ?>
+                            <option value="<?= $role ?>" <?= $row['relation']===$role?'selected':'' ?>>
+                                <?= ucfirst(str_replace('_',' ',$role)) ?>
+                            </option>
+                            <?php endforeach; ?>
+                        </select>
+                        </td>
+
+                        <td class="px-3 py-4 text-sm whitespace-nowrap text-gray-500 dark:text-gray-400">
+                            <?php if ($row['user_id'] != $_SESSION['user']['id']): ?>
+                            <button class="status-toggle px-3 py-1 rounded-full text-xs font-semibold
+                                <?= $row['status']==='active'
+                                ? 'bg-green-100 text-green-700'
+                                : 'bg-red-100 text-red-600' ?>"
+                                data-id="<?= $row['user_id'] ?>"
+                                data-field="status"
+                                data-value="<?= $row['status'] ?>">
+                                <?= ucfirst($row['status']) ?>
+                            </button>
+                            <?php else: ?>
+                            <span class="px-3 py-1 rounded-full text-xs bg-green-100 text-green-700">
+                                Active
+                            </span>
+                            <?php endif; ?>
+                        </td> 
+                        <td class="px-3 py-4 text-sm text-gray-400">
+                            <?= date('Y-m-d', strtotime($row['created_at'])) ?>
                         </td>
                     </tr>
                 </tbody>
@@ -132,6 +165,49 @@ document.addEventListener('DOMContentLoaded', () => {
         });
     });
 });
+
+      document.querySelectorAll('.editable').forEach(el => {
+    el.addEventListener('keydown', e => {
+        if (e.key === 'Enter') {
+        e.preventDefault();
+        el.blur();
+        }
+    });
+    el.addEventListener('blur', () => saveSchool(el));
+    });
+
+    document.querySelectorAll('.editable-select').forEach(el => {
+    el.addEventListener('change', () => saveSchool(el));
+    });
+
+    document.querySelectorAll('.status-toggle').forEach(btn => {
+    btn.addEventListener('click', () => {
+        const newStatus = btn.dataset.value === 'active'
+        ? 'inactive'
+        : 'active';
+        saveSchool(btn, newStatus);
+    });
+    });
+
+function saveSchool(el, forcedValue = null) {
+    const userId = el.dataset.id;
+    const field  = el.dataset.field;
+
+    let value;
+    if (forcedValue !== null) {
+        value = forcedValue;
+    } else if (el.tagName === 'SELECT') {
+        value = el.value;
+    } else {
+        value = el.innerText.trim();
+    }
+
+    fetch('/E-Shkolla/dashboard/schooladmin-dashboard/partials/parent/update-inline.php', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ userId, field, value })
+    }).then(() => location.reload());
+}
 </script>
 
 

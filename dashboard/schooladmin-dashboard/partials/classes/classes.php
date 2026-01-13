@@ -45,7 +45,6 @@ $classes = $stmt->fetchAll(PDO::FETCH_ASSOC);
                     <tr>
                         <th scope="col" class="py-3.5 pr-3 pl-4 text-left text-sm font-semibold text-gray-900 sm:pl-0 dark:text-white">Viti akademik</th>
                         <th scope="col" class="px-3 py-3.5 text-left text-sm font-semibold text-gray-900 dark:text-white">Klasa</th>
-                        <th scope="col" class="px-3 py-3.5 text-left text-sm font-semibold text-gray-900 dark:text-white">Paralelja</th>
                         <th scope="col" class="px-3 py-3.5 text-left text-sm font-semibold text-gray-900 dark:text-white">Nr i nxënësve</th>
                         <th scope="col" class="px-3 py-3.5 text-left text-sm font-semibold text-gray-900 dark:text-white">Statusi</th>
                         <th scope="col" class="px-3 py-3.5 text-left text-sm font-semibold text-gray-900 dark:text-white">Created At</th>
@@ -58,16 +57,53 @@ $classes = $stmt->fetchAll(PDO::FETCH_ASSOC);
                 <?php foreach($classes as $row): ?>
                 <tbody class="divide-y divide-gray-200 dark:divide-white/10">
                     <tr>
-                        <td class="py-4 pr-3 pl-4 text-sm font-medium whitespace-nowrap text-gray-900 sm:pl-0 dark:text-white"><?= htmlspecialchars($row['academic_year']) ?></td>
-                        <td class="px-3 py-4 text-sm whitespace-nowrap text-gray-500 dark:text-gray-400"><?= htmlspecialchars($row['grade']) ?></td>
-                        <td class="px-3 py-4 text-sm whitespace-nowrap text-gray-500 dark:text-gray-400"><?= htmlspecialchars($row['section']) ?></td>
-                        <td class="px-3 py-4 text-sm whitespace-nowrap text-gray-500 dark:text-gray-400"><?= htmlspecialchars($row['max_students']) ?></td>
-                        <td class="px-3 py-4 text-sm whitespace-nowrap">
-                            <p class="text-green-500 py-[1px] w-14 px-2 h-6 bg-green-200 rounded-xl">
-                                <?= htmlspecialchars($row['status']) ?>
-                            </p>
+                        <td class="py-4 pr-3 pl-4 text-sm font-medium whitespace-nowrap text-gray-900 sm:pl-0 dark:text-white">
+                            <span contenteditable
+                                class="editable inline-block min-w-[10rem] px-2 py-1 rounded outline-none hover:bg-gray-100 focus:bg-indigo-50 focus:ring-2 focus:ring-indigo-500 transition"
+                                 data-id="<?= (int)$row['user_id'] ?>"
+                                data-field="academic_year">
+                            <?= htmlspecialchars($row['academic_year']) ?>
+                            </span>
                         </td>
-                        <td class="px-3 py-4 text-sm whitespace-nowrap text-gray-500 dark:text-gray-400"><?= htmlspecialchars($row['created_at']) ?></td>
+                        
+                        <td class="px-3 py-4 text-sm whitespace-nowrap text-gray-500 dark:text-gray-400">
+                            <span contenteditable
+                                class="editable inline-block min-w-[10rem] px-2 py-1 rounded outline-none hover:bg-gray-100 focus:bg-indigo-50 focus:ring-2 focus:ring-indigo-500 transition"
+                                 data-id="<?= (int)$row['user_id'] ?>"
+                                data-field="grade">
+                            <?= htmlspecialchars($row['grade']) ?>
+                            </span>
+                        </td>
+                        
+                        <td class="px-3 py-4 text-sm whitespace-nowrap text-gray-500 dark:text-gray-400">
+                            <span contenteditable
+                                class="editable inline-block min-w-[10rem] px-2 py-1 rounded outline-none hover:bg-gray-100 focus:bg-indigo-50 focus:ring-2 focus:ring-indigo-500 transition"
+                                data-id="<?= $row['user_id'] ?>"
+                                data-field="max_students">
+                            <?= htmlspecialchars($row['max_students']) ?>
+                            </span>
+                        </td>
+
+                        <td class="px-3 py-4 text-sm whitespace-nowrap text-gray-500 dark:text-gray-400">
+                            <?php if ($row['user_id'] != $_SESSION['user']['id']): ?>
+                            <button class="status-toggle px-3 py-1 rounded-full text-xs font-semibold
+                                <?= $row['status']==='active'
+                                ? 'bg-green-100 text-green-700'
+                                : 'bg-red-100 text-red-600' ?>"
+                                data-id="<?= $row['user_id'] ?>"
+                                data-field="status"
+                                data-value="<?= $row['status'] ?>">
+                                <?= ucfirst($row['status']) ?>
+                            </button>
+                            <?php else: ?>
+                            <span class="px-3 py-1 rounded-full text-xs bg-green-100 text-green-700">
+                                Active
+                            </span>
+                            <?php endif; ?>
+                        </td>   
+                        <td class="px-3 py-4 text-sm text-gray-400">
+                            <?= date('Y-m-d', strtotime($row['created_at'])) ?>
+                        </td>
                         <td class="py-4 pr-4 pl-3 text-right text-sm font-medium whitespace-nowrap sm:pr-0">
                             <a href="/E-Shkolla/schedule" class="text-indigo-600 hover:text-indigo-900 dark:text-indigo-400 dark:hover:text-indigo-300">Shiko orarin</a>
                         </td>
@@ -104,6 +140,49 @@ $classes = $stmt->fetchAll(PDO::FETCH_ASSOC);
   cancel?.addEventListener('click', () => {
     form.classList.add('hidden');
   });
+
+      document.querySelectorAll('.editable').forEach(el => {
+    el.addEventListener('keydown', e => {
+        if (e.key === 'Enter') {
+        e.preventDefault();
+        el.blur();
+        }
+    });
+    el.addEventListener('blur', () => saveSchool(el));
+    });
+
+    document.querySelectorAll('.editable-select').forEach(el => {
+    el.addEventListener('change', () => saveSchool(el));
+    });
+
+    document.querySelectorAll('.status-toggle').forEach(btn => {
+    btn.addEventListener('click', () => {
+        const newStatus = btn.dataset.value === 'active'
+        ? 'inactive'
+        : 'active';
+        saveSchool(btn, newStatus);
+    });
+    });
+
+function saveSchool(el, forcedValue = null) {
+    const userId = el.dataset.id;
+    const field  = el.dataset.field;
+
+    let value;
+    if (forcedValue !== null) {
+        value = forcedValue;
+    } else if (el.tagName === 'SELECT') {
+        value = el.value;
+    } else {
+        value = el.innerText.trim();
+    }
+
+    fetch('/E-Shkolla/dashboard/schooladmin-dashboard/partials/classes/update-inline.php', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ userId, field, value })
+    }).then(() => location.reload());
+}
 </script>
 
 </body>
