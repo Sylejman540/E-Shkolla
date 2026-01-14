@@ -56,21 +56,24 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         $user_id = $pdo->lastInsertId();
 
         // 2️⃣ teachers
-        $stmt = $pdo->prepare("
-            INSERT INTO teachers
-            (school_id, user_id, name, email, phone, gender, subject_name, status, profile_photo)
-            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
-        ");
-        $stmt->execute([
-            $schoolId,
-            $user_id,
-            $name,
-            $email,
-            $phone,
-            $gender,
-            $status,
-            $profile_photo
-        ]);
+$stmt = $pdo->prepare("
+    INSERT INTO teachers
+    (school_id, user_id, name, email, phone, gender, subject_name, status, profile_photo)
+    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
+");
+
+$stmt->execute([
+    $schoolId,
+    $user_id,
+    $name,
+    $email,
+    $phone,
+    $gender,
+    $subject_name,
+    $status,
+    $profile_photo   // ✅ STRING safely bound
+]);
+
         $teacher_id = $pdo->lastInsertId();
 
         // 3️⃣ subjects

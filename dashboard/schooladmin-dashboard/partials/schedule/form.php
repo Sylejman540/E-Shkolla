@@ -11,17 +11,58 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     $end_time = $_POST['end_time'];
     $status = $_POST['status'];
     $schoolId = $_SESSION['user']['school_id'] ?? null;
-    $subjectId = $_POST['subject_id'];
+$teacherId = (int)$_POST['teacher_id'];
+
+$stmt = $pdo->prepare("
+    SELECT s.id
+    FROM subjects s
+    JOIN teachers t ON t.user_id = s.user_id
+    WHERE t.id = ? AND s.school_id = ?
+    LIMIT 1
+");
+$stmt->execute([$teacherId, $schoolId]);
+
+$subjectId = $stmt->fetchColumn();
+
+if (!$subjectId) {
+    die('No subject found for this teacher');
+}
+
     $teacherId = $_POST['teacher_id'];    
     $classId = $_POST['class_id'];
     $user_id = $_SESSION['user']['id'] ?? null;
+$stmt = $pdo->prepare("
+    INSERT INTO class_schedule
+    (school_id, user_id, class_id, day, start_time, end_time, subject_id, teacher_id, status)
+    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
+");
 
-    $stmt = $pdo->prepare("INSERT INTO class_schedule (school_id, user_id, class_id, day, start_time, end_time, subject_id, teacher_id, status) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)");
-    $stmt->execute([$schoolId, $user_id, $classId, $day, $start_time, $end_time, $subjectId, $teacherId, $status]);
+$stmt->execute([
+    $schoolId,
+    $user_id,
+    $classId,
+    $day,
+    $start_time,
+    $end_time,
+    $subjectId,
+    $teacherId,
+    $status
+]);
 
     header("Location: /E-Shkolla/schedule");
     exit;
 }
+?>
+
+<?php
+$teacherSubjects = $pdo->prepare("
+    SELECT s.id AS subject_id, s.subject_name, t.id AS teacher_id
+    FROM subjects s
+    JOIN teachers t ON t.user_id = s.user_id
+    WHERE s.school_id = ?
+");
+$teacherSubjects->execute([$schoolId]);
+$teacherSubjects = $teacherSubjects->fetchAll(PDO::FETCH_ASSOC);
 
 ?>
 <div id="addSchoolForm" class="hidden fixed inset-0 z-50 flex items-start justify-center bg-black/30 overflow-y-auto pt-10">
@@ -82,32 +123,36 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 
           <div class="sm:col-span-3">
               <label class="block text-sm font-medium text-gray-900 dark:text-white">Lënda</label>
-              <select name="subject_id" class="mt-2 border block w-full rounded-md p-2">
-                  <?php
-                  $subjects = $pdo->prepare("SELECT id, subject_name FROM subjects WHERE school_id = ?");
-                  $subjects->execute([$_SESSION['user']['school_id']]);
-                  foreach ($subjects as $s):
-                  ?>
-                      <option value="<?= $s['id'] ?>">
-                          <?= htmlspecialchars($s['subject_name']) ?>
-                      </option>
-                  <?php endforeach; ?>
-              </select>
+<input type="hidden" name="subject_id" id="subject_id">
+
+<select id="subjectSelect"
+        class="mt-2 border block w-full rounded-md p-2 bg-gray-100"
+        disabled>
+<?php foreach ($teacherSubjects as $s): ?>
+    <option value="<?= $s['subject_id'] ?>"
+            data-teacher-id="<?= $s['teacher_id'] ?>">
+        <?= htmlspecialchars($s['subject_name']) ?>
+    </option>
+<?php endforeach; ?>
+</select>
+
           </div>
 
           <div class="sm:col-span-3">
               <label class="block text-sm font-medium text-gray-900 dark:text-white">Mësuesi</label>
-              <select name="teacher_id" class="mt-2 border block w-full rounded-md p-2">
-                  <?php
-                  $teachers = $pdo->prepare("SELECT id, name FROM teachers WHERE school_id = ?");
-                  $teachers->execute([$_SESSION['user']['school_id']]);
-                  foreach ($teachers as $t):
-                  ?>
-                      <option value="<?= $t['id'] ?>">
-                          <?= htmlspecialchars($t['name']) ?>
-                      </option>
-                  <?php endforeach; ?>
-              </select>
+              <select name="teacher_id" id="teacherSelect"
+        class="mt-2 border block w-full rounded-md p-2">
+<?php
+$teachers = $pdo->prepare("SELECT id, name FROM teachers WHERE school_id = ?");
+$teachers->execute([$schoolId]);
+foreach ($teachers as $t):
+?>
+    <option value="<?= $t['id'] ?>">
+        <?= htmlspecialchars($t['name']) ?>
+    </option>
+<?php endforeach; ?>
+</select>
+
           </div>
 
           <div class="sm:col-span-2">

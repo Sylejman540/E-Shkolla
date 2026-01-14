@@ -13,6 +13,7 @@ $stmt = $pdo->prepare("SELECT * FROM classes WHERE school_id = ?");
 $stmt->execute([$schoolId]);
 
 $classes = $stmt->fetchAll(PDO::FETCH_ASSOC);
+
 ?>
 <!DOCTYPE html>
 <html lang="en">
@@ -221,6 +222,33 @@ function toggleSchedule(classId) {
     const row = document.getElementById('schedule-' + classId);
     row.classList.toggle('hidden');
 }
+
+const teacherSelect = document.getElementById('teacherSelect');
+const subjectSelect = document.getElementById('subjectSelect');
+const subjectInput  = document.getElementById('subject_id');
+
+function syncSubject() {
+    const teacherId = teacherSelect.value;
+    let found = false;
+
+    [...subjectSelect.options].forEach(opt => {
+        if (opt.dataset.teacherId === teacherId) {
+            opt.hidden = false;
+            opt.selected = true;
+            subjectInput.value = opt.value;
+            found = true;
+        } else {
+            opt.hidden = true;
+        }
+    });
+
+    if (!found) {
+        subjectInput.value = '';
+    }
+}
+
+syncSubject();
+teacherSelect.addEventListener('change', syncSubject);
 </script>
 
 </body>
