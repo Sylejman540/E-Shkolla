@@ -1,26 +1,31 @@
 <?php
-if(session_status() === PHP_SESSION_NONE){
+if (session_status() === PHP_SESSION_NONE) {
     session_start();
 }
 
-require_once __DIR__  . '/../../../../db.php';
+require_once __DIR__ . '/../../../../db.php';
+
+$schoolId = $_SESSION['user']['school_id'] ?? null;
+
+if (!$schoolId) {
+    die('School ID missing');
+}
 
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
-    $academic_year = $_POST['academic_year'];
-    $grade = $_POST['grade'];
-    $max_students = $_POST['max_students'];
-    $status = $_POST['status'];
-    $schoolId = $_SESSION['user']['school_id'] ?? null;
-    $user_id = $_SESSION['user']['id'] ?? null;
 
-    $stmt = $pdo->prepare("INSERT INTO classes(school_id, user_id, academic_year, grade, max_students, status) VALUES(?, ?, ?, ?, ?, ?)");
-    $stmt->execute([$schoolId, $user_id, $academic_year, $grade, $max_students, $status]);
+    $academic_year = $_POST['academic_year'];
+    $grade         = $_POST['grade'];
+    $max_students  = $_POST['max_students'];
+    $status        = $_POST['status'];
+
+    $stmt = $pdo->prepare("INSERT INTO classes(school_id, user_id, academic_year, grade, max_students, status) VALUES (?, ?, ?, ?, ?, ?)");
+    $stmt->execute([$schoolId, $teacherUserId, $academic_year, $grade, $max_students, $status]);
 
     header("Location: /E-Shkolla/classes");
     exit;
 }
-
 ?>
+
 <div id="addSchoolForm" class="hidden fixed inset-0 z-50 flex items-start justify-center bg-black/30 overflow-y-auto pt-10">
      
     <div class="w-full max-w-3xl px-4">
@@ -39,8 +44,6 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         <div class="grid grid-cols-1 gap-x-8 gap-y-10 border-b border-gray-900/10 pb-8 md:grid-cols-3 dark:border-white/10">
             
         <form action="/E-Shkolla/dashboard/schooladmin-dashboard/partials/classes/form.php" method="post" class="grid max-w-2xl grid-cols-1 gap-x-6 gap-y-8 sm:grid-cols-6 md:col-span-2">
-            <input type="hidden" name="user_id" value="<?= $user_id ?>">
-
             <div class="sm:col-span-3">
             <label for="academic_year" class="block text-sm/6 font-medium text-gray-900 dark:text-white">Viti akademik</label>
             <div class="mt-2">
