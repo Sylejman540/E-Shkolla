@@ -88,11 +88,18 @@ $students = $stmt->fetchAll(PDO::FETCH_ASSOC);
                     <tr>
                         <td class="py-4 pr-3 pl-4 text-sm font-medium whitespace-nowrap text-gray-900 sm:pl-0 dark:text-white"><?= htmlspecialchars($row['name']) ?></td>
                         <td class="px-3 py-4 text-sm whitespace-nowrap text-gray-500 dark:text-gray-400"><?= htmlspecialchars($row['email']) ?></td>
-                        <td class="px-3 py-4 text-sm whitespace-nowrap">
-                            <p class="text-green-500 py-[1px] w-14 px-2 h-6 bg-green-200 rounded-xl">
-                                <?= htmlspecialchars($row['status']) ?>
-                            </p>
-                        </td>
+                        <td class="px-3 py-4 text-sm whitespace-nowrap text-gray-500 dark:text-gray-400">
+                            <button class="status-toggle px-3 py-1 rounded-full text-xs font-semibold
+                                <?= $row['status']==='active'
+                                ? 'bg-green-100 text-green-700'
+                                : 'bg-red-100 text-red-600' ?>"
+                               
+                                data-field="status"
+                                data-value="<?= $row['status'] ?>">
+                                <?= ucfirst($row['status']) ?>
+                            </button>
+                
+                        </td>   
                         <td class="px-3 py-4 text-sm whitespace-nowrap">
                             <div class="flex gap-2">
                             <form action="/E-Shkolla/class-attendance" method="post">
