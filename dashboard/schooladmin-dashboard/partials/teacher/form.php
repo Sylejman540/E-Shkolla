@@ -6,16 +6,18 @@ if (session_status() === PHP_SESSION_NONE) {
 require_once __DIR__ . '/../../../../db.php';
 
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
-    $name    = $_POST['name'];
-    $email   = $_POST['email'];
-    $phone   = $_POST['phone'];
-    $gender  = $_POST['gender'];
-    $status  = $_POST['status'];
-    $password = $_POST['password']; 
-    $subject_name = $_POST['subject_name'];
-    $description = $_POST['description'];
+
+    $name          = $_POST['name'];
+    $email         = $_POST['email'];
+    $phone         = $_POST['phone'];
+    $gender        = $_POST['gender'];
+    $status        = $_POST['status'];
+    $password      = $_POST['password'];
+    $subject_name  = $_POST['subject_name'];
+    $description   = $_POST['description'];
+    $class_id      = (int) $_POST['class'];
+
     $schoolId = $_SESSION['user']['school_id'] ?? null;
-    $user_id = $_SESSION['user']['id'] ?? null;
 
     if (!$schoolId) {
         die('School ID missing from session');
@@ -33,72 +35,81 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         $fileName = $_FILES['profile_photo']['name'];
         $fileExt  = strtolower(pathinfo($fileName, PATHINFO_EXTENSION));
 
-        $allowed = ['jpg', 'jpeg', 'png', 'webp'];
-        if (!in_array($fileExt, $allowed)) {
+        if (!in_array($fileExt, ['jpg', 'jpeg', 'png', 'webp'], true)) {
             die('Invalid image type');
         }
 
         $newFileName = uniqid('teacher_', true) . '.' . $fileExt;
-        $destination = $uploadDir . $newFileName;
-
-        if (move_uploaded_file($fileTmp, $destination)) {
-            $profile_photo = 'uploads/teachers/' . $newFileName;
-        }
+        move_uploaded_file($fileTmp, $uploadDir . $newFileName);
+        $profile_photo = 'uploads/teachers/' . $newFileName;
     }
 
-$stmt = $pdo->prepare("
-    INSERT INTO users (school_id, name, email, password, role, status)
-    VALUES (?, ?, ?, ?, 'teacher', ?)
-");
-$stmt->execute([$schoolId, $name, $email, $password, $status]);
+    try {
+        $pdo->beginTransaction();
 
-$newUserId = $pdo->lastInsertId(); // ✅ THIS WAS MISSING
+        // 1️⃣ users
+        $stmt = $pdo->prepare("
+            INSERT INTO users (school_id, name, email, password, role, status)
+            VALUES (?, ?, ?, ?, 'teacher', ?)
+        ");
+        $stmt->execute([$schoolId, $name, $email, $password, $status]);
+        $user_id = $pdo->lastInsertId();
 
+        // 2️⃣ teachers
+        $stmt = $pdo->prepare("
+            INSERT INTO teachers
+            (school_id, user_id, name, email, phone, gender, subject_name, status, profile_photo)
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
+        ");
+        $stmt->execute([
+            $schoolId,
+            $user_id,
+            $name,
+            $email,
+            $phone,
+            $gender,
+            $status,
+            $profile_photo
+        ]);
+        $teacher_id = $pdo->lastInsertId();
 
-$stmt = $pdo->prepare("
-    INSERT INTO teachers
-    (school_id, user_id, name, email, phone, gender, subject_name, status, profile_photo)
-    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
-");
-$stmt->execute([
-    $schoolId,
-    $newUserId, // ✅ NOT session user
-    $name,
-    $email,
-    $phone,
-    $gender,
-    $subject_name,
-    $status,
-    $profile_photo
-]);
+        // 3️⃣ subjects
+        $stmt = $pdo->prepare("
+            INSERT INTO subjects
+            (school_id, name, subject_name, description, status)
+            VALUES (?, ?, ?, ?, ?)
+        ");
+        $stmt->execute([
+            $schoolId,
+            $name,
+            $subject_name,
+            $description,
+            $status
+        ]);
+        $subject_id = $pdo->lastInsertId();
 
-$teacher_id = $pdo->lastInsertId(); // ✅ REAL teacher ID
+        // 4️⃣ teacher_class (THIS IS THE MISSING PART)
+        $stmt = $pdo->prepare("
+            INSERT INTO teacher_class
+            (school_id, teacher_id, class_id, subject_id)
+            VALUES (?, ?, ?, ?)
+        ");
+        $stmt->execute([
+            $schoolId,
+            $teacher_id,
+            $class_id,
+            $subject_id
+        ]);
 
+        $pdo->commit();
 
-$stmt = $pdo->prepare("
-    INSERT INTO subjects (school_id, user_id, name, subject_name, description, status)
-    VALUES (?, ?, ?, ?, ?, ?)
-");
-$stmt->execute([
-    $schoolId,
-    $newUserId,
-    $name,
-    $subject_name,
-    $description,
-    $status
-]);
+        header("Location: /E-Shkolla/teachers");
+        exit;
 
-$class_id = $_POST['class'];
-
-$stmt = $pdo->prepare("
-    INSERT INTO teacher_class (school_id, teacher_id, class_id)
-    VALUES (?, ?, ?)
-");
-$stmt->execute([$schoolId, $teacher_id, $class_id]);
-
-
-    header("Location: /E-Shkolla/teachers");
-    exit;
+    } catch (Throwable $e) {
+        $pdo->rollBack();
+        die($e->getMessage());
+    }
 }
 ?>
 
