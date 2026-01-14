@@ -8,9 +8,7 @@ if (
 ) {
     http_response_code(403);
     exit;
-}   
-
-
+}
 
 $data = json_decode(file_get_contents('php://input'), true);
 
@@ -18,51 +16,22 @@ $userId = (int) ($data['userId'] ?? 0);
 $field  = $data['field'] ?? '';
 $value  = trim($data['value'] ?? '');
 
-$allowedStudentsFields = ['phone','gender','class_name','date_birth','status'];
-$allowedUserFields    = ['name','email','status'];
-
-if (!$userId) {
+if (!$userId || !$field) {
+    http_response_code(400);
     exit;
 }
 
-/**
- * 1️⃣ STATUS CHANGE (SYNC USERS + TEACHERS)
- */
-if ($field === 'status') {
+$userFields     = ['name', 'email', 'status'];
+$studentFields  = ['name', 'email', 'phone', 'gender', 'class_name', 'date_birth', 'status'];
 
-    // Update USERS (source of truth)
-    $stmt = $pdo->prepare("UPDATE users SET status = ? WHERE id = ?");
+if (in_array($field, $userFields, true)) {
+    $stmt = $pdo->prepare("UPDATE users SET `$field` = ?, updated_at = NOW() WHERE id = ?");
     $stmt->execute([$value, $userId]);
-
-    // Update TEACHERS mirror
-    $stmt = $pdo->prepare(
-        "UPDATE students SET status = ? WHERE user_id = ?"
-    );
-    $stmt->execute([$value, $userId]);
-
-    exit;
 }
 
-/**
- * 2️⃣ USER FIELDS (name, email)
- */
-if (in_array($field, $allowedUserFields, true)) {
-
-    $stmt = $pdo->prepare("UPDATE users SET `$field` = ? WHERE id = ?");
+if (in_array($field, $studentFields, true)) {
+    $stmt = $pdo->prepare("UPDATE students SET `$field` = ?, updated_at = NOW() WHERE user_id = ?");
     $stmt->execute([$value, $userId]);
-
-    exit;
 }
 
-/**
- * 3️⃣ TEACHER-SPECIFIC FIELDS
- */
-if (in_array($field, $allowedStudentsFields, true)) {
-
-    $stmt = $pdo->prepare(
-        "UPDATE students SET `$field` = ? WHERE user_id = ?"
-    );
-    $stmt->execute([$value, $userId]);
-
-    exit;
-}
+echo json_encode(['success' => true]);
