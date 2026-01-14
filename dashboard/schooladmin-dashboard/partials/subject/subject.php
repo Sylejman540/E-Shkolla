@@ -41,7 +41,7 @@ $subjects = $stmt->fetchAll(PDO::FETCH_ASSOC);
                 <thead>
                     <tr>
                         <th scope="col" class="py-3.5 pr-3 pl-4 text-left text-sm font-semibold text-gray-900 sm:pl-0 dark:text-white">Mësimdhënësi</th>
-                        <th scope="col" class="py-3.5 pr-3 pl-4 text-left text-sm font-semibold text-gray-900 sm:pl-0 dark:text-white">Emri i lëndës</th>
+                        <th scope="col" class="px-3 py-3.5 text-left text-sm font-semibold text-gray-900 dark:text-white">Emri i lëndës</th>
                         <th scope="col" class="px-3 py-3.5 text-left text-sm font-semibold text-gray-900 dark:text-white">Përshkrimi</th>
                         <th scope="col" class="px-3 py-3.5 text-left text-sm font-semibold text-gray-900 dark:text-white">Statusi</th>
                         <th scope="col" class="px-3 py-3.5 text-left text-sm font-semibold text-gray-900 dark:text-white">Data e krijimit</th>
@@ -55,28 +55,28 @@ $subjects = $stmt->fetchAll(PDO::FETCH_ASSOC);
                 <tbody class="divide-y divide-gray-200 dark:divide-white/10">
                     <tr>
                         <td class="py-4 pr-3 pl-4 text-sm font-medium whitespace-nowrap text-gray-900 sm:pl-0 dark:text-white"><?= htmlspecialchars($row['name']) ?></td>
-                        <td class="py-4 pr-3 pl-4 text-sm font-medium whitespace-nowrap text-gray-900 sm:pl-0 dark:text-white"><?= htmlspecialchars($row['subject_name']) ?></td>
+                        <td class="px-3 py-4 text-sm whitespace-nowrap text-gray-500 dark:text-gray-400"><?= htmlspecialchars($row['subject_name']) ?></td>
                         <td class="px-3 py-4 text-sm whitespace-nowrap text-gray-500 dark:text-gray-400"><?= htmlspecialchars($row['description']) ?></td>
                         <td class="px-3 py-4 text-sm whitespace-nowrap text-gray-500 dark:text-gray-400">
-                            <?php
-                                $statusLabel = match ($row['status']) {
-                                    'active'   => 'Aktiv',
-                                    'inactive' => 'Joaktiv',
-                                    default    => '-',  
-                                };
-
-                                $statusClass = match ($row['status']) {
-                                    'active'   => 'bg-green-200 text-green-700',
-                                    'inactive' => 'bg-red-200 text-red-700',
-                                    default    => 'bg-gray-200 text-gray-700',
-                                };
-                            ?>
-
-                            <span class="inline-block px-2 py-0.5 rounded-full text-xs font-semibold <?= $statusClass ?>">
-                                <?= $statusLabel ?>
+                            <?php if ($row['user_id'] != $_SESSION['user']['id']): ?>
+                            <button class="status-toggle px-3 py-1 rounded-full text-xs font-semibold
+                                <?= $row['status']==='active'
+                                ? 'bg-green-100 text-green-700'
+                                : 'bg-red-100 text-red-600' ?>"
+                                data-id="<?= $row['user_id'] ?>"
+                                data-field="status"
+                                data-value="<?= $row['status'] ?>">
+                                <?= ucfirst($row['status']) ?>
+                            </button>
+                            <?php else: ?>
+                            <span class="px-3 py-1 rounded-full text-xs bg-green-100 text-green-700">
+                                Active
                             </span>
+                            <?php endif; ?>
                         </td>
-                        <td class="px-3 py-4 text-sm whitespace-nowrap text-gray-500 dark:text-gray-400"><?= htmlspecialchars($row['created_at']) ?></td>
+                        <td class="px-3 py-4 text-sm text-gray-400">
+                            <?= date('Y-m-d', strtotime($row['created_at'])) ?>
+                        </td>
                         <td class="py-4 pr-4 pl-3 text-right text-sm font-medium whitespace-nowrap sm:pr-0">
                             <a href="/E-Shkolla/dashboard/schooladmin-dashboard/partials/subject/update-teacher.php?id=<?= $row['id'] ?>" class="text-indigo-600 hover:text-indigo-900 dark:text-indigo-400 dark:hover:text-indigo-300">Edit</a>
                         </td>
