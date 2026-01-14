@@ -26,8 +26,12 @@ $allowedFields = [
 if (!$classId || !in_array($field, $allowedFields, true)) {
     exit;
 }
-
-$stmt = $pdo->prepare(
-    "UPDATE classes SET `$field` = ? WHERE id = ?"
-);
+$stmt = $pdo->prepare("UPDATE classes SET `$field` = ? WHERE id = ?");
 $stmt->execute([$value, $classId]);
+
+if ($field === 'status') {
+    $stmt = $pdo->prepare("UPDATE class_schedule SET status = ? WHERE class_id = ?");
+    $stmt->execute([$value, $classId]);
+}
+
+http_response_code(200);

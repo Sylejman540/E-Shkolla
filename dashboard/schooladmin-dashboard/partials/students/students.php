@@ -113,8 +113,8 @@ $students = $stmt->fetchAll(PDO::FETCH_ASSOC);
                             <span contenteditable
                                 class="editable inline-block min-w-[10rem] px-2 py-1 rounded outline-none hover:bg-gray-100 focus:bg-indigo-50 focus:ring-2 focus:ring-indigo-500 transition"
                                 data-id="<?= $row['user_id'] ?>"
-                                data-field="class_name">
-                            <?= htmlspecialchars($row['class_name']) ?>
+                                data-field="email">
+                            <?= htmlspecialchars($row['email']) ?>
                             </span>
                         </td>
 

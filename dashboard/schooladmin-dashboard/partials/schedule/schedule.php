@@ -44,7 +44,6 @@ $classes = $stmt->fetchAll(PDO::FETCH_ASSOC);
             <tr>
                 <th class="py-3.5 pl-4 text-left text-sm font-semibold">Viti akademik</th>
                 <th class="px-3 py-3.5 text-left text-sm font-semibold">Klasa</th>
-                <th class="px-3 py-3.5 text-left text-sm font-semibold">Seksioni</th>
                 <th class="px-3 py-3.5 text-left text-sm font-semibold">Nr i nxënësve</th>
                 <th class="px-3 py-3.5 text-left text-sm font-semibold">Statusi</th>
                 <th class="px-3 py-3.5 text-left text-sm font-semibold">Created At</th>
@@ -59,7 +58,6 @@ $classes = $stmt->fetchAll(PDO::FETCH_ASSOC);
             <tr>
                 <td class="py-4 pl-4 font-medium"><?= htmlspecialchars($row['academic_year']) ?></td>
                 <td class="px-3 py-4"><?= htmlspecialchars($row['grade']) ?></td>
-                <td class="px-3 py-4"><?= htmlspecialchars($row['section']) ?></td>
                 <td class="px-3 py-4"><?= htmlspecialchars($row['max_students']) ?></td>
                 <td class="px-3 py-4">
                     <span class="px-2 py-1 rounded-xl bg-green-200 text-green-700 text-xs">
