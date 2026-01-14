@@ -36,6 +36,37 @@ $stmt = $pdo->prepare("SELECT status, COUNT(*) AS total FROM teachers WHERE scho
 $stmt->execute([$schoolId]);
 
 $teachersByStatus = $stmt->fetchAll(PDO::FETCH_KEY_PAIR);
+
+/* ===============================
+   ATTENDANCE TODAY
+================================ */
+$attendanceStmt = $pdo->prepare("
+    SELECT present, COUNT(*) AS total
+    FROM attendance
+    WHERE school_id = ?
+      AND id IN (
+          SELECT MAX(id)
+          FROM attendance
+          WHERE school_id = ?
+          GROUP BY student_id
+      )
+    GROUP BY present
+");
+$attendanceStmt->execute([$schoolId, $schoolId]);
+
+$present = 0;
+$absent  = 0;
+
+foreach ($attendanceStmt->fetchAll(PDO::FETCH_ASSOC) as $row) {
+    $row['present'] ? $present = $row['total'] : $absent = $row['total'];
+}
+
+/* ===============================
+   TEACHERS STATUS
+================================ */
+$activeTeachers   = $teachersByStatus['Active']   ?? 0;
+$inactiveTeachers = $teachersByStatus['Inactive'] ?? 0;
+
 ?>
 
 <!DOCTYPE html>
@@ -79,13 +110,6 @@ $teachersByStatus = $stmt->fetchAll(PDO::FETCH_KEY_PAIR);
             <canvas id="teachersStatusChart"></canvas>
           </div>
 
-          <div class="h-64 md:col-span-2">
-            <canvas id="studentsByClassChart"></canvas>
-          </div>
-
-          <div class="h-64 md:col-span-2">
-            <canvas id="absencesByClassChart"></canvas>
-          </div>
         </div>
 
       </div>
@@ -101,7 +125,10 @@ document.addEventListener('DOMContentLoaded', () => {
     data: {
       labels: ['Prezent', 'Mungesë'],
       datasets: [{
-        data: [420, 38],
+        data: [
+          <?= (int)$present ?>,
+          <?= (int)$absent ?>
+        ],
         backgroundColor: ['#6366f1', '#ef4444'],
         borderWidth: 0
       }]
@@ -126,7 +153,10 @@ document.addEventListener('DOMContentLoaded', () => {
     data: {
       labels: ['Aktiv', 'Jo aktiv'],
       datasets: [{
-        data: [42, 3],
+        data: [
+          <?= (int)$activeTeachers ?>,
+          <?= (int)$inactiveTeachers ?>
+        ],
         backgroundColor: ['#6366f1', '#e5e7eb'],
         borderWidth: 0
       }]
@@ -144,66 +174,6 @@ document.addEventListener('DOMContentLoaded', () => {
       }
     }
   });
-
-  // 3. Students by Class
-  new Chart(document.getElementById('studentsByClassChart'), {
-    type: 'bar',
-    data: {
-      labels: ['6A', '6B', '7A', '7B', '8A', '9A'],
-      datasets: [{
-        label: 'Nxënës',
-        data: [28, 30, 27, 29, 31, 26],
-        backgroundColor: '#3b82f6',
-        borderRadius: 6
-      }]
-    },
-    options: {
-      maintainAspectRatio: false,
-      plugins: {
-        title: {
-          display: true,
-          text: 'Nxënës sipas klasës'
-        },
-        legend: { display: false }
-      },
-      scales: {
-        y: {
-          beginAtZero: true
-        }
-      }
-    }
-  });
-
-  // 4. Absences by Class
-  new Chart(document.getElementById('absencesByClassChart'), {
-    type: 'bar',
-    data: {
-      labels: ['6A', '6B', '7A', '7B', '8A'],
-      datasets: [{
-        label: 'Mungesa',
-        data: [2, 5, 1, 4, 3],
-        backgroundColor: '#f97316',
-        borderRadius: 6
-      }]
-    },
-    options: {
-      indexAxis: 'y',
-      maintainAspectRatio: false,
-      plugins: {
-        title: {
-          display: true,
-          text: 'Mungesa sot sipas klasës'
-        },
-        legend: { display: false }
-      },
-      scales: {
-        x: {
-          beginAtZero: true
-        }
-      }
-    }
-  });
-
 });
 </script>
 

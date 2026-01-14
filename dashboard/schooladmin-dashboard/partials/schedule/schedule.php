@@ -110,7 +110,24 @@ $classes = $stmt->fetchAll(PDO::FETCH_ASSOC);
 
                 foreach ($schedule as $lesson) {
                     $timeKey = $lesson['start_time'] . ' - ' . $lesson['end_time'];
-                    $grid[$timeKey][$lesson['day']] = $lesson;
+$dayMap = [
+    'E Hënë'     => 'monday',
+    'E Martë'    => 'tuesday',
+    'E Mërkurë'  => 'wednesday',
+    'E Enjte'    => 'thursday',
+    'E Premte'   => 'friday',
+    'Monday'     => 'monday',
+    'Tuesday'    => 'tuesday',
+    'Wednesday'  => 'wednesday',
+    'Thursday'   => 'thursday',
+    'Friday'     => 'friday',
+];
+
+$normalizedDay = strtolower(trim($lesson['day']));
+$normalizedDay = $dayMap[$lesson['day']] ?? $normalizedDay;
+
+$grid[$timeKey][$normalizedDay] = $lesson;
+
                 }
             
             ?>
