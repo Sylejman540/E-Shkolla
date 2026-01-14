@@ -60,7 +60,7 @@ $classes = $stmt->fetchAll(PDO::FETCH_ASSOC);
                         <td class="py-4 pr-3 pl-4 text-sm font-medium whitespace-nowrap text-gray-900 sm:pl-0 dark:text-white">
                             <span contenteditable
                                 class="editable inline-block min-w-[10rem] px-2 py-1 rounded outline-none hover:bg-gray-100 focus:bg-indigo-50 focus:ring-2 focus:ring-indigo-500 transition"
-                                 data-id="<?= (int)$row['user_id'] ?>"
+                                 data-id="<?= (int)$row['id'] ?>"
                                 data-field="academic_year">
                             <?= htmlspecialchars($row['academic_year']) ?>
                             </span>
@@ -69,7 +69,7 @@ $classes = $stmt->fetchAll(PDO::FETCH_ASSOC);
                         <td class="px-3 py-4 text-sm whitespace-nowrap text-gray-500 dark:text-gray-400">
                             <span contenteditable
                                 class="editable inline-block min-w-[10rem] px-2 py-1 rounded outline-none hover:bg-gray-100 focus:bg-indigo-50 focus:ring-2 focus:ring-indigo-500 transition"
-                                 data-id="<?= (int)$row['user_id'] ?>"
+                                 data-id="<?= (int)$row['id'] ?>"
                                 data-field="grade">
                             <?= htmlspecialchars($row['grade']) ?>
                             </span>
@@ -78,19 +78,19 @@ $classes = $stmt->fetchAll(PDO::FETCH_ASSOC);
                         <td class="px-3 py-4 text-sm whitespace-nowrap text-gray-500 dark:text-gray-400">
                             <span contenteditable
                                 class="editable inline-block min-w-[10rem] px-2 py-1 rounded outline-none hover:bg-gray-100 focus:bg-indigo-50 focus:ring-2 focus:ring-indigo-500 transition"
-                                data-id="<?= $row['user_id'] ?>"
+                                data-id="<?= $row['id'] ?>"
                                 data-field="max_students">
                             <?= htmlspecialchars($row['max_students']) ?>
                             </span>
                         </td>
 
                         <td class="px-3 py-4 text-sm whitespace-nowrap text-gray-500 dark:text-gray-400">
-                            <?php if ($row['user_id'] != $_SESSION['user']['id']): ?>
+                            <?php if ($row['id'] != $_SESSION['user']['id']): ?>
                             <button class="status-toggle px-3 py-1 rounded-full text-xs font-semibold
                                 <?= $row['status']==='active'
                                 ? 'bg-green-100 text-green-700'
                                 : 'bg-red-100 text-red-600' ?>"
-                                data-id="<?= $row['user_id'] ?>"
+                                data-id="<?= $row['id'] ?>"
                                 data-field="status"
                                 data-value="<?= $row['status'] ?>">
                                 <?= ucfirst($row['status']) ?>
@@ -165,7 +165,8 @@ $classes = $stmt->fetchAll(PDO::FETCH_ASSOC);
     });
 
 function saveSchool(el, forcedValue = null) {
-    const userId = el.dataset.id;
+const classId = el.dataset.id;
+
     const field  = el.dataset.field;
 
     let value;
@@ -180,7 +181,8 @@ function saveSchool(el, forcedValue = null) {
     fetch('/E-Shkolla/dashboard/schooladmin-dashboard/partials/classes/update-inline.php', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ userId, field, value })
+body: JSON.stringify({ classId, field, value })
+
     }).then(() => location.reload());
 }
 </script>

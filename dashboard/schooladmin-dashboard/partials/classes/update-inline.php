@@ -8,39 +8,26 @@ if (
 ) {
     http_response_code(403);
     exit;
-}   
+}
 
 $data = json_decode(file_get_contents('php://input'), true);
 
-$userId = (int) ($data['userId'] ?? 0);
-$field  = $data['field'] ?? '';
-$value  = trim($data['value'] ?? '');
+$classId = (int) ($data['classId'] ?? 0);
+$field   = $data['field'] ?? '';
+$value   = trim($data['value'] ?? '');
 
-$allowedParentsFields = ['academic_year','grade','max_students'];
+$allowedFields = [
+    'academic_year',
+    'grade',
+    'max_students',
+    'status'
+];
 
-if (!$userId) {
+if (!$classId || !in_array($field, $allowedFields, true)) {
     exit;
 }
 
-
-if ($field === 'status') {
-
-
-    $stmt = $pdo->prepare(
-        "UPDATE parents SET status = ? WHERE user_id = ?"
-    );
-    $stmt->execute([$value, $userId]);
-
-    exit;
-}
-
-
-if (in_array($field, $allowedParentsFields, true)) {
-
-    $stmt = $pdo->prepare(
-        "UPDATE classes SET `$field` = ? WHERE user_id = ?"
-    );
-    $stmt->execute([$value, $userId]);
-
-    exit;
-}
+$stmt = $pdo->prepare(
+    "UPDATE classes SET `$field` = ? WHERE id = ?"
+);
+$stmt->execute([$value, $classId]);
