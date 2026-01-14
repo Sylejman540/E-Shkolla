@@ -2,65 +2,67 @@
 session_start();
 require_once '../../../../db.php';
 
-if (
-    !isset($_SESSION['user']) ||
-    !in_array($_SESSION['user']['role'], ['super_admin', 'school_admin'], true)
-) {
+if (!isset($_SESSION['user'])) {
     http_response_code(403);
     exit;
-}   
+}
 
 $data = json_decode(file_get_contents('php://input'), true);
 
-$userId = (int) ($data['userId'] ?? 0);
-$field  = $data['field'] ?? '';
-$value  = trim($data['value'] ?? '');
+$parentId = (int)($data['userId'] ?? 0);
+$field    = $data['field'] ?? '';
+$value    = trim($data['value'] ?? '');
 
-$allowedParentsFields = ['phone','relation'];
-$allowedUserFields    = ['name','email','status'];
-
-if (!$userId) {
+if (!$parentId || !$field) {
+    http_response_code(400);
     exit;
 }
 
 /**
- * 1️⃣ STATUS CHANGE (SYNC USERS + TEACHERS)
+ * Allowed fields
  */
-if ($field === 'status') {
+$allowedFields = ['name', 'email', 'phone', 'relation', 'status'];
 
-    // Update USERS (source of truth)
-    $stmt = $pdo->prepare("UPDATE users SET status = ? WHERE id = ?");
-    $stmt->execute([$value, $userId]);
-
-    // Update TEACHERS mirror
-    $stmt = $pdo->prepare(
-        "UPDATE parents SET status = ? WHERE user_id = ?"
-    );
-    $stmt->execute([$value, $userId]);
-
+if (!in_array($field, $allowedFields, true)) {
+    http_response_code(400);
     exit;
 }
 
 /**
- * 2️⃣ USER FIELDS (name, email)
+ * Get linked user_id from parents
  */
-if (in_array($field, $allowedUserFields, true)) {
+$stmt = $pdo->prepare("SELECT user_id FROM parents WHERE id = ?");
+$stmt->execute([$parentId]);
+$parent = $stmt->fetch(PDO::FETCH_ASSOC);
 
-    $stmt = $pdo->prepare("UPDATE users SET `$field` = ? WHERE id = ?");
-    $stmt->execute([$value, $userId]);
-
+if (!$parent) {
+    http_response_code(404);
     exit;
 }
+
+$userId = (int)$parent['user_id'];
 
 /**
- * 3️⃣ TEACHER-SPECIFIC FIELDS
+ * 1️⃣ UPDATE PARENTS TABLE
  */
-if (in_array($field, $allowedParentsFields, true)) {
+$stmt = $pdo->prepare("
+    UPDATE parents
+    SET `$field` = ?, updated_at = NOW()
+    WHERE id = ?
+");
+$stmt->execute([$value, $parentId]);
 
-    $stmt = $pdo->prepare(
-        "UPDATE parents SET `$field` = ? WHERE user_id = ?"
-    );
+/**
+ * 2️⃣ SYNC USERS TABLE (ONLY WHEN NEEDED)
+ */
+if (in_array($field, ['name', 'email', 'status'], true)) {
+
+    $stmt = $pdo->prepare("
+        UPDATE users
+        SET `$field` = ?, updated_at = NOW()
+        WHERE id = ?
+    ");
     $stmt->execute([$value, $userId]);
-
-    exit;
 }
+
+echo json_encode(['success' => true]);

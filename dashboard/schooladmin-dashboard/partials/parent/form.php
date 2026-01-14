@@ -1,46 +1,56 @@
 <?php
-if(session_status() === PHP_SESSION_NONE){
+if (session_status() === PHP_SESSION_NONE) {
     session_start();
 }
 
-require_once __DIR__  . '/../../../../db.php';
+require_once __DIR__ . '/../../../../db.php';
 
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 
-    $name = $_POST['name'];
-    $phone = $_POST['phone'];
-    $email = $_POST['email'];
+    $name     = $_POST['name'];
+    $phone    = $_POST['phone'];
+    $email    = $_POST['email'];
     $password = $_POST['password'];
     $relation = $_POST['relation'];
-    $status = $_POST['status'];
+    $status   = $_POST['status'];
+
     $schoolId = $_SESSION['user']['school_id'] ?? null;
-    $user_id = $_SESSION['user']['id'] ?? null;
 
     if (!$schoolId) {
         die('School ID missing from session');
     }
 
     $studentId = isset($_POST['student_id']) ? (int) $_POST['student_id'] : null;
-
     if (!$studentId) {
         die('Student ID missing or invalid');
     }
 
-    $stmt = $pdo->prepare("INSERT INTO users (school_id, name, password, email, role, status) VALUES (?, ?, ?, ?, 'parent', ?)");
-    $stmt->execute([$schoolId, $name, $password, $email, $status]);
+    try {
+        $pdo->beginTransaction();
 
-    $stmt = $pdo->prepare("INSERT INTO parents(school_id, user_id, name, phone, email, relation, status) VALUES(?, ?, ?, ?, ?, ?, ?)");
-    $stmt->execute([$schoolId, $user_id, $name, $phone, $email, $relation, $status]);
+        $stmt = $pdo->prepare("INSERT INTO users (school_id, name, password, email, role, status) VALUES (?, ?, ?, ?, 'parent', ?)");
+        $stmt->execute([$schoolId, $name, $password, $email, $status]);
 
-    $parentId = $pdo->lastInsertId();
+        $parentUserId = $pdo->lastInsertId();
 
-    $stmt = $pdo->prepare("INSERT INTO parent_student(school_id, parent_id, student_id) VALUES(?, ?, ?)");
-    $stmt->execute([$schoolId, $parentId, $studentId]);
+        $stmt = $pdo->prepare("INSERT INTO parents (school_id, user_id, name, phone, email, relation, status) VALUES (?, ?, ?, ?, ?, ?, ?)");
+        $stmt->execute([$schoolId, $parentUserId, $name, $phone, $email, $relation, $status]);
 
-    header("Location: /E-Shkolla/parents");
-    exit;
+        $parentId = $pdo->lastInsertId();
+
+        $stmt = $pdo->prepare("INSERT INTO parent_student (school_id, parent_id, student_id) VALUES (?, ?, ?)");
+        $stmt->execute([$schoolId, $parentId, $studentId]);
+
+        $pdo->commit();
+
+        header("Location: /E-Shkolla/parents");
+        exit;
+
+    } catch (Exception $e) {
+        $pdo->rollBack();
+        die('Error creating parent: ' . $e->getMessage());
+    }
 }
-
 ?>
 <div id="addSchoolForm" class="<?= $openForm ? '' : 'hidden' ?> fixed inset-0 z-50 flex items-start justify-center bg-black/30 overflow-y-auto pt-10">
 

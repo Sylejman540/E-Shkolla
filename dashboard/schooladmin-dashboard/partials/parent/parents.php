@@ -58,7 +58,7 @@ $studentId = isset($_GET['student_id']) ? (int)$_GET['student_id'] : null;
                         <td class="py-4 pr-3 pl-4 text-sm font-medium whitespace-nowrap text-gray-900 sm:pl-0 dark:text-white">
                             <span contenteditable
                                 class="editable inline-block min-w-[10rem] px-2 py-1 rounded outline-none hover:bg-gray-100 focus:bg-indigo-50 focus:ring-2 focus:ring-indigo-500 transition"
-                                 data-id="<?= (int)$row['user_id'] ?>"
+                                 data-id="<?= (int)$row['id'] ?>"
                                 data-field="name">
                             <?= htmlspecialchars($row['name']) ?>
                             </span>
@@ -67,18 +67,18 @@ $studentId = isset($_GET['student_id']) ? (int)$_GET['student_id'] : null;
                         <td class="px-3 py-4 text-sm whitespace-nowrap text-gray-500 dark:text-gray-400">
                             <span contenteditable
                                 class="editable inline-block min-w-[10rem] px-2 py-1 rounded outline-none hover:bg-gray-100 focus:bg-indigo-50 focus:ring-2 focus:ring-indigo-500 transition"
-                                 data-id="<?= (int)$row['user_id'] ?>"
-                                data-field="email">
-                            <?= htmlspecialchars($row['email']) ?>
+                                 data-id="<?= (int)$row['id'] ?>"
+                                data-field="phone">
+                            <?= htmlspecialchars($row['phone']) ?>
                             </span>
                         </td>
                         
                         <td class="px-3 py-4 text-sm whitespace-nowrap text-gray-500 dark:text-gray-400">
                             <span contenteditable
                                 class="editable inline-block min-w-[10rem] px-2 py-1 rounded outline-none hover:bg-gray-100 focus:bg-indigo-50 focus:ring-2 focus:ring-indigo-500 transition"
-                                data-id="<?= $row['user_id'] ?>"
-                                data-field="phone">
-                            <?= htmlspecialchars($row['phone']) ?>
+                                data-id="<?= $row['id'] ?>"
+                                data-field="email">
+                            <?= htmlspecialchars($row['email']) ?>
                             </span>
                         </td>
 
@@ -96,9 +96,9 @@ $studentId = isset($_GET['student_id']) ? (int)$_GET['student_id'] : null;
                                 focus:ring-indigo-500
                                 focus:border-indigo-500
                                 transition appearance-none"
-                            data-id="<?= $row['user_id'] ?>"
+                            data-id="<?= $row['id'] ?>"
                             data-field="relation"
-                            <?= $row['user_id'] == $_SESSION['user']['id'] ? 'opacity-50 cursor-not-allowed' : '' ?>
+                            <?= $row['id'] == $_SESSION['user']['id'] ? 'opacity-50 cursor-not-allowed' : '' ?>
                         >
                             <?php foreach (['father', 'mother','guardian','other'] as $role): ?>
                             <option value="<?= $role ?>" <?= $row['relation']===$role?'selected':'' ?>>
@@ -109,12 +109,12 @@ $studentId = isset($_GET['student_id']) ? (int)$_GET['student_id'] : null;
                         </td>
 
                         <td class="px-3 py-4 text-sm whitespace-nowrap text-gray-500 dark:text-gray-400">
-                            <?php if ($row['user_id'] != $_SESSION['user']['id']): ?>
+                            <?php if ($row['id'] != $_SESSION['user']['id']): ?>
                             <button class="status-toggle px-3 py-1 rounded-full text-xs font-semibold
                                 <?= $row['status']==='active'
                                 ? 'bg-green-100 text-green-700'
                                 : 'bg-red-100 text-red-600' ?>"
-                                data-id="<?= $row['user_id'] ?>"
+                                data-id="<?= $row['id'] ?>"
                                 data-field="status"
                                 data-value="<?= $row['status'] ?>">
                                 <?= ucfirst($row['status']) ?>
