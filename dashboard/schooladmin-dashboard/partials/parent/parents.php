@@ -16,8 +16,6 @@ $parents = $stmt->fetchAll(PDO::FETCH_ASSOC);
 
 $openForm = isset($_GET['open_form']) && $_GET['open_form'] == '1';
 $studentId = isset($_GET['student_id']) ? (int)$_GET['student_id'] : null;
-
-
 ?>
 <!DOCTYPE html>
 <html lang="en">

@@ -42,11 +42,11 @@ $classes = $stmt->fetchAll(PDO::FETCH_ASSOC);
                 <table class="min-w-full divide-y divide-gray-300 dark:divide-white/15">
         <thead>
             <tr>
-                <th class="py-3.5 pl-4 text-left text-sm font-semibold">Viti akademik</th>
-                <th class="px-3 py-3.5 text-left text-sm font-semibold">Klasa</th>
-                <th class="px-3 py-3.5 text-left text-sm font-semibold">Nr i nxënësve</th>
-                <th class="px-3 py-3.5 text-left text-sm font-semibold">Statusi</th>
-                <th class="px-3 py-3.5 text-left text-sm font-semibold">Created At</th>
+                <th class="py-3.5 pr-3 pl-4 text-left text-sm font-semibold text-gray-900 sm:pl-0 dark:text-white">Viti akademik</th>
+                <th class="px-3 py-3.5 text-left text-sm font-semibold text-gray-900 dark:text-white">Klasa</th>
+                <th class="px-3 py-3.5 text-left text-sm font-semibold text-gray-900 dark:text-white">Nr i nxënësve</th>
+                <th class="px-3 py-3.5 text-left text-sm font-semibold text-gray-900 dark:text-white">Statusi</th>
+                <th class="px-3 py-3.5 text-left text-sm font-semibold text-gray-900 dark:text-white">Created At</th>
                 <th class="py-3.5 pr-4 text-right"></th>
             </tr>
         </thead>
@@ -56,19 +56,29 @@ $classes = $stmt->fetchAll(PDO::FETCH_ASSOC);
             <?php foreach ($classes as $row): ?>
 
             <tr>
-                <td class="py-4 pl-4 font-medium"><?= htmlspecialchars($row['academic_year']) ?></td>
-                <td class="px-3 py-4"><?= htmlspecialchars($row['grade']) ?></td>
-                <td class="px-3 py-4"><?= htmlspecialchars($row['max_students']) ?></td>
+                <td class="py-4 pr-3 pl-4 text-sm font-medium whitespace-nowrap text-gray-900 sm:pl-0 dark:text-white"><?= htmlspecialchars($row['academic_year']) ?></td>
+                <td class="px-3 py-4 text-sm whitespace-nowrap text-gray-500 dark:text-gray-400"><?= htmlspecialchars($row['grade']) ?></td>
+                <td class="px-3 py-4 text-sm whitespace-nowrap text-gray-500 dark:text-gray-400"><?= htmlspecialchars($row['max_students']) ?></td>
                 <td class="px-3 py-4">
-                    <span class="px-2 py-1 rounded-xl bg-green-200 text-green-700 text-xs">
-                        <?= htmlspecialchars($row['status']) ?>
+                    <span class="px-2 py-1 text-xs">
+                        <button class="status-toggle px-3 py-1 rounded-full text-xs font-semibold
+                            <?= $row['status']==='active'
+                            ? 'bg-green-100 text-green-700'
+                            : 'bg-red-100 text-red-600' ?>"
+                            data-id="<?= $row['user_id'] ?>"
+                            data-field="status"
+                            data-value="<?= $row['status'] ?>">
+                            <?= ucfirst(htmlspecialchars($row['status'])) ?>
+                        </button>
                     </span>
                 </td>
-                <td class="px-3 py-4"><?= htmlspecialchars($row['created_at']) ?></td>
-                <td class="py-4 pr-4 text-right">
+                <td class="px-3 py-4 text-sm text-gray-400">
+                    <?= date('Y-m-d', strtotime($row['created_at'])) ?>
+                </td>
+                <td class="px-3 py-4 text-sm whitespace-nowrap text-gray-500 dark:text-gray-400">
                     <button type="button" class="text-indigo-600 hover:text-indigo-900" onclick="toggleSchedule(<?= (int)$row['id'] ?>)">Shiko orarin</button>
                 </td>
-                <td class="py-4 pr-4 text-right">
+                <td class="px-1 py-4 text-sm whitespace-nowrap text-gray-500 dark:text-gray-400">
                     <button type="button" class="addScheduleBtn text-indigo-600 hover:text-indigo-900" data-class-id="<?= (int)$row['id'] ?>">Shto orar</button>
                 </td>
             </tr>
