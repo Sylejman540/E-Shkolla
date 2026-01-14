@@ -32,10 +32,10 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         
         <div class="mb-8">
           <h2 class="text-xl font-semibold text-gray-900 dark:text-white">
-            Shto prindër të ri
+            Shto klasë të re
           </h2>
           <p class="mt-1 text-sm text-gray-600 dark:text-gray-400">
-            Plotësoni të dhënat bazë për prindërin.
+            Plotësoni të dhënat bazë për klasën.
           </p>
         </div>
 
@@ -67,7 +67,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 
           <div class="sm:col-span-3">
               <label class="block text-sm font-medium text-gray-900 dark:text-white">Klasa</label>
-              <select name="class_id" class="mt-2 border block w-full round/\ ed-md p-2">
+              <select name="class_id" class="mt-2 border block w-full rounded-md p-2">
                   <?php
                   $teachers = $pdo->prepare("SELECT id, grade FROM classes WHERE school_id = ?");
                   $teachers->execute([$_SESSION['user']['school_id']]);
