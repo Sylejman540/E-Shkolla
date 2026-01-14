@@ -8,8 +8,7 @@ if (
 ) {
     http_response_code(403);
     exit;
-}   
-
+}
 
 $data = json_decode(file_get_contents('php://input'), true);
 
@@ -17,51 +16,53 @@ $userId = (int) ($data['userId'] ?? 0);
 $field  = $data['field'] ?? '';
 $value  = trim($data['value'] ?? '');
 
-$allowedTeacherFields = ['phone','gender','subject_name','status'];
-$allowedUserFields    = ['name','email','status'];
-
-if (!$userId) {
+if (!$userId || !$field) {
+    http_response_code(400);
     exit;
 }
 
-/**
- * 1️⃣ STATUS CHANGE (SYNC USERS + TEACHERS)
- */
+$teacherFields = ['phone', 'gender', 'subject_name'];
+$userFields    = ['name', 'email', 'status'];
+$subjectFields = ['subject_name', 'description', 'status', 'name'];
+
 if ($field === 'status') {
 
-    // Update USERS (source of truth)
-    $stmt = $pdo->prepare("UPDATE users SET status = ? WHERE id = ?");
-    $stmt->execute([$value, $userId]);
+    $pdo->prepare("UPDATE users SET status = ? WHERE id = ?")->execute([$value, $userId]);
 
-    // Update TEACHERS mirror
-    $stmt = $pdo->prepare(
-        "UPDATE teachers SET status = ? WHERE user_id = ?"
-    );
-    $stmt->execute([$value, $userId]);
+    $pdo->prepare("UPDATE teachers SET status = ? WHERE user_id = ?")->execute([$value, $userId]);
+
+    $pdo->prepare("UPDATE subjects SET status = ? WHERE user_id = ?")->execute([$value, $userId]);
 
     exit;
 }
 
-/**
- * 2️⃣ USER FIELDS (name, email)
- */
-if (in_array($field, $allowedUserFields, true)) {
+if (in_array($field, $userFields, true)) {
 
-    $stmt = $pdo->prepare("UPDATE users SET `$field` = ? WHERE id = ?");
-    $stmt->execute([$value, $userId]);
+    $pdo->prepare("UPDATE users SET `$field` = ? WHERE id = ?")->execute([$value, $userId]);
+
+    if ($field === 'name') {
+        $pdo->prepare("UPDATE teachers SET name = ? WHERE user_id = ?")->execute([$value, $userId]);
+
+        $pdo->prepare("UPDATE subjects SET name = ? WHERE user_id = ?")->execute([$value, $userId]);
+    }
+    exit;
+}
+
+if (in_array($field, $teacherFields, true)) {
+
+    $pdo->prepare("UPDATE teachers SET `$field` = ? WHERE user_id = ?")->execute([$value, $userId]);
+
+    if ($field === 'subject_name') {
+        $pdo->prepare("UPDATE subjects SET subject_name = ? WHERE user_id = ?")->execute([$value, $userId]);
+    }
 
     exit;
 }
 
-/**
- * 3️⃣ TEACHER-SPECIFIC FIELDS
- */
-if (in_array($field, $allowedTeacherFields, true)) {
+if (in_array($field, $subjectFields, true)) {
 
-    $stmt = $pdo->prepare(
-        "UPDATE teachers SET `$field` = ? WHERE user_id = ?"
-    );
-    $stmt->execute([$value, $userId]);
-
+    $pdo->prepare("UPDATE subjects SET `$field` = ? WHERE user_id = ?")->execute([$value, $userId]);
     exit;
 }
+
+http_response_code(400);
