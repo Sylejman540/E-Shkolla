@@ -49,7 +49,9 @@ $total     = (int) ($stats['total'] ?? 0);
 $active    = (int) ($stats['active'] ?? 0);
 $completed = (int) ($stats['completed'] ?? 0);
 
-
+$stmt = $pdo->prepare("SELECT * FROM assignments ORDER BY created_at DESC");
+$stmt->execute();
+$assignments = $stmt->fetchAll(PDO::FETCH_ASSOC);
 ?>
 <!DOCTYPE html>
 <html lang="sq">
