@@ -203,7 +203,7 @@ foreach ($stmt->fetchAll(PDO::FETCH_ASSOC) as $row) {
                             class="rounded-md bg-indigo-600 font-semibold px-3 py-1.5 text-sm text-white hover:bg-indigo-700">
                             Ruaj
                         </button>
-                        </form>
+                    </form>
                     </td>
                     </tr>
                 </tbody>
