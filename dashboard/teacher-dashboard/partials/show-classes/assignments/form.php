@@ -1,30 +1,34 @@
 <?php
-if(session_status() === PHP_SESSION_NONE){
+if (session_status() === PHP_SESSION_NONE) {
     session_start();
 }
 
-require_once __DIR__  . '/../../../../../db.php';
+require_once __DIR__ . '/../../../../../db.php';
 
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
-    $teacherId = (int) ($_POST['teacher_id'] ?? 0);
-$classId = (int) ($_GET['class_id'] ?? 0);
 
+    $classId   = (int) ($_GET['class_id'] ?? 0);
+    $teacherId = (int) ($_SESSION['user']['id'] ?? 0);
+    $schoolId  = (int) ($_SESSION['user']['school_id'] ?? 0);
 
-    $schoolId = $_SESSION['user']['school_id'];
-    $title = $_POST['title'];
-    $description = $_POST['description'];
-    $due_date = $_POST['due_date'];
-    $completed_at = $_POST['completed_at'];
+    if (!$classId || !$teacherId || !$schoolId) {
+        die('Invalid context');
+    }
 
-    $stmt = $pdo->prepare("INSERT INTO assignments(class_id, teacher_id, school_id, title, description, due_date, completed_at) VALUES(?, ?, ?, ?, ?, ?, ?)");
-    $stmt->execute([$classId, $teacherId, $schoolId, $title, $description, $due_date, $completed_at]);
+    $title       = trim($_POST['title'] ?? '');
+    $description = trim($_POST['description'] ?? '');
+    $due_date    = $_POST['due_date'] ?? null;
+    $status      = $_POST['completed_at'] ?? 'active';
 
-    $classId = (int) $row['class_id'];
+    $completedAt = $status === 'done' ? date('Y-m-d H:i:s') : null;
+
+    $stmt = $pdo->prepare("INSERT INTO assignments(class_id, teacher_id, school_id, title, description, due_date, completed_at) VALUES (?, ?, ?, ?, ?, ?, ?)");
+
+    $stmt->execute([$classId, $teacherId, $schoolId, $title, $description, $due_date, $completedAt]);
+
     header("Location: /E-Shkolla/class-assignments?class_id=$classId");
     exit;
-
 }
-
 ?>
 <div id="addSchoolForm" class="hidden fixed inset-0 z-50 flex items-start justify-center bg-black/30 overflow-y-auto pt-10">
      
@@ -44,9 +48,7 @@ $classId = (int) ($_GET['class_id'] ?? 0);
 
         <div class="grid grid-cols-1 gap-x-8 gap-y-10 border-b border-gray-900/10 pb-8 md:grid-cols-3 dark:border-white/10">
             
-        <form action="/E-Shkolla/dashboard/teacher-dashboard/partials/show-classes/assignments/form.php?class_id=<?= (int)$row['class_id'] ?>" method="post" enctype="multipart/form-data"  class="grid max-w-2xl grid-cols-1 gap-x-6 gap-y-8 sm:grid-cols-6 md:col-span-2">
-            <input type="hidden" name="teacher_id" value="<?= (int)$teacherId ?>">
-            <input type="hidden" name="class_id" value="<?= (int)$classId ?>">
+        <form action="/E-Shkolla/dashboard/teacher-dashboard/partials/show-classes/assignments/form.php?class_id=<?= (int)$_GET['class_id'] ?>" method="post" class="grid max-w-2xl grid-cols-1 gap-x-6 gap-y-8 sm:grid-cols-6 md:col-span-2">
 
             <div class="sm:col-span-3">
             <label for="title" class="block text-sm/6 font-medium text-gray-900 dark:text-white">Titulli i detyrës</label>
