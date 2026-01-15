@@ -64,54 +64,6 @@ $students = [
     </div>
   </div>
 
-  <!-- TABS -->
-  <div class="border-b border-gray-200 dark:border-gray-700 mb-6">
-    <nav class="flex gap-6 text-sm font-medium">
-      <span class="pb-3 border-b-2 border-indigo-600 text-indigo-600">
-        Prezenca
-      </span>
-      <span class="pb-3 text-gray-400">Nxënësit</span>
-      <span class="pb-3 text-gray-400">Detyrat</span>
-      <span class="pb-3 text-gray-400">Shënime</span>
-    </nav>
-  </div>
-
-  <!-- ATTENDANCE TABLE -->
-  <div class="bg-white dark:bg-gray-800 rounded-lg shadow overflow-hidden mb-10">
-    <table class="w-full text-sm">
-      <thead class="bg-gray-50 dark:bg-gray-700 text-gray-600 dark:text-gray-300">
-        <tr>
-          <th class="px-4 py-3 text-left">Nxënësi</th>
-          <th class="px-4 py-3 text-left">Status</th>
-        </tr>
-      </thead>
-      <tbody class="divide-y dark:divide-gray-700">
-
-        <?php foreach ($students as $s): ?>
-        <tr class="hover:bg-gray-50 dark:hover:bg-gray-700/40">
-          <td class="px-4 py-3 text-gray-900 dark:text-white">
-            <?= htmlspecialchars($s['name']) ?>
-          </td>
-          <td class="px-4 py-3">
-            <div class="flex gap-2">
-              <button class="px-3 py-1.5 rounded-full text-xs font-medium bg-green-100 text-green-800 hover:bg-green-200">
-                Prezent
-              </button>
-              <button class="px-3 py-1.5 rounded-full text-xs font-medium bg-red-100 text-red-800 hover:bg-red-200">
-                Mungon
-              </button>
-              <button class="px-3 py-1.5 rounded-full text-xs font-medium bg-yellow-100 text-yellow-800 hover:bg-yellow-200">
-                Vonë
-              </button>
-            </div>
-          </td>
-        </tr>
-        <?php endforeach; ?>
-
-      </tbody>
-    </table>
-  </div>
-
   <!-- CHARTS SECTION -->
   <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
 
