@@ -24,12 +24,6 @@
             </li>
 
             <li>
-            <a href="/E-Shkolla/student-classes" class="group flex gap-x-3 rounded-md p-2 text-sm/6 font-semibold text-gray-700 hover:bg-gray-50 hover:text-indigo-600 dark:text-gray-400 dark:hover:bg-white/5 dark:hover:text-white">
-                📚 Klasat e Mia
-            </a>
-            </li>
-
-            <li>
             <a href="/E-Shkolla/student-schedule" class="group flex gap-x-3 rounded-md p-2 text-sm/6 font-semibold text-gray-700 hover:bg-gray-50 hover:text-indigo-600 dark:text-gray-400 dark:hover:text-white">
                 🕒 Orari
             </a>
