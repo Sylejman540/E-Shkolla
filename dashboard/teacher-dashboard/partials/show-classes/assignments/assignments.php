@@ -100,7 +100,6 @@ $assignments = $stmt->fetchAll(PDO::FETCH_ASSOC);
       </div>
     </div>
 
-    <!-- ALL TASKS -->
     <section>
       <h2 class="text-sm font-semibold text-gray-700 mb-4">
         📋 Të gjitha detyrat

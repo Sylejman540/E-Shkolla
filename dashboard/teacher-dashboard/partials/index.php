@@ -61,15 +61,14 @@
         </li>
         <li class="-mx-6 mt-auto">
         <?php
-            require_once __DIR__  . '/../../../db.php';
+          require_once __DIR__  . '/../../../db.php';
 
-            $user_id = $_SESSION['user']['id'];
+          $user_id = $_SESSION['user']['id'];
 
-            $stmt = $pdo->prepare("SELECT * FROM users WHERE id = ?");
-            $stmt->execute([$user_id]);
+          $stmt = $pdo->prepare("SELECT * FROM users WHERE id = ?");
+          $stmt->execute([$user_id]);
 
-            $teachers = $stmt->fetchAll(PDO::FETCH_ASSOC);
-
+          $teachers = $stmt->fetchAll(PDO::FETCH_ASSOC);
         ?>
         <?php foreach ($teachers as $row): ?>
         <div class="flex items-center gap-4 px-4 py-3 rounded-lg hover:bg-gray-50 dark:hover:bg-white/5 transition">

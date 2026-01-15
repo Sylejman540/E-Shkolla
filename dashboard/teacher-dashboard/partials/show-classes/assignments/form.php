@@ -19,8 +19,10 @@ $classId = (int) ($_GET['class_id'] ?? 0);
     $stmt = $pdo->prepare("INSERT INTO assignments(class_id, teacher_id, school_id, title, description, due_date, completed_at) VALUES(?, ?, ?, ?, ?, ?, ?)");
     $stmt->execute([$classId, $teacherId, $schoolId, $title, $description, $due_date, $completed_at]);
 
-    header("Location: /E-Shkolla/class-assignments");
+    $classId = (int) $row['class_id'];
+    header("Location: /E-Shkolla/class-assignments?class_id=$classId");
     exit;
+
 }
 
 ?>
@@ -42,7 +44,7 @@ $classId = (int) ($_GET['class_id'] ?? 0);
 
         <div class="grid grid-cols-1 gap-x-8 gap-y-10 border-b border-gray-900/10 pb-8 md:grid-cols-3 dark:border-white/10">
             
-        <form action="/E-Shkolla/dashboard/teacher-dashboard/partials/show-classes/assignments/form.php" method="post" enctype="multipart/form-data"  class="grid max-w-2xl grid-cols-1 gap-x-6 gap-y-8 sm:grid-cols-6 md:col-span-2">
+        <form action="/E-Shkolla/dashboard/teacher-dashboard/partials/show-classes/assignments/form.php?class_id=<?= (int)$row['class_id'] ?>" method="post" enctype="multipart/form-data"  class="grid max-w-2xl grid-cols-1 gap-x-6 gap-y-8 sm:grid-cols-6 md:col-span-2">
             <input type="hidden" name="teacher_id" value="<?= (int)$teacherId ?>">
             <input type="hidden" name="class_id" value="<?= (int)$classId ?>">
 
