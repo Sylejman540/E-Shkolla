@@ -7,30 +7,67 @@ require_once __DIR__ . '/../index.php';
 
 require_once __DIR__ . '/../../../../../db.php';
 
-
-
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
-    $schoolId = $_SESSION['user']['school_id'];
-    $studentId = (int)($_POST['student_id'] ?? 0);
-    $classId   = (int)($_POST['class_id'] ?? 0);
-    $teacherId = $_SESSION['user']['id'] ?? null;
-    $subjectId = (int)($_POST['subject_id'] ?? 0);
 
+    $schoolId  = (int) ($_SESSION['user']['school_id'] ?? 0);
+    $teacherId = (int) ($_SESSION['user']['id'] ?? 0);
 
-    if (!$studentId || !$classId || !$teacherId) {
+    $studentId = (int) ($_POST['student_id'] ?? 0);
+    $classId   = (int) ($_POST['class_id'] ?? 0);
+    $subjectId = (int) ($_POST['subject_id'] ?? 0);
+
+    if (!$schoolId || !$teacherId || !$studentId || !$classId || !$subjectId) {
         die('Invalid attendance data');
     }
 
     $present = isset($_POST['present']) ? 1 : 0;
     $missing = isset($_POST['missing']) ? 1 : 0;
 
-    $stmt = $pdo->prepare("INSERT INTO attendance(school_id, student_id, class_id, subject_id, teacher_id, present, missing) VALUES (?, ?, ?, ?, ?, ?, ?)");
+    /* ===== 1 HOUR LOCK CHECK ===== */
+    $lockStmt = $pdo->prepare("
+        SELECT id
+        FROM attendance
+        WHERE student_id = ?
+          AND class_id   = ?
+          AND subject_id = ?
+          AND teacher_id = ?
+          AND created_at >= NOW() - INTERVAL 1 HOUR
+        LIMIT 1
+    ");
+    $lockStmt->execute([
+        $studentId,
+        $classId,
+        $subjectId,
+        $teacherId
+    ]);
 
-    $stmt->execute([$schoolId, $studentId, $classId, $subjectId, $teacherId, $present, $missing]);
+    if ($lockStmt->fetch()) {
+        // Already recorded in the last hour
+        header("Location: " . $_SERVER['REQUEST_URI'] . "&error=locked");
+        exit;
+    }
+
+    /* ===== INSERT ATTENDANCE ===== */
+    $stmt = $pdo->prepare("
+        INSERT INTO attendance
+            (school_id, student_id, class_id, subject_id, teacher_id, present, missing)
+        VALUES (?, ?, ?, ?, ?, ?, ?)
+    ");
+
+    $stmt->execute([
+        $schoolId,
+        $studentId,
+        $classId,
+        $subjectId,
+        $teacherId,
+        $present,
+        $missing
+    ]);
 
     header("Location: " . $_SERVER['REQUEST_URI']);
     exit;
 }
+
 
 $classId = (int)($_GET['class_id'] ?? 0);
 
@@ -78,6 +115,12 @@ $students = $stmt->fetchAll(PDO::FETCH_ASSOC);
         <div class="mt-8 flow-root">
             <div class="-mx-4 -my-2 overflow-x-auto sm:-mx-6 lg:-mx-8">
             <div class="inline-block min-w-full py-2 align-middle sm:px-6 lg:px-8">
+                <?php if (isset($_GET['error']) && $_GET['error'] === 'locked'): ?>
+  <div class="mb-4 rounded-md bg-yellow-100 px-4 py-3 text-sm text-yellow-800">
+    Prezenca për këtë nxënës është regjistruar tashmë gjatë orës së fundit.
+  </div>
+<?php endif; ?>
+
                 <table class="relative min-w-full divide-y divide-gray-300 dark:divide-white/15">
                 <thead>
                     <tr>
