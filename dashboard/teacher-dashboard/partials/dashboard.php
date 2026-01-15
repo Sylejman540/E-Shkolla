@@ -2,13 +2,114 @@
 require_once __DIR__ . '/index.php';
 require_once __DIR__ . '/../../../db.php';
 
-/* ===== FAKE / DEMO DATA (later replace with real queries) ===== */
-$myClasses        = 5;
-$totalStudents    = 142;
-$todayLessons     = 4;
-$pendingTasks     = 6;
-?>
+if (session_status() === PHP_SESSION_NONE) {
+    session_start();
+}
 
+$teacherId = (int) ($_SESSION['user']['id'] ?? 0);
+$schoolId  = (int) ($_SESSION['user']['school_id'] ?? 0);
+
+if (!$teacherId || !$schoolId) {
+    die('Invalid session');
+}
+
+/* ================= KPI DATA ================= */
+
+// My classes
+$stmt = $pdo->prepare("
+    SELECT COUNT(DISTINCT class_id)
+    FROM class_schedule
+    WHERE teacher_id = ?
+      AND school_id = ?
+");
+$stmt->execute([$teacherId, $schoolId]);
+$myClasses = (int) $stmt->fetchColumn();
+
+// Total students (unique)
+$stmt = $pdo->prepare("
+    SELECT COUNT(DISTINCT sc.student_id)
+    FROM student_class sc
+    JOIN classes c ON c.id = sc.class_id
+    WHERE c.school_id = ?
+");
+$stmt->execute([$schoolId]);
+$totalStudents = (int) $stmt->fetchColumn();
+
+// Today lessons
+$stmt = $pdo->prepare("
+    SELECT COUNT(*)
+    FROM class_schedule
+    WHERE teacher_id = ?
+      AND school_id = ?
+      AND day = DAYNAME(CURDATE())
+");
+$stmt->execute([$teacherId, $schoolId]);
+$todayLessons = (int) $stmt->fetchColumn();
+
+// Pending assignments
+$stmt = $pdo->prepare("
+    SELECT COUNT(*)
+    FROM assignments
+    WHERE teacher_id = ?
+      AND school_id = ?
+      AND completed_at IS NULL
+");
+$stmt->execute([$teacherId, $schoolId]);
+$pendingTasks = (int) $stmt->fetchColumn();
+
+/* ================= CHART DATA ================= */
+
+// Attendance today
+$stmt = $pdo->prepare("
+    SELECT
+        SUM(present = 1) AS present,
+        SUM(missing = 1) AS missing
+    FROM attendance
+    WHERE teacher_id = ?
+      AND school_id = ?
+      AND DATE(created_at) = CURDATE()
+");
+$stmt->execute([$teacherId, $schoolId]);
+$attendance = $stmt->fetch(PDO::FETCH_ASSOC);
+
+$presentToday = (int) ($attendance['present'] ?? 0);
+$missingToday = (int) ($attendance['missing'] ?? 0);
+
+// Assignments completion
+$stmt = $pdo->prepare("
+    SELECT
+        SUM(completed_at IS NOT NULL) AS completed,
+        SUM(completed_at IS NULL)     AS pending
+    FROM assignments
+    WHERE teacher_id = ?
+      AND school_id = ?
+");
+$stmt->execute([$teacherId, $schoolId]);
+$assignments = $stmt->fetch(PDO::FETCH_ASSOC);
+
+$assignmentsCompleted = (int) ($assignments['completed'] ?? 0);
+$assignmentsPending   = (int) ($assignments['pending'] ?? 0);
+
+// Grades by class
+$stmt = $pdo->prepare("
+    SELECT c.grade AS class_name, ROUND(AVG(g.grade), 2) AS avg_grade
+    FROM grades g
+    JOIN classes c ON c.id = g.class_id
+    WHERE g.teacher_id = ?
+      AND g.school_id = ?
+    GROUP BY c.grade
+");
+$stmt->execute([$teacherId, $schoolId]);
+$gradesData = $stmt->fetchAll(PDO::FETCH_ASSOC);
+
+$gradeLabels = [];
+$gradeValues = [];
+
+foreach ($gradesData as $row) {
+    $gradeLabels[] = $row['class_name'];
+    $gradeValues[] = (float) $row['avg_grade'];
+}
+?>
 <!DOCTYPE html>
 <html lang="sq">
 <head>
@@ -75,13 +176,26 @@ $pendingTasks     = 6;
 </main>
 
 <script>
+const attendanceData = {
+  present: <?= $presentToday ?>,
+  missing: <?= $missingToday ?>
+};
+
+const assignmentData = {
+  completed: <?= $assignmentsCompleted ?>,
+  pending: <?= $assignmentsPending ?>
+};
+
+const gradeLabels = <?= json_encode($gradeLabels) ?>;
+const gradeValues = <?= json_encode($gradeValues) ?>;
+
 /* Attendance */
 new Chart(document.getElementById('attendanceChart'), {
   type: 'doughnut',
   data: {
     labels: ['Prezent', 'Mungesë'],
     datasets: [{
-      data: [92, 8],
+      data: [attendanceData.present, attendanceData.missing],
       backgroundColor: ['#22c55e', '#ef4444'],
       borderWidth: 0
     }]
@@ -98,9 +212,9 @@ new Chart(document.getElementById('attendanceChart'), {
 new Chart(document.getElementById('assignmentsChart'), {
   type: 'pie',
   data: {
-    labels: ['Dorëzuara', 'Pa Dorëzuara'],
+    labels: ['Dorëzuara', 'Në pritje'],
     datasets: [{
-      data: [68, 14],
+      data: [assignmentData.completed, assignmentData.pending],
       backgroundColor: ['#3b82f6', '#f59e0b']
     }]
   },
@@ -116,10 +230,10 @@ new Chart(document.getElementById('assignmentsChart'), {
 new Chart(document.getElementById('gradesChart'), {
   type: 'bar',
   data: {
-    labels: ['6A','6B','7A','7B'],
+    labels: gradeLabels,
     datasets: [{
       label: 'Nota mesatare',
-      data: [4.2, 3.9, 4.5, 4.0],
+      data: gradeValues,
       backgroundColor: '#6366f1',
       borderRadius: 6
     }]
@@ -138,6 +252,7 @@ new Chart(document.getElementById('gradesChart'), {
   }
 });
 </script>
+
 
 </body>
 </html>
