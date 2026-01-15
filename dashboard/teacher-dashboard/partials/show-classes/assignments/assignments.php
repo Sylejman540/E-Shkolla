@@ -1,19 +1,55 @@
-<?php 
+<?php
 if (session_status() === PHP_SESSION_NONE) {
     session_start();
 }
 
-require_once __DIR__ . '/../index.php'; 
+require_once __DIR__ . '/../index.php';
 require_once __DIR__ . '/../../../../../db.php';
 
-$stmt = $pdo->prepare("SELECT * FROM assignments ORDER BY created_at DESC");
-$stmt->execute();
+$schoolId = (int) ($_SESSION['user']['school_id'] ?? 0);
+$userId   = (int) ($_SESSION['user']['id'] ?? 0);
+
+if (!$schoolId || !$userId) {
+    die('Invalid session');
+}
+
+$stmt = $pdo->prepare("SELECT id FROM teachers WHERE user_id = ?");
+$stmt->execute([$userId]);
+$teacherId = (int) $stmt->fetchColumn();
+
+if (!$teacherId) {
+    die('Teacher not found');
+}
+
+$stmt = $pdo->prepare("
+    SELECT *
+    FROM assignments
+    WHERE school_id = ?
+      AND teacher_id = ?
+    ORDER BY created_at DESC
+");
+
+$stmt->execute([$schoolId, $teacherId]);
 $assignments = $stmt->fetchAll(PDO::FETCH_ASSOC);
 
-// simple stats
-$total = count($assignments);
-$completed = 0; // later you can calculate real values
-$active = $total - $completed;
+$stmt = $pdo->prepare("
+    SELECT
+        COUNT(*) AS total,
+        SUM(completed_at IS NULL) AS active,
+        SUM(completed_at IS NOT NULL) AS completed
+    FROM assignments
+    WHERE school_id = ?
+      AND teacher_id = ?
+");
+
+$stmt->execute([$schoolId, $teacherId]);
+$stats = $stmt->fetch(PDO::FETCH_ASSOC);
+
+$total     = (int) ($stats['total'] ?? 0);
+$active    = (int) ($stats['active'] ?? 0);
+$completed = (int) ($stats['completed'] ?? 0);
+
+
 ?>
 <!DOCTYPE html>
 <html lang="sq">
@@ -48,7 +84,7 @@ $active = $total - $completed;
     <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6 mb-10">
       <div class="rounded-xl bg-white p-5 shadow">
         <p class="text-sm text-gray-500">Totali i Detyrave</p>
-        <p class="mt-2 text-2xl font-bold text-gray-900"><?= $total ?></p>
+        <p class="mt-2 text-2xl font-bold text-gray-900"><?= $total ?></p>  
       </div>
 
       <div class="rounded-xl bg-white p-5 shadow">
@@ -59,11 +95,6 @@ $active = $total - $completed;
       <div class="rounded-xl bg-white p-5 shadow">
         <p class="text-sm text-gray-500">Të Përfunduara</p>
         <p class="mt-2 text-2xl font-bold text-green-600"><?= $completed ?></p>
-      </div>
-
-      <div class="rounded-xl bg-white p-5 shadow">
-        <p class="text-sm text-gray-500">Angazhimi</p>
-        <p class="mt-2 text-2xl font-bold text-pink-600">—</p>
       </div>
     </div>
 
@@ -83,18 +114,17 @@ $active = $total - $completed;
               <p class="text-sm text-gray-500">
                 <?= htmlspecialchars($row['description']) ?>
               </p>
-            </div>
-            <span class="text-sm text-gray-500">
+              <p class="text-sm text-blue-500 bg-blue-200 mt-1 w-[68px] rounded-md p-[2px]">
               <?= htmlspecialchars($row['due_date']) ?>
-            </span>
-<button
-  type="button"
-  class="deleteAssignment text-red-600 hover:text-red-800"
-  data-id="<?= (int)$assignment['id'] ?>"
-  title="Fshij detyrën">
-  🗑
-</button>
-
+              </p>
+            </div>
+            <button
+              type="button"
+              class="deleteAssignment text-red-600 hover:text-red-800"
+              data-id="<?= (int)$assignment['id'] ?>"
+              title="Fshij detyrën">
+              🗑
+            </button>
           </div>
         <?php endforeach; ?>
         
