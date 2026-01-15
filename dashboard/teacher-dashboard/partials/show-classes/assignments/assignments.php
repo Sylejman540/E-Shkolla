@@ -87,8 +87,17 @@ $active = $total - $completed;
             <span class="text-sm text-gray-500">
               <?= htmlspecialchars($row['due_date']) ?>
             </span>
+<button
+  type="button"
+  class="deleteAssignment text-red-600 hover:text-red-800"
+  data-id="<?= (int)$assignment['id'] ?>"
+  title="Fshij detyrën">
+  🗑
+</button>
+
           </div>
         <?php endforeach; ?>
+        
       </div>
     </section>
 
@@ -109,6 +118,32 @@ btn?.addEventListener('click', () => {
 
 cancel?.addEventListener('click', () => {
   form.classList.add('hidden');
+});
+
+document.addEventListener('click', function (e) {
+    const btn = e.target.closest('.deleteAssignment');
+    if (!btn) return;
+
+    const id = btn.dataset.id;
+    if (!id) return;
+
+    if (!confirm('A jeni i sigurt që doni ta fshini këtë detyrë?')) return;
+
+    fetch('/E-Shkolla/dashboard/teacher-dashboard/partials/show-classes/assignments/delete_assignments.php', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+        body: 'id=' + encodeURIComponent(id)
+    })
+    .then(res => res.json())
+    .then(data => {
+        if (data.success) {
+            // remove row instantly (better UX)
+            btn.closest('tr')?.remove();
+        } else {
+            alert(data.message || 'Fshirja dështoi');
+        }
+    })
+    .catch(() => alert('Gabim në server'));
 });
 </script>
 
