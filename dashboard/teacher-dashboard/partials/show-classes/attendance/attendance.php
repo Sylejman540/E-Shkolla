@@ -7,6 +7,8 @@ require_once __DIR__ . '/../index.php';
 
 require_once __DIR__ . '/../../../../../db.php';
 
+
+
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     $schoolId = $_SESSION['user']['school_id'];
     $studentId = (int)($_POST['student_id'] ?? 0);
@@ -22,27 +24,13 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     $present = isset($_POST['present']) ? 1 : 0;
     $missing = isset($_POST['missing']) ? 1 : 0;
 
-    $stmt = $pdo->prepare("
-    INSERT INTO attendance 
-    (school_id, student_id, class_id, subject_id, teacher_id, present, missing)
-    VALUES (?, ?, ?, ?, ?, ?, ?)
-");
+    $stmt = $pdo->prepare("INSERT INTO attendance(school_id, student_id, class_id, subject_id, teacher_id, present, missing) VALUES (?, ?, ?, ?, ?, ?, ?)");
 
-$stmt->execute([
-    $schoolId,
-    $studentId,
-    $classId,
-    $subjectId, // NULL or INT
-    $teacherId,
-    $present,
-    $missing
-]);
-
+    $stmt->execute([$schoolId, $studentId, $classId, $subjectId, $teacherId, $present, $missing]);
 
     header("Location: " . $_SERVER['REQUEST_URI']);
     exit;
 }
-
 
 $classId = (int)($_GET['class_id'] ?? 0);
 
@@ -66,7 +54,6 @@ $stmt = $pdo->prepare("
 
 $stmt->execute([$classId]);
 $students = $stmt->fetchAll(PDO::FETCH_ASSOC);
-
 ?>
 <!DOCTYPE html>
 <html lang="en">
@@ -123,27 +110,15 @@ $students = $stmt->fetchAll(PDO::FETCH_ASSOC);
                         </td>   
                         <td class="px-3 py-4 text-sm whitespace-nowrap">
                             <div class="flex gap-2">
-<form method="post" class="flex gap-2">
-    <input type="hidden" name="student_id" value="<?= (int)$row['student_id'] ?>">
-    <input type="hidden" name="class_id" value="<?= $classId ?>">
-<input type="hidden" name="subject_id" value="<?= (int)$subjectId ?>">
+                                <form method="post" class="flex gap-2">
+                                    <input type="hidden" name="student_id" value="<?= (int)$row['student_id'] ?>">
+                                    <input type="hidden" name="class_id" value="<?= $classId ?>">
+                                    <input type="hidden" name="subject_id" value="<?= (int)$subjectId ?>">
 
+                                    <button type="submit" name="present" class="px-3 py-1.5 text-xs font-medium rounded-full bg-blue-100 text-blue-800 hover:bg-blue-200 transition">Prezent</button>
 
-    <button
-        type="submit"
-        name="present"
-        class="px-3 py-1.5 text-xs font-medium rounded-full bg-blue-100 text-blue-800 hover:bg-blue-200 transition">
-        Prezent
-    </button>
-
-    <button
-        type="submit"
-        name="missing"
-        class="px-3 py-1.5 text-xs font-medium rounded-full bg-red-100 text-red-800 hover:bg-red-200 transition">
-        Mungon
-    </button>
-</form>
-
+                                    <button type="submit" name="missing" class="px-3 py-1.5 text-xs font-medium rounded-full bg-red-100 text-red-800 hover:bg-red-200 transition">Mungon</button>
+                                </form>
                             </div>
                         </td>
                     </tr>
@@ -178,6 +153,5 @@ $students = $stmt->fetchAll(PDO::FETCH_ASSOC);
     form.classList.add('hidden');
   });
 </script>
-
 </body>
 </html>
