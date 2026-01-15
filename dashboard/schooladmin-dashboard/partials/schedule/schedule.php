@@ -110,26 +110,24 @@ $classes = $stmt->fetchAll(PDO::FETCH_ASSOC);
 
                 foreach ($schedule as $lesson) {
                     $timeKey = $lesson['start_time'] . ' - ' . $lesson['end_time'];
-$dayMap = [
-    'E Hënë'     => 'monday',
-    'E Martë'    => 'tuesday',
-    'E Mërkurë'  => 'wednesday',
-    'E Enjte'    => 'thursday',
-    'E Premte'   => 'friday',
-    'Monday'     => 'monday',
-    'Tuesday'    => 'tuesday',
-    'Wednesday'  => 'wednesday',
-    'Thursday'   => 'thursday',
-    'Friday'     => 'friday',
-];
+                    $dayMap = [
+                        'E Hënë'     => 'monday',
+                        'E Martë'    => 'tuesday',
+                        'E Mërkurë'  => 'wednesday',
+                        'E Enjte'    => 'thursday',
+                        'E Premte'   => 'friday',
+                        'Monday'     => 'monday',
+                        'Tuesday'    => 'tuesday',
+                        'Wednesday'  => 'wednesday',
+                        'Thursday'   => 'thursday',
+                        'Friday'     => 'friday',
+                    ];
 
-$normalizedDay = strtolower(trim($lesson['day']));
-$normalizedDay = $dayMap[$lesson['day']] ?? $normalizedDay;
+                    $normalizedDay = strtolower(trim($lesson['day']));
+                    $normalizedDay = $dayMap[$lesson['day']] ?? $normalizedDay;
 
-$grid[$timeKey][$normalizedDay] = $lesson;
-
+                    $grid[$timeKey][$normalizedDay] = $lesson;
                 }
-            
             ?>
             <tr id="schedule-<?= (int)$row['id'] ?>" class="hidden bg-gray-50 dark:bg-gray-900">
                 <td colspan="8" class="p-4">
