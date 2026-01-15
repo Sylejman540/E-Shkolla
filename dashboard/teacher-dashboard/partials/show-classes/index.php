@@ -1,6 +1,26 @@
 <?php
-$classId = $_GET['class_id'] ?? null;
-$query = $classId ? '?class_id=' . (int)$classId : '';
+$subjectId = null;
+$classId   = null;
+
+if (isset($_GET['class_id']) && $_GET['class_id'] !== '') {
+    $classId = (int)$_GET['class_id'];
+}
+
+if (isset($_GET['subject_id']) && $_GET['subject_id'] !== '') {
+    $subjectId = (int)$_GET['subject_id'];
+}
+
+$params = [];
+
+if ($classId !== null) {
+    $params['class_id'] = $classId;
+}
+
+if ($subjectId !== null) {
+    $params['subject_id'] = $subjectId;
+}
+
+$query = $params ? '?' . http_build_query($params) : '';
 
 ?>
 <!DOCTYPE html>
