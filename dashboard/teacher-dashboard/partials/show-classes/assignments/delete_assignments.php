@@ -7,39 +7,40 @@ require_once __DIR__ . '/../../../../../db.php';
 
 header('Content-Type: application/json');
 
-// ✅ Only allow POST
 if ($_SERVER['REQUEST_METHOD'] !== 'POST') {
-    http_response_code(405);
     echo json_encode(['success' => false, 'message' => 'Invalid request']);
     exit;
 }
 
-// ✅ Auth & school check
-$schoolId = $_SESSION['user']['school_id'] ?? null;
-if (!$schoolId) {
-    http_response_code(403);
-    echo json_encode(['success' => false, 'message' => 'Unauthorized']);
+$assignmentId = (int) ($_POST['id'] ?? 0);
+$teacherId    = (int) ($_SESSION['user']['id'] ?? 0);
+$schoolId     = (int) ($_SESSION['user']['school_id'] ?? 0);
+
+if (!$assignmentId || !$teacherId || !$schoolId) {
+    echo json_encode(['success' => false, 'message' => 'Invalid context']);
     exit;
 }
 
-// ✅ Validate assignment ID
-$assignmentId = isset($_POST['id']) ? (int)$_POST['id'] : 0;
-if ($assignmentId <= 0) {
-    http_response_code(400);
-    echo json_encode(['success' => false, 'message' => 'Invalid assignment ID']);
-    exit;
-}
-
-// ✅ Delete (school-scoped)
+/**
+ * SECURITY:
+ * Delete ONLY if:
+ *  - assignment belongs to this teacher
+ *  - assignment belongs to this school
+ */
 $stmt = $pdo->prepare("
     DELETE FROM assignments
-    WHERE id = ? AND school_id = ?
+    WHERE id = ?
+      AND teacher_id = ?
+      AND school_id = ?
 ");
-$success = $stmt->execute([$assignmentId, $schoolId]);
 
-if ($success && $stmt->rowCount() > 0) {
+$stmt->execute([$assignmentId, $teacherId, $schoolId]);
+
+if ($stmt->rowCount() === 1) {
     echo json_encode(['success' => true]);
 } else {
-    http_response_code(404);
-    echo json_encode(['success' => false, 'message' => 'Assignment not found']);
+    echo json_encode([
+        'success' => false,
+        'message' => 'Detyra nuk u gjet ose nuk keni leje'
+    ]);
 }

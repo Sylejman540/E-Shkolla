@@ -66,8 +66,6 @@ $assignments = $stmt->fetchAll(PDO::FETCH_ASSOC);
 <body class="bg-gray-50">
 <main class="lg:pl-72">
   <div class="px-4 py-8 sm:px-6 lg:px-8">
-
-    <!-- HEADER -->
     <div class="flex items-center justify-between mb-8">
       <div>
         <h1 class="text-2xl font-bold text-gray-900">Detyrat</h1>
@@ -82,7 +80,6 @@ $assignments = $stmt->fetchAll(PDO::FETCH_ASSOC);
       </button>
     </div>
 
-    <!-- STATS -->
     <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6 mb-10">
       <div class="rounded-xl bg-white p-5 shadow">
         <p class="text-sm text-gray-500">Totali i Detyrave</p>
@@ -122,18 +119,15 @@ $assignments = $stmt->fetchAll(PDO::FETCH_ASSOC);
             <button
               type="button"
               class="deleteAssignment text-red-600 hover:text-red-800"
-              data-id="<?= (int)$assignment['id'] ?>"
-              title="Fshij detyrën">
+              data-id="<?= (int)$row['id'] ?>"
+            >
               🗑
             </button>
           </div>
         <?php endforeach; ?>
-        
       </div>
     </section>
-
     <?php require_once 'form.php'; ?>
-
   </div>
 </main>
 
@@ -169,7 +163,7 @@ document.addEventListener('click', function (e) {
     .then(data => {
         if (data.success) {
             // remove row instantly (better UX)
-            btn.closest('tr')?.remove();
+            btn.closest('div')?.remove();
         } else {
             alert(data.message || 'Fshirja dështoi');
         }
