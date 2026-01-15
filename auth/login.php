@@ -37,6 +37,11 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
               exit;
             }
 
+            if($_SESSION['role'] == 'student' && $_SESSION['status'] == 'active'){
+              header("Location: /E-Shkolla/student-dashboard");
+              exit;
+            }
+
             if(!isset($_SESSION['user']) && $_SESSION['status'] == 'inactive'){
               header("Location: /E-Shkolla/login");
               exit;
