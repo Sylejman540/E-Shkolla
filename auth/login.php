@@ -5,150 +5,314 @@ if (session_status() === PHP_SESSION_NONE) {
 
 require_once __DIR__ . '/../db.php';
 
+// Security headers
+header('X-Content-Type-Options: nosniff');
+header('X-Frame-Options: DENY');
+header('X-XSS-Protection: 1; mode=block');
+
+/* =========================
+   CSRF TOKEN GENERATION
+========================= */
+if (!isset($_SESSION['csrf_token'])) {
+    $_SESSION['csrf_token'] = bin2hex(random_bytes(32));
+}
+
+$error = null;
+$success = false;
+
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
-
-    $email = $_POST['email'];
-    $password = $_POST['password'];
-
-    $stmt = $pdo->prepare("SELECT * FROM users WHERE email = ? LIMIT 1");
-    $stmt->execute([$email]);
-
-    $user = $stmt->fetch(PDO::FETCH_ASSOC);
-
-    if ($user) {
-        if ($password === $user['password']) {
-
-            $_SESSION['user'] = $user;
-            $_SESSION['role'] = $user['role'];
-            $_SESSION['status'] = $user['status'];
-          
-            if($_SESSION['role'] == 'super_admin' && $_SESSION['status'] == 'active'){    
-              header("Location: /E-Shkolla/super-admin-dashboard");
-              exit;
-            }
-
-            if($_SESSION['role'] == 'school_admin' && $_SESSION['status'] == 'active'){
-              header("Location: /E-Shkolla/school-admin-dashboard");
-              exit;
-            }
-
-            if($_SESSION['role'] == 'teacher' && $_SESSION['status'] == 'active'){
-              header("Location: /E-Shkolla/teacher-dashboard");
-              exit;
-            }
-
-            if($_SESSION['role'] == 'student' && $_SESSION['status'] == 'active'){
-              header("Location: /E-Shkolla/student-dashboard");
-              exit;
-            }
-
-            if($_SESSION['role'] == 'parent' && $_SESSION['status'] == 'active'){
-              header("Location: /E-Shkolla/parent-dashboard");
-              exit;
-            }
-
-            if(!isset($_SESSION['user']) && $_SESSION['status'] == 'inactive'){
-              header("Location: /E-Shkolla/login");
-              exit;
+    
+    /* =========================
+       CSRF VALIDATION
+    ========================= */
+    if (!isset($_POST['csrf_token']) || $_POST['csrf_token'] !== $_SESSION['csrf_token']) {
+        $error = "Invalid request. Please try again.";
+    } else {
+        $email = trim($_POST['email'] ?? '');
+        $password = $_POST['password'] ?? '';
+        
+        /* =========================
+           RATE LIMITING (Basic)
+        ========================= */
+        $ip = $_SERVER['REMOTE_ADDR'];
+        $lock_key = "login_attempt_" . md5($ip);
+        $max_attempts = 5;
+        $lockout_time = 900; // 15 minutes
+        
+        // Initialize attempt tracking if not exists
+        if (!isset($_SESSION[$lock_key])) {
+            $_SESSION[$lock_key] = [
+                'count' => 0,
+                'locked_until' => 0,
+                'first_attempt' => time()
+            ];
+        }
+        
+        // Check if locked out
+        if ($_SESSION[$lock_key]['locked_until'] >= time()) {
+            $remaining = ceil(($_SESSION[$lock_key]['locked_until'] - time()) / 60);
+            $error = "Too many login attempts. Try again in {$remaining} minutes.";
+        } else if ($error === null) {
+            // Reset lockout if expired
+            $_SESSION[$lock_key] = [
+                'count' => 0,
+                'locked_until' => 0,
+                'first_attempt' => time()
+            ];
+            
+            /* =========================
+               AUTHENTICATION
+            ========================= */
+            if (filter_var($email, FILTER_VALIDATE_EMAIL)) {
+                // Use prepared statement (already using PDO - secure)
+                $stmt = $pdo->prepare("SELECT id, email, password, role, school_id, status FROM users WHERE email = ? LIMIT 1");
+                $stmt->execute([$email]);
+                $user = $stmt->fetch(PDO::FETCH_ASSOC);
+                
+                // Verify password (prevents timing attacks with password_verify)
+                if ($user && password_verify($password, $user['password'])) {
+                    
+                    // Check account status
+                    if ($user['status'] !== 'active') {
+                        $error = "Login failed. Please contact support."; // Don't reveal why
+                        $_SESSION[$lock_key]['count']++;
+                    } else {
+                        
+                        /* =========================
+                           REGENERATE SESSION ID (prevents fixation)
+                        ========================= */
+                        session_regenerate_id(true);
+                        
+                        // Clear rate limit on success
+                        unset($_SESSION[$lock_key]);
+                        
+                        /* =========================
+                           SET SESSION DATA
+                        ========================= */
+                        $_SESSION['user'] = [
+                            'id' => (int) $user['id'],
+                            'email' => $user['email'],
+                            'school_id' => (int) $user['school_id'],
+                            'role' => $user['role']
+                        ];
+                        $_SESSION['role'] = $user['role'];
+                        $_SESSION['status'] = $user['status'];
+                        $_SESSION['login_time'] = time();
+                        
+                        $success = true;
+                        
+                        /* =========================
+                           REDIRECT BY ROLE
+                        ========================= */
+                        $role_redirects = [
+                            'super_admin' => '/E-Shkolla/super-admin-dashboard',
+                            'school_admin' => '/E-Shkolla/school-admin-dashboard',
+                            'teacher' => '/E-Shkolla/teacher-dashboard',
+                            'student' => '/E-Shkolla/student-dashboard',
+                            'parent' => '/E-Shkolla/parent-dashboard'
+                        ];
+                        
+                        if (isset($role_redirects[$user['role']])) {
+                            header("Location: {$role_redirects[$user['role']]}");
+                            exit;
+                        } else {
+                            // Role not found in redirect map - treat as error
+                            $error = "Login failed. Please contact support.";
+                            $_SESSION[$lock_key]['count']++;
+                        }
+                    }
+                } else {
+                    // Increment failed attempts
+                    $_SESSION[$lock_key]['count']++;
+                    
+                    // Lock after max attempts
+                    if ($_SESSION[$lock_key]['count'] >= $max_attempts) {
+                        $_SESSION[$lock_key]['locked_until'] = time() + $lockout_time;
+                    }
+                    
+                    $error = "Login failed. Please check your credentials."; // Generic message
+                }
+            } else {
+                $error = "Login failed. Please check your credentials.";
+                $_SESSION[$lock_key]['count']++;
             }
         }
     }
-
-    $error = "Invalid email or password";
 }
-?>
 
+?>
 <!DOCTYPE html>
-<html lang="en" class="h-full bg-white dark:bg-gray-900">
+<html lang="en" class="h-full scroll-smooth">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>E-Shkolla</title>
+    <meta http-equiv="X-UA-Compatible" content="ie=edge">
+    <title>E-Shkolla - Secure Login</title>
     <script src="https://cdn.tailwindcss.com"></script>
 </head>
-<body class="h-full">
+<body class="h-full bg-gray-50 dark:bg-gray-950">
 
 <div class="flex min-h-full">
-  <div class="flex flex-1 flex-col justify-center px-4 py-12 sm:px-6 lg:flex-none lg:px-20 xl:px-24">
-    <div class="mx-auto w-full max-w-sm lg:w-96">
-      <div>
-        <img src="https://tailwindcss.com/plus-assets/img/logos/mark.svg?color=indigo&shade=600" alt="Your Company" class="h-10 w-auto dark:hidden" />
-        <h2 class="mt-8 text-2xl/9 font-bold tracking-tight text-gray-900 dark:text-white">Log in to your account</h2>
+  <!-- Left Section: Login Form -->
+  <div class="flex w-full flex-col justify-center px-6 py-12 sm:px-8 lg:w-1/2 lg:px-16">
+    <div class="mx-auto w-full max-w-md">
+      
+      <!-- Branding Header -->
+      <div class="mb-10">
+        <div class="mb-6 flex items-center gap-2.5">
+          <div class="flex h-9 w-9 items-center justify-center rounded-md bg-blue-600 dark:bg-blue-600">
+            <svg class="h-5 w-5 text-white" fill="currentColor" viewBox="0 0 20 20">
+              <path d="M10.5 1.5H3.75A2.25 2.25 0 001.5 3.75v12.5A2.25 2.25 0 003.75 18.5h12.5a2.25 2.25 0 002.25-2.25V9.5M10.5 1.5v8m0 0l3-3m-3 3l-3-3M18.5 1.5v4.5m0 0h-4.5m4.5 0l-3-3"/>
+            </svg>
+          </div>
+          <div>
+            <h1 class="text-lg font-bold text-gray-900 dark:text-white">E-Shkolla</h1>
+            <p class="text-xs text-gray-500 dark:text-gray-400">School Management System</p>
+          </div>
+        </div>
+        
+        <div>
+          <h2 class="text-2xl font-semibold text-gray-900 dark:text-white leading-tight">Sign in to your account</h2>
+          <p class="mt-2 text-sm text-gray-600 dark:text-gray-400">Access your school dashboard securely</p>
+        </div>
       </div>
 
-      <div class="mt-10">
+      <!-- Alert Messages -->
+      <div class="mb-8">
+        <?php if ($error): ?>
+          <div class="rounded-lg border border-red-200 dark:border-red-900/50 bg-red-50 dark:bg-red-950/30 p-4" role="alert">
+            <div class="flex gap-3">
+              <svg class="h-5 w-5 text-red-600 dark:text-red-400 flex-shrink-0 mt-0.5" fill="currentColor" viewBox="0 0 20 20">
+                <path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zM8.707 7.293a1 1 0 00-1.414 1.414L8.586 10l-1.293 1.293a1 1 0 101.414 1.414L10 11.414l1.293 1.293a1 1 0 001.414-1.414L11.414 10l1.293-1.293a1 1 0 00-1.414-1.414L10 8.586 8.707 7.293z" clip-rule="evenodd"/>
+              </svg>
+              <div>
+                <p class="text-sm font-medium text-red-800 dark:text-red-200">
+                  <?= htmlspecialchars($error) ?>
+                </p>
+                <p class="mt-1 text-xs text-red-700 dark:text-red-300">If you continue to experience issues, please contact your school administrator.</p>
+              </div>
+            </div>
+          </div>
+        <?php endif; ?>
+
+        <?php if ($success): ?>
+          <div class="rounded-lg border border-green-200 dark:border-green-900/50 bg-green-50 dark:bg-green-950/30 p-4" role="status">
+            <div class="flex gap-3">
+              <svg class="h-5 w-5 text-green-600 dark:text-green-400 flex-shrink-0 mt-0.5" fill="currentColor" viewBox="0 0 20 20">
+                <path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clip-rule="evenodd"/>
+              </svg>
+              <p class="text-sm font-medium text-green-800 dark:text-green-200">
+                Login successful. Redirecting to your dashboard...
+              </p>
+            </div>
+          </div>
+        <?php endif; ?>
+      </div>
+
+      <!-- Login Form -->
+      <form method="POST" class="space-y-5">
+        <input type="hidden" name="csrf_token" value="<?= htmlspecialchars($_SESSION['csrf_token']) ?>">
+
+        <!-- Email Input -->
         <div>
-          <form action="#" method="POST" class="space-y-6">
-            <div>
-              <label for="email" class="block text-sm/6 font-medium text-gray-900 dark:text-gray-100">Email address</label>
-              <div class="mt-2">
-                <input id="email" type="email" name="email" required autocomplete="email" class="border border-1 block w-full rounded-md bg-white px-3 py-1.5 text-base text-gray-900 outline-1 -outline-offset-1 outline-gray-300 placeholder:text-gray-400 focus:outline-2 focus:-outline-offset-2 focus:outline-indigo-600 sm:text-sm/6 dark:bg-white/5 dark:text-white dark:outline-white/10 dark:placeholder:text-gray-500 dark:focus:outline-indigo-500" />
-              </div>
-            </div>
-
-            <div>
-              <label for="password" class="block text-sm/6 font-medium text-gray-900 dark:text-gray-100">Password</label>
-              <div class="mt-2">
-                <input id="password" type="password" name="password" required autocomplete="current-password" class="border border-1 block w-full rounded-md bg-white px-3 py-1.5 text-base text-gray-900 outline-1 -outline-offset-1 outline-gray-300 placeholder:text-gray-400 focus:outline-2 focus:-outline-offset-2 focus:outline-indigo-600 sm:text-sm/6 dark:bg-white/5 dark:text-white dark:outline-white/10 dark:placeholder:text-gray-500 dark:focus:outline-indigo-500" />
-              </div>
-            </div>
-
-            <div class="flex items-center justify-between">
-              <div class="flex gap-3">
-                <div class="flex h-6 shrink-0 items-center">
-                  <div class="group grid size-4 grid-cols-1">
-                    <input id="remember-me" type="checkbox" name="remember-me" class="col-start-1 row-start-1 appearance-none rounded-sm border border-gray-300 bg-white checked:border-indigo-600 checked:bg-indigo-600 indeterminate:border-indigo-600 indeterminate:bg-indigo-600 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-indigo-600 disabled:border-gray-300 disabled:bg-gray-100 disabled:checked:bg-gray-100 dark:border-white/10 dark:bg-white/5 dark:checked:border-indigo-500 dark:checked:bg-indigo-500 dark:indeterminate:border-indigo-500 dark:indeterminate:bg-indigo-500 dark:focus-visible:outline-indigo-500 forced-colors:appearance-auto" />
-                    <svg viewBox="0 0 14 14" fill="none" class="pointer-events-none col-start-1 row-start-1 size-3.5 self-center justify-self-center stroke-white group-has-disabled:stroke-gray-950/25">
-                      <path d="M3 8L6 11L11 3.5" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="opacity-0 group-has-checked:opacity-100" />
-                      <path d="M3 7H11" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="opacity-0 group-has-indeterminate:opacity-100" />
-                    </svg>
-                  </div>
-                </div>
-                <label for="remember-me" class="block text-sm/6 text-gray-900 dark:text-gray-300">Remember me</label>
-              </div>
-            </div>
-
-            <div>
-              <button type="submit" class="flex w-full justify-center rounded-md bg-indigo-600 px-3 py-1.5 text-sm/6 font-semibold text-white shadow-xs hover:bg-indigo-500 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-indigo-600 dark:bg-indigo-500 dark:shadow-none dark:hover:bg-indigo-400 dark:focus-visible:outline-indigo-500">Log in</button>
-            </div>
-          </form>
+          <label for="email" class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">Email address</label>
+          <input 
+            id="email" 
+            type="email" 
+            name="email" 
+            required 
+            autocomplete="email" 
+            value="<?= htmlspecialchars($_POST['email'] ?? '') ?>"
+            class="block w-full rounded-lg border border-gray-300 dark:border-gray-700 bg-white dark:bg-gray-900 px-4 py-2.5 text-gray-900 dark:text-white placeholder:text-gray-400 dark:placeholder:text-gray-500 outline-none transition-all duration-200 focus:border-blue-500 focus:ring-2 focus:ring-blue-500/10 dark:focus:border-blue-500 dark:focus:ring-blue-500/20"
+            placeholder="name@school.edu"
+            aria-describedby="email-help"
+          />
+          <p id="email-help" class="mt-1 text-xs text-gray-500 dark:text-gray-400">Use your school email address</p>
         </div>
 
-        <div class="mt-10">
-          <div class="relative">
-            <div aria-hidden="true" class="absolute inset-0 flex items-center">
-              <div class="w-full border-t border-gray-200 dark:border-gray-700"></div>
-            </div>
-            <div class="relative flex justify-center text-sm/6 font-medium">
-              <span class="bg-white px-6 text-gray-900 dark:bg-gray-900 dark:text-gray-300">Or continue with</span>
-            </div>
+        <!-- Password Input -->
+        <div>
+          <label for="password" class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">Password</label>
+          <input 
+            id="password" 
+            type="password" 
+            name="password" 
+            required 
+            autocomplete="current-password"
+            class="block w-full rounded-lg border border-gray-300 dark:border-gray-700 bg-white dark:bg-gray-900 px-4 py-2.5 text-gray-900 dark:text-white placeholder:text-gray-400 dark:placeholder:text-gray-500 outline-none transition-all duration-200 focus:border-blue-500 focus:ring-2 focus:ring-blue-500/10 dark:focus:border-blue-500 dark:focus:ring-blue-500/20"
+            placeholder="Enter your password"
+          />
+        </div>
+
+        <!-- Submit Button -->
+        <button 
+          type="submit"
+          class="w-full rounded-lg bg-blue-600 hover:bg-blue-700 active:bg-blue-800 dark:bg-blue-600 dark:hover:bg-blue-700 px-4 py-2.5 text-sm font-semibold text-white shadow-sm transition-colors duration-200 focus:outline-2 focus:outline-offset-2 focus:outline-blue-600"
+        >
+          Sign in securely
+        </button>
+      </form>
+
+      <!-- Trust Footer -->
+      <div class="mt-8 border-t border-gray-200 dark:border-gray-800 pt-8">
+        <div class="grid grid-cols-3 gap-4 mb-6">
+          <div class="text-center">
+            <svg class="h-5 w-5 text-green-600 dark:text-green-400 mx-auto mb-1.5" fill="currentColor" viewBox="0 0 20 20">
+              <path fill-rule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clip-rule="evenodd"/>
+            </svg>
+            <p class="text-xs font-medium text-gray-700 dark:text-gray-300">Encrypted</p>
           </div>
-
-          <div class="mt-6 grid grid-cols-2 gap-4">
-            <a href="#" class="border border-1 flex w-full items-center justify-center gap-3 rounded-md bg-white px-3 py-2 text-sm font-semibold text-gray-900 shadow-xs inset-ring inset-ring-gray-300 hover:bg-gray-50 focus-visible:inset-ring-transparent dark:bg-white/10 dark:text-white dark:shadow-none dark:inset-ring-white/5 dark:hover:bg-white/20">
-              <svg viewBox="0 0 24 24" aria-hidden="true" class="h-5 w-5">
-                <path d="M12.0003 4.75C13.7703 4.75 15.3553 5.36002 16.6053 6.54998L20.0303 3.125C17.9502 1.19 15.2353 0 12.0003 0C7.31028 0 3.25527 2.69 1.28027 6.60998L5.27028 9.70498C6.21525 6.86002 8.87028 4.75 12.0003 4.75Z" fill="#EA4335" />
-                <path d="M23.49 12.275C23.49 11.49 23.415 10.73 23.3 10H12V14.51H18.47C18.18 15.99 17.34 17.25 16.08 18.1L19.945 21.1C22.2 19.01 23.49 15.92 23.49 12.275Z" fill="#4285F4" />
-                <path d="M5.26498 14.2949C5.02498 13.5699 4.88501 12.7999 4.88501 11.9999C4.88501 11.1999 5.01998 10.4299 5.26498 9.7049L1.275 6.60986C0.46 8.22986 0 10.0599 0 11.9999C0 13.9399 0.46 15.7699 1.28 17.3899L5.26498 14.2949Z" fill="#FBBC05" />
-                <path d="M12.0004 24.0001C15.2404 24.0001 17.9654 22.935 19.9454 21.095L16.0804 18.095C15.0054 18.82 13.6204 19.245 12.0004 19.245C8.8704 19.245 6.21537 17.135 5.2654 14.29L1.27539 17.385C3.25539 21.31 7.3104 24.0001 12.0004 24.0001Z" fill="#34A853" />
-              </svg>
-              <span class="text-sm/6 font-semibold">Google</span>
-            </a>
-
-            <a href="#" class="border border-1 flex w-full items-center justify-center gap-3 rounded-md bg-white px-3 py-2 text-sm font-semibold text-gray-900 shadow-xs inset-ring inset-ring-gray-300 hover:bg-gray-50 focus-visible:inset-ring-transparent dark:bg-white/10 dark:text-white dark:shadow-none dark:inset-ring-white/5 dark:hover:bg-white/20">
-              <svg viewBox="0 0 20 20" fill="currentColor" aria-hidden="true" class="size-5 fill-[#24292F] dark:fill-white">
-                <path d="M10 0C4.477 0 0 4.484 0 10.017c0 4.425 2.865 8.18 6.839 9.504.5.092.682-.217.682-.483 0-.237-.008-.868-.013-1.703-2.782.605-3.369-1.343-3.369-1.343-.454-1.158-1.11-1.466-1.11-1.466-.908-.62.069-.608.069-.608 1.003.07 1.531 1.032 1.531 1.032.892 1.53 2.341 1.088 2.91.832.092-.647.35-1.088.636-1.338-2.22-.253-4.555-1.113-4.555-4.951 0-1.093.39-1.988 1.029-2.688-.103-.253-.446-1.272.098-2.65 0 0 .84-.27 2.75 1.026A9.564 9.564 0 0110 4.844c.85.004 1.705.115 2.504.337 1.909-1.296 2.747-1.027 2.747-1.027.546 1.379.203 2.398.1 2.651.64.7 1.028 1.595 1.028 2.688 0 3.848-2.339 4.695-4.566 4.942.359.31.678.921.678 1.856 0 1.338-.012 2.419-.012 2.747 0 .268.18.58.688.482A10.019 10.019 0 0020 10.017C20 4.484 15.522 0 10 0z" clip-rule="evenodd" fill-rule="evenodd" />
-              </svg>
-              <span class="text-sm/6 font-semibold">GitHub</span>
-            </a>
+          <div class="text-center">
+            <svg class="h-5 w-5 text-green-600 dark:text-green-400 mx-auto mb-1.5" fill="currentColor" viewBox="0 0 20 20">
+              <path fill-rule="evenodd" d="M5 9V7a5 5 0 0110 0v2a2 2 0 012 2v5a2 2 0 01-2 2H5a2 2 0 01-2-2v-5a2 2 0 012-2zm8-2v2H7V7a3 3 0 016 0z" clip-rule="evenodd"/>
+            </svg>
+            <p class="text-xs font-medium text-gray-700 dark:text-gray-300">Secure</p>
+          </div>
+          <div class="text-center">
+            <svg class="h-5 w-5 text-green-600 dark:text-green-400 mx-auto mb-1.5" fill="currentColor" viewBox="0 0 20 20">
+              <path d="M13 7H7v6h6V7z"/>
+              <path fill-rule="evenodd" d="M7 2a1 1 0 012 0v1h2V2a1 1 0 112 0v1h2V2a1 1 0 112 0v1a2 2 0 012 2v2h1a2 2 0 012 2v2h1a2 2 0 012 2v6a2 2 0 01-2 2h-1v1a1 1 0 11-2 0v-1h-2v1a1 1 0 11-2 0v-1h-2v1a1 1 0 11-2 0v-1H5a2 2 0 01-2-2v-6a2 2 0 012-2h1V9a2 2 0 012-2h2V6a2 2 0 012-2H7V2z" clip-rule="evenodd"/>
+            </svg>
+            <p class="text-xs font-medium text-gray-700 dark:text-gray-300">Private</p>
           </div>
         </div>
+        
+        <p class="text-center text-xs text-gray-500 dark:text-gray-400">
+          Need help? <a href="#" class="font-medium text-blue-600 dark:text-blue-400 hover:underline">Contact your administrator</a>
+        </p>
+      </div>
+
+    </div>
+  </div>
+
+  <!-- Right Section: Image (Desktop only) -->
+  <div class="relative hidden w-1/2 lg:block bg-gradient-to-br from-blue-600 to-blue-700 dark:from-blue-800 dark:to-blue-900">
+    <!-- Subtle background pattern -->
+    <div class="absolute inset-0 opacity-10">
+      <svg class="h-full w-full" viewBox="0 0 400 400" xmlns="http://www.w3.org/2000/svg">
+        <defs>
+          <pattern id="grid" width="40" height="40" patternUnits="userSpaceOnUse">
+            <path d="M 40 0 L 0 0 0 40" fill="none" stroke="white" stroke-width="1"/>
+          </pattern>
+        </defs>
+        <rect width="400" height="400" fill="url(#grid)"/>
+      </svg>
+    </div>
+
+    <!-- Content overlay -->
+    <div class="relative h-full flex flex-col items-center justify-center px-8 text-center">
+      <div class="max-w-xs">
+        <svg class="h-20 w-20 text-white/90 mx-auto mb-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M12 6.253v13m0-13C6.5 6.253 2 10.998 2 17s4.5 10.747 10 10.747c5.5 0 10-4.998 10-10.747S17.5 6.253 12 6.253z"/>
+        </svg>
+        <h3 class="text-xl font-semibold text-white mb-2">Learning Management</h3>
+        <p class="text-sm text-blue-100">
+          A trusted platform for teachers, students, and parents to collaborate and succeed together.
+        </p>
       </div>
     </div>
   </div>
-  <div class="relative hidden w-0 flex-1 lg:block">
-    <img src="https://images.unsplash.com/photo-1496917756835-20cb06e75b4e?ixlib=rb-1.2.1&ixid=eyJhcHBfaWQiOjEyMDd9&auto=format&fit=crop&w=1908&q=80" alt="" class="absolute inset-0 size-full object-cover" />
-  </div>
+
 </div>
 
 </body>
