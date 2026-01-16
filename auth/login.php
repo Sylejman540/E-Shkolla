@@ -126,6 +126,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
   background-size: 400% 400%;
   animation: gradientShift 12s ease infinite;
 }
+
 </style>
 <body class="h-full bg-gray-50 dark:bg-gray-950">
 
@@ -161,6 +162,23 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         </p>
       </div>
 
+      <?php if (isset($_GET['logout']) && $_GET['logout'] == 'success'): ?>
+          <div id="logout-alert" style="color: green; padding: 10px; background: #eaffea; border: 1px solid green; margin-bottom: 10px; transition: opacity 0.5s ease;">
+              Jeni çkyçur me sukses.
+          </div>
+
+          <script>
+              setTimeout(function() {
+                  const alert = document.getElementById('logout-alert');
+                  if (alert) {
+                      alert.style.opacity = '0'; // Fade out effect
+                      setTimeout(() => alert.remove(), 500); // Remove from DOM after fade
+                  }
+              }, 5000);
+          </script>
+      <?php endif; ?>
+
+
       <?php if ($error): ?>
         <div class="mb-6 rounded-lg border border-red-200 bg-red-50 p-4 text-sm text-red-800">
           <?= htmlspecialchars($error) ?>
@@ -191,11 +209,11 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
           <div class="relative">
             <input id="password" type="password" name="password" required autocomplete="current-password" placeholder="Shkruaj fjalëkalimin" class="block w-full rounded-lg border border-gray-300 dark:border-gray-700 bg-white dark:bg-gray-900 px-4 py-2.5 pr-11 text-gray-900 dark:text-white outline-none transition focus:border-blue-500 focus:ring-2 focus:ring-blue-500/10">
 
-            <button type="button" id="togglePassword" class="absolute inset-y-0 right-0 flex items-center px-3 text-gray-500 hover:text-gray-700 dark:hover:text-gray-300" aria-label="Shfaq ose fshih fjalëkalimin">
-              <svg id="eyeIcon" xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5"
+            <button type="button" id="togglePassword" class="absolute inset-y-0 right-0 flex items-center px-3" aria-label="Shfaq ose fshih fjalëkalimin">
+              <svg id="eyeIcon" xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none" viewBox="0 0 24 24" style="stroke: black !important;">
+                <path style="stroke: black !important;" stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5"
                   d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z"/>
-                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5"
+                <path style="stroke: black !important;" stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5"
                   d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"/>
               </svg>
             </button>
@@ -231,10 +249,24 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 <script>
   const toggleBtn = document.getElementById('togglePassword');
   const passwordInput = document.getElementById('password');
+  const eyeIcon = document.getElementById('eyeIcon');
 
   toggleBtn.addEventListener('click', () => {
     const isPassword = passwordInput.type === 'password';
     passwordInput.type = isPassword ? 'text' : 'password';
+
+    // We hard-code the style into every path to kill the white line forever
+    if (isPassword) {
+      eyeIcon.innerHTML = `
+        <path style="stroke: black !important;" stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5"
+          d="M13.875 18.825A10.05 10.05 0 0112 19c-4.478 0-8.268-2.943-9.542-7a9.956 9.956 0 012.362-4.162M6.423 6.423A9.956 9.956 0 0112 5c4.478 0 8.268 2.943 9.542 7a9.978 9.978 0 01-4.043 5.362M15 12a3 3 0 00-3-3"/>`;
+    } else {
+      eyeIcon.innerHTML = `
+        <path style="stroke: black !important;" stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5"
+          d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z"/>
+        <path style="stroke: black !important;" stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5"
+          d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"/>`;
+    }
   });
 </script>
 </body>
