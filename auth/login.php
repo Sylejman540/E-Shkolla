@@ -112,8 +112,9 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>E-Shkolla – Kyçje e Sigurt</title>
+    <title>E-Shkolla – Kyçje në sistem</title>
     <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="icon" href="images/icon.png" type="image/png">
 </head>
 <style>
 @keyframes gradientShift {
@@ -218,7 +219,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         </div>
 
 
-        <button type="submit" class="w-full rounded-lg bg-blue-600 py-2.5 text-sm font-semibold text-white hover:bg-blue-700 transition">Kyçu në mënyrë të sigurt</button>
+        <button type="submit" class="w-full rounded-lg bg-blue-600 py-2.5 text-sm font-semibold text-white hover:bg-blue-700 transition">Kyçu</button>
       </form>
       <div class="mt-8 text-center text-xs text-gray-500">
         Të dhënat janë të enkriptuara dhe të mbrojtura
