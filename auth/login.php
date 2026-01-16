@@ -162,21 +162,20 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         </p>
       </div>
 
-      <?php if (isset($_GET['logout']) && $_GET['logout'] == 'success'): ?>
-          <div id="logout-alert" style="color: green; padding: 10px; background: #eaffea; border: 1px solid green; margin-bottom: 10px; transition: opacity 0.5s ease;">
-              Jeni çkyçur me sukses.
-          </div>
+<?php if (!empty($_SESSION['logout_success'])): ?>
+  <div id="logout-alert" class="mb-6 flex items-start gap-3 rounded-lg border border-green-200 bg-green-50 px-4 py-3 text-sm text-green-800">
+    <svg class="mt-0.5 h-5 w-5 text-green-600" fill="currentColor" viewBox="0 0 20 20">
+      <path fill-rule="evenodd"
+        d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z"
+        clip-rule="evenodd"/>
+    </svg>
+    <div>
+      <p class="font-medium">Jeni çkyçur me sukses</p>
+      <p class="text-xs text-green-700">Faleminderit që përdorët sistemin E-Shkolla.</p>
+    </div>
+  </div>
+<?php unset($_SESSION['logout_success']); endif; ?>
 
-          <script>
-              setTimeout(function() {
-                  const alert = document.getElementById('logout-alert');
-                  if (alert) {
-                      alert.style.opacity = '0'; // Fade out effect
-                      setTimeout(() => alert.remove(), 500); // Remove from DOM after fade
-                  }
-              }, 5000);
-          </script>
-      <?php endif; ?>
 
 
       <?php if ($error): ?>
