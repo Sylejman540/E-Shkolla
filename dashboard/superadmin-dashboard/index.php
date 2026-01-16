@@ -39,6 +39,7 @@ function isActive($path) {
          x-cloak
          @click="mobileOpen = false"
          class="fixed inset-0 z-40 bg-slate-900/40 backdrop-blur-sm lg:hidden transition-opacity"></div>
+<div :class="sidebarCollapsed ? 'lg:pl-20' : 'lg:pl-72'" class="h-full custom-transition">
 
     <aside 
         class="fixed inset-y-0 left-0 z-50 flex flex-col bg-white shadow-[4px_0_24px_rgba(0,0,0,0.02)] border-r border-slate-100 custom-transition"
@@ -196,8 +197,9 @@ function isActive($path) {
         </button>
     </div>
 
-    <div :class="sidebarCollapsed ? 'lg:pl-20' : 'lg:pl-72'" class="h-full custom-transition">
+    <div :class="sidebarCollapsed ? '' : ''" class="h-full custom-transition">
         <main class="h-full p-8 pt-20 lg:pt-8">
+            <?= $content ?? '' ?>
             </main>
     </div>
 

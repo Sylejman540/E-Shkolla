@@ -1,30 +1,12 @@
-<?php 
-if(session_status() === PHP_SESSION_NONE){
-    session_start();
-}
-
-require_once __DIR__ . '/../../index.php'; 
-
+<?php
 require_once __DIR__ . '/../../../../db.php';
 
-$stmt = $pdo->prepare("SELECT * FROM schools ORDER BY created_at DESC");
-$stmt->execute();
-
+$stmt = $pdo->query("SELECT * FROM schools ORDER BY created_at DESC");
 $schools = $stmt->fetchAll(PDO::FETCH_ASSOC);
-?>
-<!DOCTYPE html>
-<html lang="en">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>E-Shkolla</title>
-    <script src="https://cdn.tailwindcss.com"></script>
-    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
-</head>
-<body>
-<main class="lg:pl-72">
-  <div class="xl:pl-18">
-    <div class="px-4 py-10 sm:px-6 lg:px-8 lg:py-6">
+
+ob_start();
+?>  
+
         <div class="px-4 sm:px-6 lg:px-8">
         <div class="sm:flex sm:items-center">
             <div class="sm:flex-auto">
@@ -130,6 +112,10 @@ $schools = $stmt->fetchAll(PDO::FETCH_ASSOC);
     </div>
   </div>
 </main>
+<?php
+$content = ob_get_clean();
+require_once __DIR__ . '/../../index.php';
+?>
 <script>
     const btn = document.getElementById('addSchoolBtn');
     const form = document.getElementById('addSchoolForm');
