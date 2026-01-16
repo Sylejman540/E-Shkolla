@@ -1,35 +1,26 @@
-<?php 
-if(session_status() === PHP_SESSION_NONE){
-    session_start();
-}
-
-if (!isset($_SESSION['user']) || $_SESSION['user']['role'] !== 'super_admin') {
-    http_response_code(403);
-    exit('Access denied');
-}
-
-require_once __DIR__ . '/../../index.php'; 
-
+<?php
 require_once __DIR__ . '/../../../../db.php';
 
-$stmt = $pdo->prepare("SELECT * FROM users ORDER BY created_at DESC");
-$stmt->execute();
+$limit = 10;
+$page  = isset($_GET['page']) && is_numeric($_GET['page']) ? (int)$_GET['page'] : 1;
+$offset = ($page - 1) * $limit;
 
+// total rows
+$totalStmt = $pdo->query("SELECT COUNT(*) FROM users");
+$totalRows = $totalStmt->fetchColumn();
+$totalPages = ceil($totalRows / $limit);
+
+// fetch paginated rows
+$stmt = $pdo->prepare("SELECT * FROM users ORDER BY created_at DESC LIMIT :limit OFFSET :offset");
+$stmt->bindValue(':limit', $limit, PDO::PARAM_INT);
+$stmt->bindValue(':offset', $offset, PDO::PARAM_INT);
+$stmt->execute();
 $users = $stmt->fetchAll(PDO::FETCH_ASSOC);
-?>
-<!DOCTYPE html>
-<html lang="en">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>E-Shkolla</title>
-    <script src="https://cdn.tailwindcss.com"></script>
-    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
-</head>
-<body>
-<main class="lg:pl-72">
-  <div class="xl:pl-18">
-    <div class="px-4 py-10 sm:px-6 lg:px-8 lg:py-6">
+
+
+ob_start();
+?>  
+<div class="px-4 sm:px-6 lg:px-8">
         <div class="px-4 sm:px-6 lg:px-8">
         <div class="sm:flex sm:items-center">
             <div class="sm:flex-auto">
@@ -126,6 +117,39 @@ $users = $stmt->fetchAll(PDO::FETCH_ASSOC);
             <?php endforeach; ?>
             </tbody>
             </table>
+            <?php if ($totalPages > 1): ?>
+                    <div class="mt-6 flex justify-between items-center">
+                    <p class="text-sm text-slate-600">
+                        Page <?= $page ?> of <?= $totalPages ?>
+                    </p>
+
+                    <div class="flex gap-2">
+                        <?php if ($page > 1): ?>
+                            <a href="?page=<?= $page - 1 ?>"
+                            class="px-3 py-1 rounded-md border text-sm hover:bg-slate-100">
+                                Previous
+                            </a>
+                        <?php endif; ?>
+
+                        <?php for ($i = 1; $i <= $totalPages; $i++): ?>
+                            <a href="?page=<?= $i ?>"
+                            class="px-3 py-1 rounded-md text-sm
+                            <?= $i === $page
+                                    ? 'bg-indigo-600 text-white'
+                                    : 'border hover:bg-slate-100' ?>">
+                                <?= $i ?>
+                            </a>
+                        <?php endfor; ?>
+
+                        <?php if ($page < $totalPages): ?>
+                            <a href="?page=<?= $page + 1 ?>"
+                            class="px-3 py-1 rounded-md border text-sm hover:bg-slate-100">
+                                Next
+                            </a>
+                        <?php endif; ?>
+                    </div>
+                </div>
+              <?php endif; ?>
         </div>
         </div>
         <?php require_once 'form.php'; ?>
@@ -134,6 +158,10 @@ $users = $stmt->fetchAll(PDO::FETCH_ASSOC);
     </div>
   </div>
 </main>
+<?php
+$content = ob_get_clean();
+require_once __DIR__ . '/../../index.php';
+?>
 <script>
   const btn = document.getElementById('addSchoolBtn');
   const form = document.getElementById('addSchoolForm');
