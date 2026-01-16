@@ -1,13 +1,27 @@
 <?php
 require_once __DIR__ . '/../../../../db.php';
 
-$stmt = $pdo->query("SELECT * FROM schools ORDER BY created_at DESC");
+$limit = 10;
+$page  = isset($_GET['page']) && is_numeric($_GET['page']) ? (int)$_GET['page'] : 1;
+$offset = ($page - 1) * $limit;
+
+// total rows
+$totalStmt = $pdo->query("SELECT COUNT(*) FROM schools");
+$totalRows = $totalStmt->fetchColumn();
+$totalPages = ceil($totalRows / $limit);
+
+// fetch paginated rows
+$stmt = $pdo->prepare("SELECT * FROM schools ORDER BY created_at DESC LIMIT :limit OFFSET :offset");
+$stmt->bindValue(':limit', $limit, PDO::PARAM_INT);
+$stmt->bindValue(':offset', $offset, PDO::PARAM_INT);
+$stmt->execute();
 $schools = $stmt->fetchAll(PDO::FETCH_ASSOC);
+
 
 ob_start();
 ?>  
 
-        <div class="px-4 sm:px-6 lg:px-8">
+<div class="px-4 sm:px-6 lg:px-8">
         <div class="sm:flex sm:items-center">
             <div class="sm:flex-auto">
             <h1 class="text-base font-semibold text-gray-900 dark:text-white">Schools</h1>
@@ -104,6 +118,39 @@ ob_start();
                     </tr>
                 <?php endif; ?>
                 </table>
+                <?php if ($totalPages > 1): ?>
+                <div class="mt-6 flex justify-between items-center">
+                    <p class="text-sm text-slate-600">
+                        Page <?= $page ?> of <?= $totalPages ?>
+                    </p>
+
+                    <div class="flex gap-2">
+                        <?php if ($page > 1): ?>
+                            <a href="?page=<?= $page - 1 ?>"
+                            class="px-3 py-1 rounded-md border text-sm hover:bg-slate-100">
+                                Previous
+                            </a>
+                        <?php endif; ?>
+
+                        <?php for ($i = 1; $i <= $totalPages; $i++): ?>
+                            <a href="?page=<?= $i ?>"
+                            class="px-3 py-1 rounded-md text-sm
+                            <?= $i === $page
+                                    ? 'bg-indigo-600 text-white'
+                                    : 'border hover:bg-slate-100' ?>">
+                                <?= $i ?>
+                            </a>
+                        <?php endfor; ?>
+
+                        <?php if ($page < $totalPages): ?>
+                            <a href="?page=<?= $page + 1 ?>"
+                            class="px-3 py-1 rounded-md border text-sm hover:bg-slate-100">
+                                Next
+                            </a>
+                        <?php endif; ?>
+                    </div>
+                </div>
+                <?php endif; ?>
             </div>
         </div>
         <?php require_once 'form.php'; ?>
