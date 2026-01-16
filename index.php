@@ -37,7 +37,11 @@ $routes = [
     '/student-schedule' => 'dashboard/student-dashboard/partials/schedule/schedule.php',
     '/student-assignments' => 'dashboard/student-dashboard/partials/assignments/assignments.php',
     '/student-grades' => 'dashboard/student-dashboard/partials/grades/grades.php',
-    '/parent-dashboard' => 'dashboard/parent-dashboard/partials/dashboard.php'
+    '/parent-dashboard' => 'dashboard/parent-dashboard/partials/dashboard.php',
+    '/parent-attendance' => 'dashboard/parent-dashboard/partials/attendance.php',
+    '/parent-assignments' => 'dashboard/parent-dashboard/partials/assignments.php',
+    '/parent-grades' => 'dashboard/parent-dashboard/partials/grades.php',
+    '/parent-children' => 'dashboard/parent-dashboard/partials/parent-children.php'
 ];
 
 if (array_key_exists($uri, $routes)) {
