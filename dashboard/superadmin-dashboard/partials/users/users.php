@@ -31,7 +31,7 @@ ob_start();
                 <p class="text-slate-500 font-medium mt-1 text-sm">A list of all users in the system.</p>
             </div>
             <div class="mt-4 sm:mt-0 sm:ml-16 sm:flex-none">
-                <button type="button" id="addSchoolBtn" class="block rounded-md bg-indigo-600 px-3 py-2 text-center text-sm font-semibold text-white shadow-xs hover:bg-indigo-500">Add users</button>
+                <button type="button" id="addUserBtn" class="block rounded-md bg-indigo-600 px-3 py-2 text-center text-sm font-semibold text-white shadow-xs hover:bg-indigo-500">Add users</button>
             </div>
         </div>
         <div class="mt-8 flow-root">
@@ -166,8 +166,8 @@ $content = ob_get_clean();
 require_once __DIR__ . '/../../index.php';
 ?>
 <script>
-  const btn = document.getElementById('addSchoolBtn');
-  const form = document.getElementById('addSchoolForm');
+  const btn = document.getElementById('addUserBtn');
+  const form = document.getElementById('addUserForm');
   const cancel = document.getElementById('cancel');
 
   btn?.addEventListener('click', () => {
