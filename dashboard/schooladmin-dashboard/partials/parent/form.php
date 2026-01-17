@@ -5,132 +5,141 @@ if (session_status() === PHP_SESSION_NONE) {
 
 require_once __DIR__ . '/../../../../db.php';
 
+// Handle Post Request
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
-
-    $name     = $_POST['name'];
-    $phone    = $_POST['phone'];
-    $email    = $_POST['email'];
-    $password = $_POST['password'];
-    $relation = $_POST['relation'];
-    $status   = $_POST['status'];
-
     $schoolId = $_SESSION['user']['school_id'] ?? null;
-
-    if (!$schoolId) {
-        die('School ID missing from session');
-    }
-
     $studentId = isset($_POST['student_id']) ? (int) $_POST['student_id'] : null;
-    if (!$studentId) {
-        die('Student ID missing or invalid');
-    }
 
     try {
+        if (!$schoolId) throw new Exception('Sesioni ka skaduar. Ju lutem hyni përsëri.');
+        if (!$studentId) throw new Exception('ID e nxënësit mungon.');
+
+        $name     = trim($_POST['name'] ?? '');
+        $phone    = trim($_POST['phone'] ?? '');
+        $email    = filter_var($_POST['email'] ?? '', FILTER_VALIDATE_EMAIL);
+        $password = $_POST['password'] ?? '';
+        $relation = $_POST['relation'] ?? 'other';
+        $status   = $_POST['status'] ?? 'active';
+
+        // Basic Validation
+        if (!$name || !$email || strlen($password) < 8) {
+            throw new Exception("Ju lutem plotësoni të gjitha fushat. Fjalëkalimi duhet të jetë së paku 8 karaktere.");
+        }
+
+        // Check if Email exists
+        $checkEmail = $pdo->prepare("SELECT id FROM users WHERE email = ?");
+        $checkEmail->execute([$email]);
+        if ($checkEmail->fetch()) {
+            throw new Exception("Ky email është i regjistruar në sistem.");
+        }
+
         $pdo->beginTransaction();
 
-        $stmt = $pdo->prepare("INSERT INTO users (school_id, name, password, email, role, status) VALUES (?, ?, ?, ?, 'parent', ?)");
-        $stmt->execute([$schoolId, $name, $password, $email, $status]);
-
+        // 1. Insert into Users Table (With Hashed Password)
+        $hashedPassword = password_hash($password, PASSWORD_DEFAULT);
+        $stmtUser = $pdo->prepare("INSERT INTO users (school_id, name, password, email, role, status) VALUES (?, ?, ?, ?, 'parent', ?)");
+        $stmtUser->execute([$schoolId, $name, $hashedPassword, $email, $status]);
         $parentUserId = $pdo->lastInsertId();
 
-        $stmt = $pdo->prepare("INSERT INTO parents (school_id, user_id, name, phone, email, relation, status) VALUES (?, ?, ?, ?, ?, ?, ?)");
-        $stmt->execute([$schoolId, $parentUserId, $name, $phone, $email, $relation, $status]);
-
+        // 2. Insert into Parents Table
+        $stmtParent = $pdo->prepare("INSERT INTO parents (school_id, user_id, name, phone, email, relation, status) VALUES (?, ?, ?, ?, ?, ?, ?)");
+        $stmtParent->execute([$schoolId, $parentUserId, $name, $phone, $email, $relation, $status]);
         $parentId = $pdo->lastInsertId();
 
-        $stmt = $pdo->prepare("INSERT INTO parent_student (school_id, parent_id, student_id) VALUES (?, ?, ?)");
-        $stmt->execute([$schoolId, $parentId, $studentId]);
+        // 3. Link Parent to Student
+        $stmtLink = $pdo->prepare("INSERT INTO parent_student (school_id, parent_id, student_id) VALUES (?, ?, ?)");
+        $stmtLink->execute([$schoolId, $parentId, $studentId]);
 
         $pdo->commit();
 
+        $_SESSION['success'] = "Prindi u regjistrua me sukses!";
+        unset($_SESSION['old_parent']); // Clear old data on success
         header("Location: /E-Shkolla/parents");
         exit;
 
     } catch (Exception $e) {
-        $pdo->rollBack();
-        die('Error creating parent: ' . $e->getMessage());
+        if ($pdo->inTransaction()) $pdo->rollBack();
+        $_SESSION['error'] = $e->getMessage();
+        $_SESSION['old_parent'] = $_POST; // Keep data for "sticky" effect
+        header("Location: /E-Shkolla/parents?open_form=1&student_id=" . ($studentId ?? ''));
+        exit;
     }
 }
+
+// Logic to show form if error occurred or button clicked
+$shouldOpen = isset($_GET['open_form']) || isset($_SESSION['error']);
+$old = $_SESSION['old_parent'] ?? [];
+$studentId = $_GET['student_id'] ?? ($old['student_id'] ?? null);
 ?>
-<div id="addSchoolForm" class="<?= $openForm ? '' : 'hidden' ?> fixed inset-0 z-50 flex items-start justify-center bg-black/30 overflow-y-auto pt-10">
 
-     
-    <div class="w-full max-w-3xl px-4">
-
-      <div class="rounded-xl bg-white p-8 shadow-sm ring-1 ring-gray-200 dark:bg-gray-900 dark:ring-white/10">
-        
-        <div class="mb-8">
-          <h2 class="text-xl font-semibold text-gray-900 dark:text-white">
-            Shto prindër të ri
-          </h2>
-          <p class="mt-1 text-sm text-gray-600 dark:text-gray-400">
-            Plotësoni të dhënat bazë për prindërin.
-          </p>
-        </div>
-
-        <div class="grid grid-cols-1 gap-x-8 gap-y-10 border-b border-gray-900/10 pb-8 md:grid-cols-3 dark:border-white/10">
+<div id="addParentForm" class="<?= $shouldOpen ? '' : 'hidden' ?> fixed inset-0 z-50 flex items-start justify-center bg-black/40 overflow-y-auto pt-10">
+    <div class="w-full max-w-2xl px-4 pb-10">
+        <div class="bg-white dark:bg-gray-900 rounded-xl shadow-2xl p-8 ring-1 ring-gray-200 dark:ring-white/10">
             
-        <form action="/E-Shkolla/dashboard/schooladmin-dashboard/partials/parent/form.php" method="post" class="grid max-w-2xl grid-cols-1 gap-x-6 gap-y-8 sm:grid-cols-6 md:col-span-2">
-            <input type="hidden" name="student_id" value="<?= $studentId ?>">
-            <input type="hidden" name="user_id" value="<?= $user_id ?>">
-
-            <div class="sm:col-span-3">
-            <label for="name" class="block text-sm/6 font-medium text-gray-900 dark:text-white">Emri dhe mbiemri</label>
-            <div class="mt-2">
-                <input id="name" type="text" name="name" autocomplete="name" class="border border-1 block w-full rounded-md bg-white px-3 py-1.5 text-base text-gray-900 outline-1 -outline-offset-1 outline-gray-300 placeholder:text-gray-400 focus:outline-2 focus:-outline-offset-2 focus:outline-indigo-600 sm:text-sm/6 dark:bg-white/5 dark:text-white dark:outline-white/10 dark:placeholder:text-gray-500 dark:focus:outline-indigo-500" />
-            </div>
+            <div class="flex justify-between items-center mb-6">
+                <div>
+                    <h2 class="text-xl font-bold text-gray-900 dark:text-white">Shto Prind të Ri</h2>
+                    <p class="text-sm text-gray-500">Lidhni një prind me nxënësin.</p>
+                </div>
+                <button type="button" onclick="window.location.href='/E-Shkolla/parents'" class="text-gray-400 hover:text-gray-600 text-2xl">&times;</button>
             </div>
 
-            <div class="sm:col-span-3">
-            <label for="password" class="block text-sm/6 font-medium text-gray-900 dark:text-white">Fjalëkalim</label>
-            <div class="mt-2">
-                <input id="password" type="text" name="password" autocomplete="password" class="border border-1 block w-full rounded-md bg-white px-3 py-1.5 text-base text-gray-900 outline-1 -outline-offset-1 outline-gray-300 placeholder:text-gray-400 focus:outline-2 focus:-outline-offset-2 focus:outline-indigo-600 sm:text-sm/6 dark:bg-white/5 dark:text-white dark:outline-white/10 dark:placeholder:text-gray-500 dark:focus:outline-indigo-500" />
-            </div>
-            </div>
+            <?php if (isset($_SESSION['error'])): ?>
+                <div class="p-4 mb-6 text-sm text-red-700 bg-red-50 border border-red-200 rounded-lg">
+                    <?= htmlspecialchars($_SESSION['error']); unset($_SESSION['error']); ?>
+                </div>
+            <?php endif; ?>
 
-            <div class="sm:col-span-3">
-            <label for="email" class="block text-sm/6 font-medium text-gray-900 dark:text-white">Email</label>
-            <div class="mt-2">
-                <input id="email" type="text" name="email" autocomplete="email" class="border border-1 block w-full rounded-md bg-white px-3 py-1.5 text-base text-gray-900 outline-1 -outline-offset-1 outline-gray-300 placeholder:text-gray-400 focus:outline-2 focus:-outline-offset-2 focus:outline-indigo-600 sm:text-sm/6 dark:bg-white/5 dark:text-white dark:outline-white/10 dark:placeholder:text-gray-500 dark:focus:outline-indigo-500" />
-            </div>
-            </div>
+            <form action="/E-Shkolla/dashboard/schooladmin-dashboard/partials/parent/form.php" method="POST" class="grid grid-cols-1 gap-y-6 gap-x-4 sm:grid-cols-6">
+                <input type="hidden" name="student_id" value="<?= htmlspecialchars($studentId) ?>">
 
-            <div class="sm:col-span-4">
-            <label for="phone" class="block text-sm/6 font-medium text-gray-900 dark:text-white">Numri i telefonit</label>
-            <div class="mt-2">
-                <input id="phone" type="phone" name="phone" autocomplete="phone" class="border border-1 block w-full rounded-md bg-white px-3 py-1.5 text-base text-gray-900 outline-1 -outline-offset-1 outline-gray-300 placeholder:text-gray-400 focus:outline-2 focus:-outline-offset-2 focus:outline-indigo-600 sm:text-sm/6 dark:bg-white/5 dark:text-white dark:outline-white/10 dark:placeholder:text-gray-500 dark:focus:outline-indigo-500" />
-            </div>
-            </div>
+                <div class="sm:col-span-3">
+                    <label class="block text-sm font-medium dark:text-gray-300">Emri dhe Mbiemri</label>
+                    <input type="text" name="name" value="<?= htmlspecialchars($old['name'] ?? '') ?>" required
+                           class="mt-1 block w-full rounded-lg border border-gray-300 px-3 py-2 dark:bg-gray-800 dark:border-white/10 dark:text-white focus:ring-2 focus:ring-indigo-500 outline-none">
+                </div>
 
-            <div class="sm:col-span-3">
-            <label for="relation" class="block text-sm/6 font-medium text-gray-900 dark:text-white">Kujdestari/ja</label>
-            <div class="mt-2">
-              <select id="relation" name="relation" autocomplete="relation" class="border block w-full rounded-md bg-white px-3 py-1.5 text-base text-gray-900 outline-gray-300 focus:outline-2 focus:outline-indigo-600 sm:text-sm dark:bg-white/5 dark:text-white dark:outline-white/10 dark:focus:outline-indigo-500">
-                  <option value="mother">Nëna</option>
-                  <option value="father">Babai</option>
-                  <option value="guardian">Kujdestar</option>
-                  <option value="other">Tjetër</option>
-              </select>
-            </div>
-            </div>
+                <div class="sm:col-span-3">
+                    <label class="block text-sm font-medium dark:text-gray-300">Email</label>
+                    <input type="email" name="email" value="<?= htmlspecialchars($old['email'] ?? '') ?>" required
+                           class="mt-1 block w-full rounded-lg border border-gray-300 px-3 py-2 dark:bg-gray-800 dark:border-white/10 dark:text-white focus:ring-2 focus:ring-indigo-500 outline-none">
+                </div>
 
-            <div class="sm:col-span-2">
-            <label for="status" class="block text-sm/6 font-medium text-gray-900 dark:text-white">Statusi</label>
-            <div class="mt-2">
-              <select id="status" name="status" autocomplete="status" class="border block w-full rounded-md bg-white px-3 py-1.5 text-base text-gray-900 outline-gray-300 focus:outline-2 focus:outline-indigo-600 sm:text-sm dark:bg-white/5 dark:text-white dark:outline-white/10 dark:focus:outline-indigo-500">
-                  <option value="active">Aktive</option>
-                  <option value="inactive">Joaktive</option>
-              </select>
-            </div>
-            </div>
+                <div class="sm:col-span-3">
+                    <label class="block text-sm font-medium dark:text-gray-300">Fjalëkalimi</label>
+                    <input type="password" name="password" placeholder="Min. 8 karaktere" required
+                           class="mt-1 block w-full rounded-lg border border-gray-300 px-3 py-2 dark:bg-gray-800 dark:border-white/10 dark:text-white focus:ring-2 focus:ring-indigo-500 outline-none">
+                </div>
+
+                <div class="sm:col-span-3">
+                    <label class="block text-sm font-medium dark:text-gray-300">Numri i telefonit</label>
+                    <input type="text" name="phone" value="<?= htmlspecialchars($old['phone'] ?? '') ?>"
+                           class="mt-1 block w-full rounded-lg border border-gray-300 px-3 py-2 dark:bg-gray-800 dark:border-white/10 dark:text-white focus:ring-2 focus:ring-indigo-500 outline-none">
+                </div>
+
+                <div class="sm:col-span-3">
+                    <label class="block text-sm font-medium dark:text-gray-300">Lidhja (Relacioni)</label>
+                    <select name="relation" class="mt-1 block w-full rounded-lg border border-gray-300 px-3 py-2 dark:bg-gray-800 dark:text-white focus:ring-2 focus:ring-indigo-500 outline-none">
+                        <option value="mother" <?= ($old['relation'] ?? '') === 'mother' ? 'selected' : '' ?>>Nëna</option>
+                        <option value="father" <?= ($old['relation'] ?? '') === 'father' ? 'selected' : '' ?>>Babai</option>
+                        <option value="guardian" <?= ($old['relation'] ?? '') === 'guardian' ? 'selected' : '' ?>>Kujdestar</option>
+                        <option value="other" <?= ($old['relation'] ?? '') === 'other' ? 'selected' : '' ?>>Tjetër</option>
+                    </select>
+                </div>
+
+                <div class="sm:col-span-3">
+                    <label class="block text-sm font-medium dark:text-gray-300">Statusi</label>
+                    <select name="status" class="mt-1 block w-full rounded-lg border border-gray-300 px-3 py-2 dark:bg-gray-800 dark:text-white focus:ring-2 focus:ring-indigo-500 outline-none">
+                        <option value="active" <?= ($old['status'] ?? '') === 'active' ? 'selected' : '' ?>>Aktive</option>
+                        <option value="inactive" <?= ($old['status'] ?? '') === 'inactive' ? 'selected' : '' ?>>Joaktive</option>
+                    </select>
+                </div>
+
+                <div class="sm:col-span-6 flex justify-end gap-x-4 mt-4">
+                    <button type="button" onclick="window.location.href='/E-Shkolla/parents'" class="px-4 py-2 text-sm font-semibold text-gray-600 dark:text-gray-400">Anulo</button>
+                    <button type="submit" class="rounded-lg bg-indigo-600 px-6 py-2 text-sm font-semibold text-white shadow hover:bg-indigo-500 transition">Ruaj Prindin</button>
+                </div>
+            </form>
         </div>
-
-        <div class="mt-6 flex justify-end gap-x-4">
-            <button type="button" id="cancel" class="text-sm font-semibold text-gray-700 hover:text-gray-900 dark:text-gray-300">Cancel</button>
-
-            <button type="submit" class="rounded-md bg-indigo-600 px-4 py-2 text-sm font-semibold text-white shadow hover:bg-indigo-500 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-indigo-600 dark:bg-indigo-500">Save</button>
-        </div>
-        </form>
     </div>
-  </div>
 </div>
