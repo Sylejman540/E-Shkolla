@@ -1,3 +1,69 @@
+<?php
+if (session_status() === PHP_SESSION_NONE) {
+    session_start();
+}
+
+require_once __DIR__ . '/../../../../db.php';
+
+if (empty($_SESSION['csrf_token'])) {
+    $_SESSION['csrf_token'] = bin2hex(random_bytes(32));
+}
+
+$errors = [];
+
+if ($_SERVER['REQUEST_METHOD'] === 'POST') {
+
+    // CSRF check
+    if (!isset($_POST['csrf_token']) || !hash_equals($_SESSION['csrf_token'], $_POST['csrf_token'] ?? '')) {
+        $errors[] = 'Invalid security token. Please refresh the page.';
+    }
+
+    $schoolId = (int)($_POST['school_id'] ?? 0);
+    $name     = trim($_POST['name'] ?? '');
+    $email    = strtolower(trim($_POST['email'] ?? ''));
+    $password = $_POST['password'] ?? '';
+    $role     = $_POST['role'] ?? '';
+    $status   = $_POST['status'] ?? '';
+
+    if (!$schoolId || !$name || !$email || !$password || !$role || !$status) {
+        $errors[] = 'All fields are required.';
+    } elseif (!filter_var($email, FILTER_VALIDATE_EMAIL)) {
+        $errors[] = 'Invalid email address.';
+    } elseif (strlen($password) < 8) {
+        $errors[] = 'Password must be at least 8 characters.';
+    }
+
+    $allowedRoles  = ['super_admin', 'school_admin', 'teacher', 'parent', 'student'];
+    $allowedStatus = ['active', 'inactive'];
+
+    if (!in_array($role, $allowedRoles, true)) { $errors[] = 'Invalid role selected.'; }
+    if (!in_array($status, $allowedStatus, true)) { $errors[] = 'Invalid status selected.'; }
+
+    if (empty($errors)) {
+        $check = $pdo->prepare("SELECT id FROM users WHERE email = ?");
+        $check->execute([$email]);
+
+        if ($check->fetch()) {
+            $errors[] = 'Email already exists.';
+        } else {
+            $hashedPassword = password_hash($password, PASSWORD_DEFAULT);
+            $stmt = $pdo->prepare("
+                INSERT INTO users (school_id, name, email, password, role, status)
+                VALUES (?, ?, ?, ?, ?, ?)
+            ");
+            $stmt->execute([$schoolId, $name, $email, $hashedPassword, $role, $status]);
+
+            header("Location: /E-Shkolla/super-admin-users?success=1");
+            exit;
+        }
+    }
+}
+
+
+$stmt = $pdo->query("SELECT id, school_name FROM schools ORDER BY school_name ASC");
+$schools = $stmt->fetchAll(PDO::FETCH_ASSOC);
+?>
+
 <div id="addUserForm" class="<?= empty($errors) ? 'hidden' : '' ?> fixed inset-0 z-50 flex items-start sm:items-center justify-center bg-black/60 backdrop-blur-sm overflow-y-auto p-2 sm:p-4">
     
     <div class="w-full max-w-4xl my-auto">
