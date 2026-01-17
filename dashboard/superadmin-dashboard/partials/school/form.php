@@ -38,7 +38,7 @@
 
                     <div class="sm:col-span-3">
                         <label class="block text-sm font-medium text-gray-700 dark:text-white">School Admin Name</label>
-                        <input type="text" name="name" value="<?= htmlspecialchars($name ?? '') ?>" 
+                        <input type="text" name="name" value="" 
                                class="mt-1.5 block w-full rounded-lg border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 text-sm py-2.5 px-3 border dark:bg-white/5 dark:border-white/10 dark:text-white" required>
                     </div>
 

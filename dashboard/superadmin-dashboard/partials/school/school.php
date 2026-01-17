@@ -27,12 +27,19 @@ ob_start();
 
 <div class="px-4 sm:px-6 lg:px-8">
         <div class="sm:flex sm:items-center">
-            <div class="sm:flex-auto">
-                <h1 class="text-3xl font-bold tracking-tight text-slate-900">E-Shkolla School Center</h1>
-                <p class="text-slate-500 font-medium mt-1 text-sm">A list of all schools in the system</p>
+            <div class="mt-5 sm:px-0 sm:flex-auto">
+                <h1 class="text-xl sm:text-2xl md:text-3xl font-bold tracking-tight text-slate-900 dark:text-white transition-all">
+                    E-Shkolla School Center
+                </h1>
+                
+                <p class="mt-2 text-xs sm:text-sm font-medium text-slate-500 dark:text-slate-400">
+                    A list of all schools in the system
+                </p>
             </div>
             <div class="mt-4 sm:mt-0 sm:ml-16 sm:flex-none">
-                <button type="button" id="addSchoolBtn" class="block rounded-md bg-indigo-600 px-3 py-2 text-center text-sm font-semibold text-white shadow-xs hover:bg-indigo-500">Add schools</button>
+                <button type="submit" id="addSchoolBtn" class="md:w-full sm:w-auto rounded-lg bg-indigo-600 px-8 py-2.5 text-sm font-semibold text-white shadow-md hover:bg-indigo-700 focus:ring-2 focus:ring-indigo-500 focus:ring-offset-2 transition">
+                    Add School
+                </button>
             </div>
         </div>
         <div class="mt-8 flow-root">
