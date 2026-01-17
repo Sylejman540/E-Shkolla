@@ -37,18 +37,24 @@ function isAnyActive(array $paths) {
         }
     </style>
 </head>
-<body class="h-full font-sans antialiased" x-data="{ 
-    sidebarCollapsed: false, 
-    mobileOpen: false,
-    openMenus: { users: false, academy: false } 
-}">
+<body class="h-full font-sans antialiased"
+      x-data="{ sidebarCollapsed: false, mobileOpen: false }">
 
-    <div x-show="mobileOpen" x-cloak @click="mobileOpen = false"
-         class="fixed inset-0 z-40 bg-slate-900/40 backdrop-blur-sm lg:hidden"></div>
+    <!-- Mobile overlay -->
+    <div
+        x-show="mobileOpen"
+        x-cloak
+        @click="mobileOpen = false"
+        class="fixed inset-0 z-40 bg-slate-900/40 backdrop-blur-sm lg:hidden">
+    </div>
 
-    <aside 
+    <!-- SIDEBAR -->
+    <aside
         class="fixed inset-y-0 left-0 z-50 flex flex-col bg-white shadow-[4px_0_24px_rgba(0,0,0,0.02)] border-r border-slate-100 custom-transition"
-        :class="[sidebarCollapsed ? 'w-20' : 'w-72', mobileOpen ? 'translate-x-0' : '-translate-x-full lg:translate-x-0']">
+        :class="[
+            sidebarCollapsed ? 'w-20' : 'w-72',
+            mobileOpen ? 'translate-x-0' : '-translate-x-full lg:translate-x-0'
+        ]">
 
         <a href="/E-Shkolla/school-admin-dashboard" class="flex h-20 shrink-0 items-center px-4 overflow-hidden border-b border-slate-50">
             <img src="/E-Shkolla/images/icon.png" class="h-10 w-auto min-w-[40px]" alt="Logo">
@@ -192,7 +198,7 @@ function isAnyActive(array $paths) {
         </div>
 
         <main class="p-8">
-            <h1 class="text-2xl font-bold text-slate-800">Mirësevini</h1>
+           <?= $content ?? '' ?>
         </main>
     </div>
 
