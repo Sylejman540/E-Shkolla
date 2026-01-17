@@ -1,6 +1,9 @@
-<?php require_once __DIR__ . '/../index.php'; ?>
 <?php
-require_once __DIR__  . '/../../../db.php';   
+if (session_status() === PHP_SESSION_NONE) {
+    session_start();
+}
+
+require_once __DIR__ . '/../../../db.php'; 
 
 // Total schools
 $totalSchools = $pdo->query("SELECT COUNT(*) FROM schools")->fetchColumn();
@@ -28,22 +31,10 @@ $usersByRole = [];
 while ($row = $stmt->fetch(PDO::FETCH_ASSOC)) {
     $usersByRole[$row['role']] = $row['total'];
 }
+
+ob_start();
 ?>
-
-<!DOCTYPE html>
-<html lang="en">
-<head>
-    <meta charset="UTF-8">
-    <title>Super Admin Dashboard | E-Shkolla</title>
-    <meta name="viewport" content="width=device-width, initial-scale=1">
-    <script src="https://cdn.tailwindcss.com"></script>
-    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
-</head>
-
-<body class="bg-gray-100">
-<main class="lg:pl-72">
-  <div class="xl:pl-18">
-    <div class="px-4 py-10 sm:px-6 lg:px-8 lg:py-6">
+<div class="px-4 sm:px-6 lg:px-8">
         <div>
         <h3 class="text-base font-semibold text-gray-900 dark:text-white">SuperAdmin Dashboard</h3>
         <dl class="mt-5 grid grid-cols-1 gap-5 sm:grid-cols-3">
@@ -88,7 +79,10 @@ while ($row = $stmt->fetch(PDO::FETCH_ASSOC)) {
     </div>
   </div>
 </main>
-
+<?php
+$content = ob_get_clean();
+require_once __DIR__ . '/../index.php';
+?>
 <script>
 new Chart(document.getElementById('schoolsChart'), {
   type: 'doughnut',
