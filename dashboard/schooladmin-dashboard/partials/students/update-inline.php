@@ -1,37 +1,81 @@
 <?php
-session_start();
-require_once '../../../../db.php';
+if (session_status() === PHP_SESSION_NONE) {
+    session_start();
+}
 
-if (
-    !isset($_SESSION['user']) ||
-    !in_array($_SESSION['user']['role'], ['super_admin', 'school_admin'], true)
-) {
-    http_response_code(403);
+header("Content-Type: application/json");
+
+require_once __DIR__ . "/../../../../db.php";
+
+$input = json_decode(file_get_contents("php://input"), true);
+
+$userId = (int)($input['userId'] ?? 0);
+$field  = $input['field'] ?? null;
+$value  = trim($input['value'] ?? '');
+$schoolId = $_SESSION['user']['school_id'] ?? null;
+
+// BASIC FIELD WHITELIST
+$allowedFields = [
+    "name",
+    "email",
+    "gender",
+    "class_name",
+    "date_birth",
+    "status"
+];
+
+if (!$schoolId || !$userId || !in_array($field, $allowedFields)) {
+    echo json_encode(["error" => "Invalid request"]);
     exit;
 }
 
-$data = json_decode(file_get_contents('php://input'), true);
+// FIELD VALIDATION
+switch ($field) {
+    case "name":
+        if (!preg_match("/^[a-zA-ZÇçËë\s]+$/u", $value)) {
+            echo json_encode(["error" => "Emri duhet të përmbajë vetëm shkronja."]);
+            exit;
+        }
+        break;
 
-$userId = (int) ($data['userId'] ?? 0);
-$field  = $data['field'] ?? '';
-$value  = trim($data['value'] ?? '');
+    case "email":
+        if (!filter_var($value, FILTER_VALIDATE_EMAIL)) {
+            echo json_encode(["error" => "Email jo valid."]);
+            exit;
+        }
+        break;
 
-if (!$userId || !$field) {
-    http_response_code(400);
-    exit;
+    case "gender":
+        if (!in_array($value, ["male", "female", "other"])) {
+            echo json_encode(["error" => "Gjinia jo valide."]);
+            exit;
+        }
+        break;
+
+    case "date_birth":
+        if (!preg_match("/^\d{4}-\d{2}-\d{2}$/", $value)) {
+            echo json_encode(["error" => "Formati i datës jo valid (YYYY-MM-DD)."]);
+            exit;
+        }
+        break;
+
+    case "status":
+        if (!in_array($value, ["active", "inactive"])) {
+            echo json_encode(["error" => "Status jo valid."]);
+            exit;
+        }
+        break;
 }
 
-$userFields     = ['name', 'email', 'status'];
-$studentFields  = ['name', 'email', 'phone', 'gender', 'class_name', 'date_birth', 'status'];
+try {
+    $stmt = $pdo->prepare("
+        UPDATE students 
+        SET $field = ? 
+        WHERE user_id = ? AND school_id = ?
+    ");
+    $stmt->execute([$value, $userId, $schoolId]);
 
-if (in_array($field, $userFields, true)) {
-    $stmt = $pdo->prepare("UPDATE users SET `$field` = ?, updated_at = NOW() WHERE id = ?");
-    $stmt->execute([$value, $userId]);
+    echo json_encode(["success" => true]);
+} catch (Exception $e) {
+    echo json_encode(["error" => $e->getMessage()]);
 }
-
-if (in_array($field, $studentFields, true)) {
-    $stmt = $pdo->prepare("UPDATE students SET `$field` = ?, updated_at = NOW() WHERE user_id = ?");
-    $stmt->execute([$value, $userId]);
-}
-
-echo json_encode(['success' => true]);
