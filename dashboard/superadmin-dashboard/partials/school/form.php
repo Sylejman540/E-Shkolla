@@ -1,3 +1,62 @@
+<?php
+if (session_status() === PHP_SESSION_NONE) {
+    session_start();
+}
+
+require_once __DIR__ . '/../../../../db.php';
+
+if (empty($_SESSION['csrf_token'])) {
+    $_SESSION['csrf_token'] = bin2hex(random_bytes(32));
+}
+
+$errors = [];
+
+if ($_SERVER['REQUEST_METHOD'] === 'POST') {
+    if (!isset($_POST['csrf_token']) || !hash_equals($_SESSION['csrf_token'], $_POST['csrf_token'])) {
+        die('Invalid security token. Please refresh the page.');
+    }
+
+    $school_name = trim($_POST['school_name'] ?? '');
+    $name        = trim($_POST['name'] ?? '');
+    $email       = strtolower(trim($_POST['email'] ?? ''));
+    $city        = trim($_POST['city'] ?? '');
+    $status      = in_array($_POST['status'] ?? '', ['active', 'inactive']) ? $_POST['status'] : 'inactive';
+    $password    = $_POST['password'] ?? '';
+
+    if (!$school_name) $errors[] = "School name is required.";
+    if (!$email || !filter_var($email, FILTER_VALIDATE_EMAIL)) $errors[] = "A valid email is required.";
+    if (strlen($password) < 8) $errors[] = "Password must be at least 8 characters.";
+
+    if (empty($errors)) {
+        try {
+            $pdo->beginTransaction();
+
+            $check = $pdo->prepare("SELECT id FROM users WHERE email = ?");
+            $check->execute([$email]);
+            if ($check->fetch()) {
+                throw new Exception("This email is already registered.");
+            }
+
+            $stmt = $pdo->prepare("INSERT INTO schools (school_name, name, email, city, status) VALUES (?, ?, ?, ?, ?)");
+            $stmt->execute([$school_name, $name, $email, $city, $status]);
+            $schoolId = $pdo->lastInsertId();
+
+            $hashedPassword = password_hash($password, PASSWORD_DEFAULT);
+            $stmt = $pdo->prepare("INSERT INTO users (school_id, name, email, password, role, status) VALUES (?, ?, ?, ?, 'school_admin', ?)");
+            $stmt->execute([$schoolId, $name, $email, $hashedPassword, $status]);
+
+            $pdo->commit();
+            header("Location: /E-Shkolla/super-admin-schools?success=1");
+            exit;
+
+        } catch (Exception $e) {
+            $pdo->rollBack();
+            $errors[] = $e->getMessage();
+        }
+    }
+}
+?>
+
 <div id="addSchoolForm" class="<?= empty($errors) ? 'hidden' : '' ?> fixed inset-0 z-50 flex items-start sm:items-center justify-center bg-black/60 backdrop-blur-sm overflow-y-auto p-2 sm:p-4">
     
     <div class="w-full max-w-4xl my-auto">
