@@ -19,7 +19,7 @@ function isActive($path) {
         .text-brand-blue { color: #2563eb; }
         .bg-brand-blue { background-color: #2563eb; }
         .bg-brand-light { background-color: #eff6ff; }
-        .custom-transition { transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1); }
+        .custom-transition { transition: all 1s cubic-bezier(0.4, 0, 0.2, 1); }
 
         .active-indicator::before {
             content: '';
