@@ -25,11 +25,10 @@ $users = $stmt->fetchAll(PDO::FETCH_ASSOC);
 ob_start();
 ?>  
 <div class="px-4 sm:px-6 lg:px-8">
-        <div class="px-4 sm:px-6 lg:px-8">
         <div class="sm:flex sm:items-center">
             <div class="sm:flex-auto">
-            <h1 class="text-base font-semibold text-gray-900 dark:text-white">Users</h1>
-            <p class="mt-2 text-sm text-gray-700 dark:text-gray-300">A list of all users</p>
+                <h1 class="text-3xl font-bold tracking-tight text-slate-900">E-Shkolla Users Center</h1>
+                <p class="text-slate-500 font-medium mt-1 text-sm">A list of all users in the system.</p>
             </div>
             <div class="mt-4 sm:mt-0 sm:ml-16 sm:flex-none">
                 <button type="button" id="addSchoolBtn" class="block rounded-md bg-indigo-600 px-3 py-2 text-center text-sm font-semibold text-white shadow-xs hover:bg-indigo-500">Add users</button>
