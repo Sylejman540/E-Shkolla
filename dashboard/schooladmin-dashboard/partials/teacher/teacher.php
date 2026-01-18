@@ -24,7 +24,7 @@ $stmt = $pdo->prepare("
     FROM teachers t
     JOIN users u ON u.id = t.user_id
     WHERE t.school_id = :school_id
-    ORDER BY u.created_at DESC
+    ORDER BY u.name ASC
     LIMIT :limit OFFSET :offset
 ");
 $stmt->bindValue(':school_id', $schoolId, PDO::PARAM_INT);

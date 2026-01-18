@@ -77,8 +77,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         $teacher_id = $pdo->lastInsertId();
 
         // C. Create Subject
-        $stmtSubject = $pdo->prepare("INSERT INTO subjects (school_id, name, subject_name, description, status) VALUES (?, ?, ?, ?, ?)");
-        $stmtSubject->execute([$schoolId, $name, $subject_name, $description, $status]);
+        $stmtSubject = $pdo->prepare("INSERT INTO subjects (school_id, user_id, name, subject_name, description, status) VALUES (?, ?, ?, ?, ?, ?)");
+        $stmtSubject->execute([$schoolId, $user_id, $name, $subject_name, $description, $status]);
         $subject_id = $pdo->lastInsertId();
 
         // D. Link Teacher to Class and Subject
