@@ -87,6 +87,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                             $_SESSION['user']['parent_id'] = $stmt->fetchColumn() ?: null;
                             break;
                         }
+                        $_SESSION['user']['name'] = $name ?? 'M';
                         $_SESSION['status'] = $user['status'];
                         $_SESSION['login_time'] = time();
                         
