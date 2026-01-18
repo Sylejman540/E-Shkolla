@@ -126,11 +126,59 @@ $myClassesAttendance = $stmt->fetchAll(PDO::FETCH_ASSOC);
 
 ob_start();
 ?>
+<style>
+@media print {
+    /* Hide everything that isn't the report */
+    .no-print, 
+    nav, 
+    aside, 
+    button, 
+    .sidebar-class, 
+    footer {
+        display: none !important;
+    }
 
+    /* Adjust the main content to take full width */
+    main, .lg\:pl-72 {
+        padding-left: 0 !important;
+        margin: 0 !important;
+    }
+
+    /* Ensure background colors and charts show up in print */
+    body {
+        -webkit-print-color-adjust: exact;
+        print-color-adjust: exact;
+    }
+
+    /* Add a "Report Generated On" footer only for print */
+    body::after {
+        content: "Raporti u gjenerua më: " attr(data-date);
+        display: block;
+        text-align: center;
+        font-size: 10px;
+        color: #666;
+        margin-top: 20px;
+    }
+    
+    .bg-white {
+        border: 1px solid #e2e8f0 !important;
+        box-shadow: none !important;
+    }
+}
+</style>
 <div class="px-4 sm:px-6 lg:px-8">
-    <div class="mb-8">
-        <h1 class="text-3xl font-bold text-slate-900">Mirëseerdhe, Prof. <?= htmlspecialchars($teacherName) ?></h1>
-        <p class="text-slate-500">Përmbledhja e angazhimit tuaj mësimor për sot.</p>
+    <div class="mb-8 flex flex-col md:flex-row md:items-center md:justify-between gap-4">
+        <div>
+            <h1 class="text-3xl font-bold text-slate-900">Mirëseerdhe, Prof. <?= htmlspecialchars($teacherName) ?></h1>
+            <p class="text-slate-500">Përmbledhja e angazhimit tuaj mësimor për sot.</p>
+        </div>
+        
+        <button onclick="window.print()" class="no-print inline-flex items-center gap-2 bg-white border border-slate-200 px-4 py-2 rounded-xl text-sm font-semibold text-slate-700 hover:bg-slate-50 transition-all shadow-sm">
+            <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 17h2a2 2 0 002-2v-4a2 2 0 00-2-2H5a2 2 0 00-2 2v4a2 2 0 002 2h2m2 4h6a2 2 0 002-2v-4a2 2 0 00-2-2H9a2 2 0 00-2 2v4a2 2 0 002 2zm8-12V5a2 2 0 00-2-2H9a2 2 0 00-2 2v4h10z"/>
+            </svg>
+            Printo Raportin
+        </button>
     </div>
 
     <div class="grid grid-cols-1 sm:grid-cols-3 gap-6 mb-10">

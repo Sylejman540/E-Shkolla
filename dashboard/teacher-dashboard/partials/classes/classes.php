@@ -3,7 +3,7 @@ if(session_status() === PHP_SESSION_NONE){
     session_start();
 }
 
-require_once __DIR__ . '/../index.php'; 
+// Ensure $content is being captured correctly if using a layout wrapper
 require_once __DIR__ . '/../../../../db.php';
 
 $userId = $_SESSION['user']['id']; 
@@ -19,90 +19,103 @@ $stmt = $pdo->prepare("
 ");
 $stmt->execute([$userId]);
 $classes = $stmt->fetchAll(PDO::FETCH_ASSOC);
+
+ob_start();
 ?>
 
-<main class="lg:pl-72 bg-gray-50 dark:bg-gray-950 min-h-screen">
-    <div class="px-4 py-6 sm:px-6 lg:px-8">
-        
-        <div class="border-b border-gray-200 dark:border-white/10 pb-5 sm:flex sm:items-center sm:justify-between">
-            <div class="flex-1 min-w-0">
-                <h1 class="text-2xl font-bold leading-7 text-gray-900 dark:text-white sm:truncate sm:text-3xl tracking-tight">
-                    Klasat e Mia
-                </h1>
-                <p class="mt-1 text-sm text-gray-500 dark:text-gray-400">
-                    Lista e klasave ku ju jepni mësim aktiv.
-                </p>
-            </div>
-        </div>
-
-        <div class="mt-8 flex flex-col">
-            <div class="-my-2 -mx-4 overflow-x-auto sm:-mx-6 lg:-mx-8">
-                <div class="inline-block min-w-full py-2 align-middle md:px-6 lg:px-8">
-                    <div class="overflow-hidden shadow ring-1 ring-black ring-opacity-5 md:rounded-xl dark:ring-white/15">
-                        <table class="min-w-full divide-y divide-gray-300 dark:divide-white/10">
-                            <thead class="bg-gray-50 dark:bg-gray-900/50">
-                                <tr>
-                                    <th scope="col" class="py-3.5 pl-4 pr-3 text-left text-sm font-bold text-gray-900 dark:text-white sm:pl-6">
-                                        Klasa
-                                    </th>
-                                    <th scope="col" class="hidden sm:table-cell px-3 py-3.5 text-left text-sm font-bold text-gray-900 dark:text-white">
-                                        Lënda
-                                    </th>
-                                    <th scope="col" class="hidden md:table-cell px-3 py-3.5 text-left text-sm font-bold text-gray-900 dark:text-white">
-                                        Nxënës (Max)
-                                    </th>
-                                    <th scope="col" class="relative py-3.5 pl-3 pr-4 sm:pr-6">
-                                        <span class="sr-only">Veprimi</span>
-                                    </th>
-                                </tr>
-                            </thead>
-                            <tbody class="divide-y divide-gray-200 dark:divide-white/5 bg-white dark:bg-gray-900">
-                                <?php foreach($classes as $row): ?>
-                                <tr class="hover:bg-gray-50 dark:hover:bg-white/5 transition-colors">
-                                    <td class="whitespace-nowrap py-4 pl-4 pr-3 text-sm sm:pl-6">
-                                        <div class="flex items-center">
-                                            <div class="h-10 w-10 flex-shrink-0 flex items-center justify-center rounded-lg bg-indigo-600 text-white font-bold">
-                                                <?= htmlspecialchars($row['class_name']) ?>
-                                            </div>
-                                            <div class="ml-4">
-                                                <div class="sm:hidden text-gray-500 dark:text-gray-400 italic text-xs">
-                                                    <?= htmlspecialchars($row['subject_name']) ?>
-                                                </div>
-                                            </div>
-                                        </div>
-                                    </td>
-                                    <td class="hidden sm:table-cell whitespace-nowrap px-3 py-4 text-sm text-gray-600 dark:text-gray-300">
-                                        <span class="inline-flex items-center rounded-md bg-indigo-50 dark:bg-indigo-400/10 px-2 py-1 text-xs font-medium text-indigo-700 dark:text-indigo-400 ring-1 ring-inset ring-indigo-700/10">
-                                            <?= htmlspecialchars($row['subject_name']) ?>
-                                        </span>
-                                    </td>
-                                    <td class="hidden md:table-cell whitespace-nowrap px-3 py-4 text-sm text-gray-500 dark:text-gray-400">
-                                        <div class="flex items-center gap-1.5">
-                                            <i data-lucide="users-2" class="size-4"></i>
-                                            <?= htmlspecialchars($row['max_students']) ?>
-                                        </div>
-                                    </td>
-                                    <td class="whitespace-nowrap py-4 pl-3 pr-4 text-right text-sm font-medium sm:pr-6">
-                                        <a href="/E-Shkolla/show-classes?class_id=<?= (int)$row['class_id'] ?>&subject_id=<?= (int)$row['subject_id'] ?>" 
-                                           class="inline-flex items-center gap-1 bg-indigo-600 text-white px-3 py-2 rounded-lg hover:bg-indigo-500 transition shadow-sm">
-                                            <span class="hidden xs:inline">Hyr</span>
-                                            <i data-lucide="chevron-right" class="size-4"></i>
-                                        </a>
-                                    </td>
-                                </tr>
-                                <?php endforeach; ?>
-                            </tbody>
-                        </table>
-                    </div>
-                </div>
-            </div>
+<div class="space-y-8">
+    
+    <div class="md:flex md:items-center md:justify-between">
+        <div class="flex-1 min-w-0">
+            <h1 class="text-2xl font-bold leading-7 text-slate-900 sm:text-3xl tracking-tight">
+                Klasat e Mia
+            </h1>
+            <p class="mt-1 text-sm text-slate-500">
+                Menaxhoni nxënësit dhe notat për klasat tuaja aktuale.
+            </p>
         </div>
     </div>
-</main>
 
-<script>
-    // Sigurohuni që Lucide Icons të jenë të ngarkuara
-    if(typeof lucide !== 'undefined') {
-        lucide.createIcons();
-    }
-</script>
+    <div class="grid grid-cols-1 gap-5 sm:grid-cols-3">
+        <div class="bg-white overflow-hidden shadow-sm border border-slate-100 rounded-2xl p-5">
+            <dt class="text-sm font-medium text-slate-500 truncate">Total Klasa</dt>
+            <dd class="mt-1 text-3xl font-semibold text-blue-600"><?= count($classes) ?></dd>
+        </div>
+    </div>
+
+    <div class="bg-white border border-slate-100 shadow-sm rounded-2xl overflow-hidden">
+        <div class="overflow-x-auto">
+            <table class="min-w-full divide-y divide-slate-200">
+                <thead class="bg-slate-50/50">
+                    <tr>
+                        <th scope="col" class="py-4 pl-6 pr-3 text-left text-xs font-bold text-slate-500 uppercase tracking-wider">
+                            Klasa
+                        </th>
+                        <th scope="col" class="hidden sm:table-cell px-3 py-4 text-left text-xs font-bold text-slate-500 uppercase tracking-wider">
+                            Lënda
+                        </th>
+                        <th scope="col" class="hidden md:table-cell px-3 py-4 text-left text-xs font-bold text-slate-500 uppercase tracking-wider">
+                            Nxënësit
+                        </th>
+                        <th scope="col" class="relative py-4 pl-3 pr-6 text-right">
+                            <span class="sr-only">Veprimi</span>
+                        </th>
+                    </tr>
+                </thead>
+                <tbody class="divide-y divide-slate-100 bg-white">
+                    <?php if (empty($classes)): ?>
+                        <tr>
+                            <td colspan="4" class="py-10 text-center text-slate-500 italic">
+                                Nuk u gjet asnjë klasë e caktuar.
+                            </td>
+                        </tr>
+                    <?php endif; ?>
+
+                    <?php foreach($classes as $row): ?>
+                    <tr class="hover:bg-blue-50/30 transition-colors group">
+                        <td class="whitespace-nowrap py-5 pl-6 pr-3">
+                            <div class="flex items-center">
+                                <div class="h-11 w-11 flex-shrink-0 flex items-center justify-center rounded-xl bg-blue-600 text-white font-bold shadow-sm shadow-blue-200">
+                                    <?= htmlspecialchars($row['class_name']) ?>
+                                </div>
+                                <div class="ml-4">
+                                    <div class="font-bold text-slate-900"><?= htmlspecialchars($row['class_name']) ?></div>
+                                    <div class="sm:hidden text-slate-500 text-xs mt-0.5">
+                                        <?= htmlspecialchars($row['subject_name']) ?>
+                                    </div>
+                                </div>
+                            </div>
+                        </td>
+                        <td class="hidden sm:table-cell whitespace-nowrap px-3 py-5">
+                            <span class="inline-flex items-center rounded-lg bg-blue-50 px-2.5 py-1 text-xs font-semibold text-blue-700 ring-1 ring-inset ring-blue-700/10">
+                                <?= htmlspecialchars($row['subject_name']) ?>
+                            </span>
+                        </td>
+                        <td class="hidden md:table-cell whitespace-nowrap px-3 py-5 text-sm text-slate-600">
+                            <div class="flex items-center gap-2">
+                                <svg class="h-4 w-4 text-slate-400" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+                                    <path d="M17 21v-2a4 4 0 00-4-4H5a4 4 0 00-4 4v2m16-10a4 4 0 11-8 0 4 4 0 018 0z" />
+                                </svg>
+                                <?= htmlspecialchars($row['max_students']) ?> Studentë
+                            </div>
+                        </td>
+                        <td class="whitespace-nowrap py-5 pl-3 pr-6 text-right text-sm font-medium">
+                            <a href="/E-Shkolla/show-classes?class_id=<?= (int)$row['class_id'] ?>&subject_id=<?= (int)$row['subject_id'] ?>" 
+                               class="inline-flex items-center gap-2 bg-white border border-slate-200 text-slate-700 px-4 py-2 rounded-xl hover:bg-blue-600 hover:text-white hover:border-blue-600 transition-all shadow-sm">
+                                <span>Menaxho</span>
+                                <svg class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.5">
+                                    <path stroke-linecap="round" stroke-linejoin="round" d="M9 5l7 7-7 7" />
+                                </svg>
+                            </a>
+                        </td>
+                    </tr>
+                    <?php endforeach; ?>
+                </tbody>
+            </table>
+        </div>
+    </div>
+</div>
+<?php
+$content = ob_get_clean();
+require_once __DIR__ . '/../index.php';
+?>

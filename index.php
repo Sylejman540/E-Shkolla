@@ -28,6 +28,7 @@ $routes = [
     '/attendance' => 'dashboard/schooladmin-dashboard/partials/attendance/attendance.php',
     '/schedule' => 'dashboard/schooladmin-dashboard/partials/schedule/schedule.php',
     '/teacher-dashboard' => 'dashboard/teacher-dashboard/partials/dashboard.php',
+    '/teacher-schedule' => 'dashboard/teacher-dashboard/partials/schedule/schedule.php',
     '/teacher-classes' => 'dashboard/teacher-dashboard/partials/classes/classes.php',
     '/class-assignments' => 'dashboard/teacher-dashboard/partials/show-classes/assignments/assignments.php',
     '/class-attendance' => 'dashboard/teacher-dashboard/partials/show-classes/attendance/attendance.php',
