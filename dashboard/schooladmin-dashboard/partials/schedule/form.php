@@ -30,9 +30,12 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['add_schedule'])) {
     
     <div class="w-full max-w-2xl bg-white dark:bg-gray-900 rounded-xl shadow-2xl ring-1 ring-gray-200 dark:ring-white/10 overflow-hidden">
         
-        <div class="p-6 border-b border-gray-100 dark:border-white/5">
-            <h2 class="text-xl font-semibold text-gray-900 dark:text-white">Shto orar të ri</h2>
-            <p class="mt-1 text-sm text-gray-600 dark:text-gray-400">Plotësoni të dhënat për të caktuar orarin e klasës.</p>
+         <div class="flex justify-between items-center">
+            <div class="p-6 border-b border-gray-100 dark:border-white/5">
+                <h2 class="text-xl font-semibold text-gray-900 dark:text-white">Shto orar të ri</h2>
+                <p class="mt-1 text-sm text-gray-600 dark:text-gray-400">Plotësoni të dhënat për të caktuar orarin e klasës.</p>
+            </div>
+            <button type="button" onclick="document.getElementById('addScheduleForm').classList.add('hidden')" class="text-gray-400 hover:text-gray-600 text-2xl mr-6">&times;</button>
         </div>
 
         <form action="" method="post" class="p-6">
