@@ -209,7 +209,7 @@ async function save(el, forcedValue = null) {
         if (result.status === 'success') {
             el.setAttribute('data-original', newValue);
             if (el.classList.contains('status-toggle')) updateStatusUI(el, newValue);
-            showToast('Ndryshimi u ruajt!');
+            showToast('Të dhënat u përditësuan!');
         } else { throw new Error(result.message); }
     } catch (err) {
         if (el.tagName === 'SELECT') el.value = oldValue; else el.innerText = oldValue;

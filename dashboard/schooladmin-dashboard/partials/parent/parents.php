@@ -7,7 +7,7 @@ require_once __DIR__ . '/../../../../db.php';
 
 $schoolId = $_SESSION['user']['school_id'] ?? null;
 
-// Pagination
+// --- PAGINATION LOGIC ---
 $limit = 10;
 $page  = isset($_GET['page']) && is_numeric($_GET['page']) ? (int)$_GET['page'] : 1;
 $offset = ($page - 1) * $limit;
@@ -20,108 +20,166 @@ $parents = $stmt->fetchAll(PDO::FETCH_ASSOC);
 // Total for pagination
 $totalRowsStmt = $pdo->prepare("SELECT COUNT(*) FROM parents WHERE school_id = ?");
 $totalRowsStmt->execute([$schoolId]);
-$totalPages = ceil($totalRowsStmt->fetchColumn() / $limit);
+$totalRows = $totalRowsStmt->fetchColumn();
+$totalPages = ceil($totalRows / $limit);
+
+// Sliding Pagination Range
+$range = [];
+if ($totalPages <= 7) {
+    $range = range(1, $totalPages);
+} else {
+    if ($page <= 4) { $range = [1, 2, 3, 4, 5, '...', $totalPages]; }
+    elseif ($page > $totalPages - 4) { $range = [1, '...', $totalPages - 4, $totalPages - 3, $totalPages - 2, $totalPages - 1, $totalPages]; }
+    else { $range = [1, '...', $page - 1, $page, $page + 1, '...', $totalPages]; }
+}
 
 ob_start(); 
 ?>
 
-<div class="px-4 sm:px-6 lg:px-8">
-    <div class="sm:flex sm:items-center justify-between">
-        <div class="mt-5">
-            <h1 class="text-xl sm:text-2xl md:text-3xl font-bold tracking-tight text-slate-900 dark:text-white">Prindërit e Shkollës</h1>
-            <p class="mt-2 text-xs sm:text-sm font-medium text-slate-500 dark:text-slate-400">Menaxhoni listën e prindërve dhe të dhënat e tyre në kohë reale.</p>
+<div class="px-4 sm:px-6 lg:px-8 py-8">
+    <div class="sm:flex sm:items-center justify-between mb-8">
+        <div>
+            <h1 class="text-2xl font-bold tracking-tight text-slate-900 dark:text-white">Prindërit e Shkollës</h1>
+            <p class="mt-1 text-sm text-slate-500 dark:text-slate-400">Menaxhoni listën e prindërve dhe të dhënat e tyre në kohë reale.</p>
         </div>
     </div>
 
-    <div class="mt-6 mb-4 flex items-center gap-2">
-        <div class="relative w-full sm:w-64">
-            <input id="liveSearch" type="text" placeholder="Kërko prindërit..." class="w-full pl-10 pr-4 py-2 rounded-lg border text-sm dark:bg-gray-800 dark:text-white focus:ring-2 focus:ring-indigo-500 outline-none" oninput="filterParents()">
-            <svg class="absolute left-3 top-2.5 h-4 w-4 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" /></svg>
-        </div>
-        <button onclick="document.getElementById('liveSearch').value=''; filterParents();" class="text-xs text-gray-500 hover:text-indigo-600">Pastro</button>
-    </div>
-
-    <div class="mt-8 flow-root">
-        <div class="-mx-4 -my-2 overflow-x-auto sm:-mx-6 lg:-mx-8">
-            <div class="inline-block min-w-full py-2 align-middle sm:px-6 lg:px-8">
-                <table class="min-w-full divide-y divide-gray-300 dark:divide-white/10">
-                    <thead>
-                        <tr>
-                            <th class="py-3.5 pl-4 pr-3 text-left text-sm font-semibold text-gray-900 dark:text-white sm:pl-0">Emri dhe mbiemri</th>
-                            <th class="px-3 py-3.5 text-left text-sm font-semibold text-gray-900 dark:text-white">Telefon</th>
-                            <th class="px-3 py-3.5 text-left text-sm font-semibold text-gray-900 dark:text-white">Email</th>
-                            <th class="px-3 py-3.5 text-left text-sm font-semibold text-gray-900 dark:text-white">Kujdestari/ja</th>
-                            <th class="px-3 py-3.5 text-left text-sm font-semibold text-gray-900 dark:text-white">Statusi</th>
-                            <th class="px-3 py-3.5 text-left text-sm font-semibold text-gray-900 dark:text-white">Krijuar</th>
-                        </tr>
-                    </thead>
-                    <tbody class="divide-y divide-gray-200 dark:divide-white/5">
-                        <?php foreach ($parents as $row): ?>
-                        <tr class="hover:bg-gray-50 dark:hover:bg-white/5 transition">
-                            <td class="py-4 pl-4 pr-3 whitespace-nowrap text-sm font-medium text-gray-900 dark:text-white sm:pl-0">
-                                <span contenteditable class="editable inline-block min-w-[8rem] px-2 py-1 rounded outline-none focus:ring-2 focus:ring-indigo-500" data-id="<?= $row['user_id'] ?>" data-field="name" data-original="<?= htmlspecialchars($row['name']) ?>"><?= htmlspecialchars($row['name']) ?></span>
-                            </td>
-                            <td class="px-3 py-4 text-sm text-gray-500 dark:text-gray-400">
-                                <span contenteditable class="editable inline-block min-w-[8rem] px-2 py-1 rounded outline-none focus:ring-2 focus:ring-indigo-500" data-id="<?= $row['user_id'] ?>" data-field="phone" data-original="<?= htmlspecialchars($row['phone']) ?>"><?= htmlspecialchars($row['phone']) ?></span>
-                            </td>
-                            <td class="px-3 py-4 text-sm text-gray-500 dark:text-gray-400">
-                                <span contenteditable class="editable inline-block min-w-[8rem] px-2 py-1 rounded outline-none focus:ring-2 focus:ring-indigo-500" data-id="<?= $row['user_id'] ?>" data-field="email" data-original="<?= htmlspecialchars($row['email']) ?>"><?= htmlspecialchars($row['email']) ?></span>
-                            </td>
-                            <td class="px-3 py-4 text-sm">
-                                <select class="editable-select rounded-full px-3 py-1 text-xs border bg-gray-50 dark:bg-white/5 dark:text-white appearance-none" data-id="<?= $row['user_id'] ?>" data-field="relation" data-original="<?= $row['relation'] ?>">
-                                    <option value="father" <?= $row['relation'] === 'father' ? 'selected' : '' ?>>Babai</option>
-                                    <option value="mother" <?= $row['relation'] === 'mother' ? 'selected' : '' ?>>Nëna</option>
-                                    <option value="guardian" <?= $row['relation'] === 'guardian' ? 'selected' : '' ?>>Kujdestar</option>
-                                    <option value="other" <?= $row['relation'] === 'other' ? 'selected' : '' ?>>Tjetër</option>
-                                </select>
-                            </td>
-                            <td class="px-3 py-4 text-sm">
-                                <button class="status-toggle px-3 py-1 rounded-full text-xs font-semibold <?= $row['status'] === 'active' ? 'bg-green-100 text-green-700' : 'bg-red-100 text-red-600' ?>" data-id="<?= $row['user_id'] ?>" data-field="status" data-value="<?= $row['status'] ?>" data-original="<?= $row['status'] ?>">
-                                    <?= ucfirst($row['status']) ?>
-                                </button>
-                            </td>
-                            <td class="px-3 py-4 text-sm text-gray-400">
-                                <?= date('Y-m-d', strtotime($row['created_at'])) ?>
-                            </td>
-                        </tr>
-                        <?php endforeach; ?>
-                    </tbody>
-                </table>
+    <div class="mb-6 bg-white dark:bg-gray-900 p-4 rounded-2xl border border-slate-200 dark:border-white/10 shadow-sm flex items-center justify-between">
+        <div class="relative w-full max-w-xs">
+            <input id="liveSearch" type="text" placeholder="Kërko me emër, email ose telefon..." 
+                class="w-full pl-10 pr-4 py-2.5 rounded-xl border-none bg-slate-100 dark:bg-gray-800 text-sm focus:ring-2 focus:ring-indigo-500 outline-none transition" oninput="filterParents()">
+            <div class="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+                <svg class="h-4 w-4 text-slate-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>
             </div>
         </div>
+    </div>
+
+    <div class="bg-white dark:bg-gray-900 rounded-2xl border border-slate-200 dark:border-white/10 shadow-sm overflow-hidden">
+        <div class="overflow-x-auto">
+            <table class="w-full text-left border-collapse table-fixed min-w-[900px]">
+                <thead>
+                    <tr class="bg-slate-50 dark:bg-white/5 border-b border-slate-200 dark:border-white/10">
+                        <th class="w-[25%] px-6 py-4 text-xs font-bold uppercase tracking-wider text-slate-500 dark:text-slate-400">Emri dhe mbiemri</th>
+                        <th class="w-[15%] px-6 py-4 text-xs font-bold uppercase tracking-wider text-slate-500 dark:text-slate-400">Telefon</th>
+                        <th class="w-[25%] px-6 py-4 text-xs font-bold uppercase tracking-wider text-slate-500 dark:text-slate-400">Email</th>
+                        <th class="w-[15%] px-6 py-4 text-xs font-bold uppercase tracking-wider text-slate-500 dark:text-slate-400">Lidhja</th>
+                        <th class="w-[10%] px-6 py-4 text-xs font-bold uppercase tracking-wider text-slate-500 dark:text-slate-400 text-center">Statusi</th>
+                        <th class="w-[10%] px-6 py-4 text-xs font-bold uppercase tracking-wider text-slate-500 dark:text-slate-400 text-right">Data</th>
+                    </tr>
+                </thead>
+                <tbody class="divide-y divide-slate-200 dark:divide-white/5">
+                    <?php foreach ($parents as $row): ?>
+                    <tr class="hover:bg-slate-50 dark:hover:bg-white/5 transition-colors group">
+                        <td class="px-6 py-4 whitespace-nowrap overflow-hidden">
+                            <span contenteditable class="editable block text-sm font-semibold text-slate-900 dark:text-white outline-none truncate px-1 rounded hover:bg-indigo-50 dark:hover:bg-indigo-900/30 transition" 
+                                  data-id="<?= $row['user_id'] ?>" data-field="name" data-original="<?= htmlspecialchars($row['name']) ?>">
+                                <?= htmlspecialchars($row['name']) ?>
+                            </span>
+                        </td>
+                        <td class="px-6 py-4 whitespace-nowrap overflow-hidden">
+                            <span contenteditable class="editable text-sm text-slate-600 dark:text-slate-400 outline-none truncate" 
+                                  data-id="<?= $row['user_id'] ?>" data-field="phone" data-original="<?= htmlspecialchars($row['phone']) ?>">
+                                <?= htmlspecialchars($row['phone']) ?>
+                            </span>
+                        </td>
+                        <td class="px-6 py-4 whitespace-nowrap overflow-hidden">
+                            <span contenteditable class="editable text-sm text-slate-600 dark:text-slate-400 outline-none truncate" 
+                                  data-id="<?= $row['user_id'] ?>" data-field="email" data-original="<?= htmlspecialchars($row['email']) ?>">
+                                <?= htmlspecialchars($row['email']) ?>
+                            </span>
+                        </td>
+                        <td class="px-6 py-4">
+                            <select class="editable-select rounded-lg px-2 py-1 text-xs border-none bg-slate-100 dark:bg-gray-800 dark:text-white focus:ring-1 focus:ring-indigo-500 outline-none" 
+                                    data-id="<?= $row['user_id'] ?>" data-field="relation" data-original="<?= $row['relation'] ?>">
+                                <option value="father" <?= $row['relation'] === 'father' ? 'selected' : '' ?>>Babai</option>
+                                <option value="mother" <?= $row['relation'] === 'mother' ? 'selected' : '' ?>>Nëna</option>
+                                <option value="guardian" <?= $row['relation'] === 'guardian' ? 'selected' : '' ?>>Kujdestar</option>
+                                <option value="other" <?= $row['relation'] === 'other' ? 'selected' : '' ?>>Tjetër</option>
+                            </select>
+                        </td>
+                        <td class="px-6 py-4 text-center">
+                            <button class="status-toggle px-3 py-1 rounded-full text-[10px] font-bold uppercase tracking-wider transition-all <?= $row['status'] === 'active' ? 'bg-green-100 text-green-700 dark:bg-green-500/20 dark:text-green-400' : 'bg-red-100 text-red-600 dark:bg-red-500/20 dark:text-red-400' ?>" 
+                                    data-id="<?= $row['user_id'] ?>" data-field="status" data-value="<?= $row['status'] ?>" data-original="<?= $row['status'] ?>">
+                                <?= $row['status'] ?>
+                            </button>
+                        </td>
+                        <td class="px-6 py-4 text-right text-xs text-slate-400">
+                            <?= date('Y-m-d', strtotime($row['created_at'])) ?>
+                        </td>
+                    </tr>
+                    <?php endforeach; ?>
+                </tbody>
+            </table>
+        </div>
+
+        <?php if ($totalPages > 1): ?>
+        <div class="px-6 py-4 bg-slate-50 dark:bg-white/5 border-t border-slate-200 dark:border-white/10 flex items-center justify-center">
+            <nav class="flex items-center gap-1">
+                <a href="?page=<?= max(1, $page - 1) ?>" class="p-2 rounded-lg hover:bg-slate-200 dark:hover:bg-gray-800 transition <?= $page <= 1 ? 'pointer-events-none opacity-30' : '' ?>">
+                    <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 19l-7-7 7-7"/></svg>
+                </a>
+                <?php foreach ($range as $p): ?>
+                    <?php if ($p === '...'): ?>
+                        <span class="px-3 py-1 text-slate-400">...</span>
+                    <?php else: ?>
+                        <a href="?page=<?= $p ?>" class="px-3.5 py-1.5 rounded-lg text-sm font-semibold transition-all <?= $p == $page ? 'bg-indigo-600 text-white shadow-md' : 'text-slate-600 dark:text-slate-400 hover:bg-slate-200 dark:hover:bg-gray-800' ?>"><?= $p ?></a>
+                    <?php endif; ?>
+                <?php endforeach; ?>
+                <a href="?page=<?= min($totalPages, $page + 1) ?>" class="p-2 rounded-lg hover:bg-slate-200 dark:hover:bg-gray-800 transition <?= $page >= $totalPages ? 'pointer-events-none opacity-30' : '' ?>">
+                    <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"/></svg>
+                </a>
+            </nav>
+        </div>
+        <?php endif; ?>
     </div>
 </div>
 
 <div id="statusModal" class="hidden fixed inset-0 z-[100] flex items-center justify-center p-4">
     <div class="absolute inset-0 bg-slate-900/60 backdrop-blur-sm"></div>
-    <div class="relative w-full max-w-md bg-white dark:bg-gray-900 rounded-2xl p-6 shadow-xl border border-gray-200 dark:border-white/10">
-        <div class="text-center">
-            <h3 class="text-lg font-semibold text-gray-900 dark:text-white">Ndrysho Statusin?</h3>
-            <p class="mt-2 text-sm text-gray-500 dark:text-gray-400">Kjo mund të ndikojë në qasjen e përdoruesit në sistem.</p>
+    <div class="relative w-full max-w-sm bg-white dark:bg-gray-900 rounded-3xl p-6 shadow-2xl border border-slate-200 dark:border-white/10 text-center">
+        <div class="mx-auto flex h-12 w-12 items-center justify-center rounded-full bg-indigo-100 dark:bg-indigo-900/30 mb-4 text-indigo-600">
+            <svg class="h-6 w-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>
         </div>
+        <h3 class="text-lg font-bold text-slate-900 dark:text-white">Ndrysho Statusin?</h3>
+        <p class="mt-2 text-sm text-slate-500 dark:text-slate-400">Kjo do të përditësojë qasjen e prindit menjëherë.</p>
         <div class="mt-6 flex gap-3">
-            <button id="cancelStatus" class="flex-1 px-4 py-2 text-sm font-medium text-gray-700 bg-gray-100 rounded-lg dark:bg-gray-800 dark:text-gray-300">Anulo</button>
-            <button id="confirmStatus" class="flex-1 px-4 py-2 text-sm font-medium text-white bg-indigo-600 rounded-lg hover:bg-indigo-500">Vazhdo</button>
+            <button id="cancelStatus" class="flex-1 px-4 py-2.5 text-sm font-semibold text-slate-700 bg-slate-100 rounded-xl dark:bg-gray-800 dark:text-slate-300 transition">Anulo</button>
+            <button id="confirmStatus" class="flex-1 px-4 py-2.5 text-sm font-semibold text-white bg-indigo-600 rounded-xl hover:bg-indigo-500 transition shadow-lg shadow-indigo-500/30">Vazhdo</button>
         </div>
     </div>
 </div>
+
+<div id="toast-container" class="fixed bottom-5 right-5 z-[110] flex flex-col gap-2"></div>
 
 <script>
 const API_URL = '/E-Shkolla/dashboard/schooladmin-dashboard/partials/parent/update-inline.php';
 let pendingStatusChange = null;
 
+// --- TOAST NOTIFICATIONS ---
+function showToast(message, type = 'success') {
+    const container = document.getElementById('toast-container');
+    const toast = document.createElement('div');
+    const isSuccess = type === 'success';
+    toast.className = `${isSuccess ? 'bg-emerald-600' : 'bg-rose-600'} text-white px-5 py-3 rounded-2xl shadow-xl flex items-center gap-3 text-sm font-medium transform transition-all duration-300 translate-y-10 opacity-0`;
+    toast.innerHTML = `${isSuccess ? '✓' : '✕'} <span>${message}</span>`;
+    container.appendChild(toast);
+    setTimeout(() => toast.classList.remove('translate-y-10', 'opacity-0'), 10);
+    setTimeout(() => {
+        toast.classList.add('opacity-0', 'translate-y-2');
+        setTimeout(() => toast.remove(), 300);
+    }, 3000);
+}
+
+// --- CORE SAVE LOGIC ---
 async function save(el, forcedValue = null) {
     const userId = el.dataset.id;
     const field  = el.dataset.field;
     const oldValue = el.getAttribute('data-original') || "";
     const newValue = forcedValue !== null ? forcedValue : (el.tagName === 'SELECT' ? el.value : el.innerText.trim());
 
-    if (newValue === oldValue) {
-        visualFeedback(el, 'error');
-        return;
-    }
+    if (newValue === oldValue) return;
 
-    el.classList.add('opacity-50', 'pointer-events-none');
+    el.classList.add('opacity-40', 'pointer-events-none');
 
     try {
         const response = await fetch(API_URL, {
@@ -132,35 +190,29 @@ async function save(el, forcedValue = null) {
         const result = await response.json();
 
         if (result.status === 'success') {
-            visualFeedback(el, 'success');
             el.setAttribute('data-original', newValue);
             if (el.classList.contains('status-toggle')) updateStatusUI(el, newValue);
+            showToast('Të dhënat u përditësuan');
         } else {
-            throw new Error(result.message || "Gabim");
+            throw new Error(result.message || "Gabim gjatë ruajtjes");
         }
     } catch (err) {
-        visualFeedback(el, 'error');
         if (el.tagName === 'SELECT') el.value = oldValue;
         else el.innerText = oldValue;
-        if (err.message !== "Gabim") alert(err.message);
+        showToast(err.message, 'error');
     } finally {
-        el.classList.remove('opacity-50', 'pointer-events-none');
+        el.classList.remove('opacity-40', 'pointer-events-none');
     }
-}
-
-function visualFeedback(el, type) {
-    const color = type === 'success' ? 'ring-green-500' : 'ring-red-500';
-    el.classList.add('ring-2', color);
-    setTimeout(() => el.classList.remove('ring-2', 'ring-green-500', 'ring-red-500'), 1500);
 }
 
 function updateStatusUI(btn, value) {
     btn.dataset.value = value;
     btn.innerText = value.charAt(0).toUpperCase() + value.slice(1);
-    btn.className = `status-toggle px-3 py-1 rounded-full text-xs font-semibold ${value === 'active' ? 'bg-green-100 text-green-700' : 'bg-red-100 text-red-600'}`;
+    const active = value === 'active';
+    btn.className = `status-toggle px-3 py-1 rounded-full text-[10px] font-bold uppercase tracking-wider transition-all ${active ? 'bg-green-100 text-green-700 dark:bg-green-500/20 dark:text-green-400' : 'bg-red-100 text-red-600 dark:bg-red-500/20 dark:text-red-400'}`;
 }
 
-// Modal Logic
+// --- MODAL & EVENT LISTENERS ---
 document.addEventListener('click', e => {
     if (e.target.classList.contains('status-toggle')) {
         pendingStatusChange = { btn: e.target, newStatus: e.target.dataset.value === 'active' ? 'inactive' : 'active' };
@@ -172,38 +224,30 @@ document.getElementById('confirmStatus').onclick = () => {
     if (pendingStatusChange) save(pendingStatusChange.btn, pendingStatusChange.newStatus);
     document.getElementById('statusModal').classList.add('hidden');
 };
+document.getElementById('cancelStatus').onclick = () => document.getElementById('statusModal').classList.add('hidden');
 
-document.getElementById('cancelStatus').onclick = () => {
-    document.getElementById('statusModal').classList.add('hidden');
-};
-
-// Listeners
 document.addEventListener('focusout', e => { if (e.target.classList.contains('editable')) save(e.target); });
 document.addEventListener('change', e => { if (e.target.classList.contains('editable-select')) save(e.target); });
 document.addEventListener('keydown', e => { if (e.target.classList.contains('editable') && e.key === 'Enter') { e.preventDefault(); e.target.blur(); } });
 
-// Live Search
+// --- SEARCH & HIGHLIGHTING (ANTI-SHIFT) ---
 function filterParents() {
     const filter = document.getElementById("liveSearch").value.toLowerCase().trim();
     const rows = document.querySelectorAll("tbody tr");
     rows.forEach(row => {
-        const text = row.innerText.toLowerCase();
-        row.style.display = text.includes(filter) ? "" : "none";
+        const searchables = row.querySelectorAll('[data-original]');
+        let match = false;
+        searchables.forEach(el => {
+            const txt = el.getAttribute('data-original');
+            if (filter === "") { el.innerHTML = txt; match = true; }
+            else if (txt.toLowerCase().includes(filter)) {
+                el.innerHTML = txt.replace(new RegExp(`(${filter})`, 'gi'), '<mark class="bg-yellow-200 dark:bg-yellow-500/40 text-current rounded-sm px-0.5">$1</mark>');
+                match = true;
+            } else { el.innerHTML = txt; }
+        });
+        row.style.display = match ? "" : "none";
     });
 }
-
-const btn = document.getElementById('addParentBtn');
-const form = document.getElementById('addParentForm');
-const cancel = document.getElementById('cancel');
-
-btn?.addEventListener('click', () => {
- form.classList.remove('hidden');
- form.scrollIntoView({ behavior: 'smooth', block: 'start' });
-});
-
-cancel?.addEventListener('click', () => {
- form.classList.add('hidden');
-});
 </script>
 
 <?php 
