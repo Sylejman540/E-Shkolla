@@ -47,6 +47,16 @@ ob_start();
         </div>
     </div>
 
+    <?php if (isset($_SESSION['success'])): ?>
+    <script>
+        // This calls the JavaScript function we defined in schedule.php
+        window.addEventListener('DOMContentLoaded', (event) => {
+            showToast("<?= addslashes($_SESSION['success']) ?>", "success");
+        });
+    </script>
+    <?php unset($_SESSION['success']); ?>
+    <?php endif; ?>
+
     <div class="bg-white dark:bg-gray-900 rounded-2xl border border-slate-200 dark:border-white/10 shadow-sm overflow-hidden">
         <div class="overflow-x-auto">
             <table class="w-full text-left border-collapse table-fixed min-w-[700px]">
