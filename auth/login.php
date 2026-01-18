@@ -68,6 +68,25 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                             'role' => $user['role']
                         ];
                         $_SESSION['role'] = $user['role'];
+                        switch ($user['role']) {
+                        case 'teacher':
+                            $stmt = $pdo->prepare("SELECT id FROM teachers WHERE user_id = ? AND school_id = ? LIMIT 1");
+                            $stmt->execute([$user['id'], $user['school_id']]);
+                            $_SESSION['user']['teacher_id'] = $stmt->fetchColumn() ?: null;
+                            break;
+
+                        case 'student':
+                            $stmt = $pdo->prepare("SELECT student_id FROM students WHERE user_id = ? AND school_id = ? LIMIT 1");
+                            $stmt->execute([$user['id'], $user['school_id']]);
+                            $_SESSION['user']['student_id'] = $stmt->fetchColumn() ?: null;
+                            break;
+
+                        case 'parent':
+                            $stmt = $pdo->prepare("SELECT id FROM parents WHERE user_id = ? AND school_id = ? LIMIT 1");
+                            $stmt->execute([$user['id'], $user['school_id']]);
+                            $_SESSION['user']['parent_id'] = $stmt->fetchColumn() ?: null;
+                            break;
+                        }
                         $_SESSION['status'] = $user['status'];
                         $_SESSION['login_time'] = time();
                         

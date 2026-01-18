@@ -1,316 +1,251 @@
 <?php
-require_once __DIR__ . '../index.php';
 require_once __DIR__ . '/../../../db.php';
 
 if (session_status() === PHP_SESSION_NONE) {
     session_start();
 }
 
-$userId   = (int) ($_SESSION['user']['id'] ?? 0);
-$schoolId = (int) ($_SESSION['user']['school_id'] ?? 0);
+// Ensure the user is a teacher
+$schoolId = $_SESSION['user']['school_id'] ?? null;
+$teacherId = $_SESSION['user']['teacher_id'] ?? null; // Assumes teacher_id is stored in session
 
-if (!$userId || !$schoolId) {
-    header('Location: /login.php');
-    exit();
+if (!$schoolId || !$teacherId) {
+    die('Aksesi i mohuar: Të dhënat e mësuesit mungojnë.');
 }
 
-/* ================= 1. TEACHER INFO ================= */
-$stmt = $pdo->prepare("SELECT id, name FROM teachers WHERE user_id = ? AND school_id = ?");
-$stmt->execute([$userId, $schoolId]);
-$teacher = $stmt->fetch(PDO::FETCH_ASSOC);
+$teacherId = $_SESSION['user']['teacher_id'] ?? null;
 
-if (!$teacher) { 
-    die("Profile mësuesi nuk u gjet."); 
+// IF MISSING: Try to fetch the first available teacher ID for this school (Only for testing!)
+if (!$teacherId && $schoolId) {
+    $stmt = $pdo->prepare("SELECT id FROM teachers WHERE school_id = ? LIMIT 1");
+    $stmt->execute([$schoolId]);
+    $teacherId = $stmt->fetchColumn();
+    
+    // Optional: Save it to session so it works on next refresh
+    if($teacherId) { $_SESSION['user']['teacher_id'] = $teacherId; }
 }
 
-$teacherId   = (int) $teacher['id'];
-$teacherName = $teacher['name'];
+if (!$teacherId) {
+    die('Aksesi i mohuar: Nuk u gjet asnjë llogari mësuesi për këtë shkollë.');
+}
+/* =====================================================
+   TEACHER SPECIFIC KPIs
+===================================================== */
 
-/* ================= 2. KPI CALCULATIONS ================= */
-// Classes
-$stmt = $pdo->prepare("SELECT COUNT(DISTINCT class_id) FROM class_schedule WHERE teacher_id = ? AND school_id = ?");
-$stmt->execute([$teacherId, $schoolId]);
-$myClasses = (int) $stmt->fetchColumn();
-
-// Students
-$stmt = $pdo->prepare("SELECT COUNT(DISTINCT sc.student_id) FROM student_class sc JOIN class_schedule cs ON cs.class_id = sc.class_id WHERE cs.teacher_id = ? AND cs.school_id = ?");
-$stmt->execute([$teacherId, $schoolId]);
-$totalStudents = (int) $stmt->fetchColumn();
-
-// Assignments Status
-$stmt = $pdo->prepare("SELECT 
-    COUNT(CASE WHEN completed_at IS NOT NULL THEN 1 END) as done,
-    COUNT(CASE WHEN completed_at IS NULL AND due_date >= CURDATE() THEN 1 END) as pending,
-    COUNT(CASE WHEN completed_at IS NULL AND due_date < CURDATE() THEN 1 END) as overdue
-    FROM assignments WHERE teacher_id = ?");
+// Get Teacher Name
+$stmt = $pdo->prepare("SELECT name FROM teachers WHERE id = ?");
 $stmt->execute([$teacherId]);
-$assignStats = $stmt->fetch(PDO::FETCH_ASSOC);
-$assignmentsCompleted = (int)$assignStats['done'];
-$assignmentsPending   = (int)$assignStats['pending'];
-$assignmentsOverdue   = (int)$assignStats['overdue'];
-$pendingTasks         = $assignmentsPending;
+$teacherName = $stmt->fetchColumn() ?: 'Mësues';
 
-/* ================= 3. ATTENDANCE & TRENDS ================= */
-$stmt = $pdo->prepare("SELECT COALESCE(SUM(present), 0) AS present, COALESCE(SUM(missing), 0) AS missing FROM attendance WHERE teacher_id = ? AND DATE(created_at) = CURDATE()");
-$stmt->execute([$teacherId]);
-$att = $stmt->fetch(PDO::FETCH_ASSOC);
-$presentToday = (int)$att['present'];
-$missingToday = (int)$att['missing'];
-$attendanceRate = ($presentToday + $missingToday) > 0 ? round(($presentToday / ($presentToday + $missingToday)) * 100) : 0;
-
-// 7 Day Trend
+// Total Students taught by this teacher (distinct students across all their classes)
 $stmt = $pdo->prepare("
-    SELECT DATE(created_at) as d, SUM(present) as p, SUM(missing) as m 
-    FROM attendance WHERE teacher_id = ? AND created_at >= DATE_SUB(CURDATE(), INTERVAL 7 DAY) 
-    GROUP BY DATE(created_at) ORDER BY d ASC
+    SELECT COUNT(DISTINCT sc.student_id)
+    FROM teacher_class tc
+    JOIN student_class sc ON sc.class_id = tc.class_id
+    JOIN students s ON s.student_id = sc.student_id
+    WHERE tc.teacher_id = ?
+      AND s.school_id = ?
+");
+$stmt->execute([$teacherId, $schoolId]);
+$myTotalStudents = (int) $stmt->fetchColumn();
+
+// Total Classes assigned to this teacher
+$stmt = $pdo->prepare("SELECT COUNT(DISTINCT class_id) FROM class_schedule WHERE teacher_id = ?");
+$stmt->execute([$teacherId]);
+$myTotalClasses = (int) $stmt->fetchColumn();
+
+// Total Subjects taught
+$stmt = $pdo->prepare("SELECT COUNT(DISTINCT subject_id) FROM class_schedule WHERE teacher_id = ?");
+$stmt->execute([$teacherId]);
+$myTotalSubjects = (int) $stmt->fetchColumn();
+
+/* =====================================================
+   TODAY'S ATTENDANCE (Only for this teacher's classes)
+===================================================== */
+$today = date('Y-m-d');
+$stmt = $pdo->prepare("
+    SELECT
+        SUM(a.present) AS present,
+        SUM(a.missing) AS missing
+    FROM attendance a
+    JOIN class_schedule cs ON cs.class_id = a.class_id
+    WHERE cs.teacher_id = ? 
+    AND DATE(a.created_at) = ?
+");
+$stmt->execute([$teacherId, $today]);
+$attendanceToday = $stmt->fetch(PDO::FETCH_ASSOC);
+
+$presentToday = (int) ($attendanceToday['present'] ?? 0);
+$missingToday = (int) ($attendanceToday['missing'] ?? 0);
+
+/* =====================================================
+   ATTENDANCE TREND (Last 7 Days for Teacher's Classes)
+===================================================== */
+$stmt = $pdo->prepare("
+    SELECT 
+        DATE(a.created_at) AS day,
+        SUM(a.present) AS present,
+        COUNT(a.student_id) AS total_logs
+    FROM attendance a
+    JOIN class_schedule cs ON cs.class_id = a.class_id
+    WHERE cs.teacher_id = ?
+    AND a.created_at >= DATE_SUB(CURDATE(), INTERVAL 7 DAY)
+    GROUP BY DATE(a.created_at)
+    ORDER BY DATE(a.created_at)
 ");
 $stmt->execute([$teacherId]);
-$trendRaw = $stmt->fetchAll(PDO::FETCH_ASSOC);
-$trendDates = []; $trendRates = [];
-foreach($trendRaw as $r) {
-    $trendDates[] = date('d M', strtotime($r['d']));
-    $total = $r['p'] + $r['m'];
-    $trendRates[] = ($total > 0) ? round(($r['p'] / $total) * 100) : 0;
+$trendRows = $stmt->fetchAll(PDO::FETCH_ASSOC);
+
+$attendanceDates = [];
+$attendanceRates = [];
+
+foreach ($trendRows as $row) {
+    $attendanceDates[] = date('D', strtotime($row['day']));
+    $attendanceRates[] = $row['total_logs'] > 0
+        ? round(($row['present'] / $row['total_logs']) * 100)
+        : 0;
 }
 
-/* ================= 4. GRADES CHART ================= */
+/* =====================================================
+   MY CLASSES PERFORMANCE (Today)
+===================================================== */
 $stmt = $pdo->prepare("
-    SELECT c.grade as name, COALESCE(AVG(g.grade), 0) as avg 
-    FROM classes c 
-    JOIN class_schedule cs ON c.id = cs.class_id 
-    LEFT JOIN grades g ON g.class_id = c.id 
-    WHERE cs.teacher_id = ? AND c.school_id = ?
-    GROUP BY c.id LIMIT 6
+    SELECT 
+        c.grade AS class_name,
+        SUM(a.present) AS present,
+        COUNT(a.student_id) AS total
+    FROM attendance a
+    JOIN classes c ON c.id = a.class_id
+    JOIN class_schedule cs ON cs.class_id = c.id
+    WHERE cs.teacher_id = ?
+    AND DATE(a.created_at) = CURDATE()
+    GROUP BY c.id
 ");
-$stmt->execute([$teacherId, $schoolId]);
-$gradesRaw = $stmt->fetchAll(PDO::FETCH_ASSOC);
-$gradeLabels = array_column($gradesRaw, 'name');
-$gradeValues = array_map(fn($v) => round($v, 1), array_column($gradesRaw, 'avg'));
+$stmt->execute([$teacherId]);
+$myClassesAttendance = $stmt->fetchAll(PDO::FETCH_ASSOC);
 
-/* ================= 5. SCHEDULE & ANNOUNCEMENTS ================= */
-$stmt = $pdo->prepare("
-    SELECT cs.day, cs.start_time, c.grade, s.subject_name
-    FROM class_schedule cs
-    JOIN classes c ON c.id = cs.class_id
-    JOIN subjects s ON s.id = cs.subject_id
-    WHERE cs.teacher_id = ? AND cs.school_id = ?
-    ORDER BY FIELD(cs.day, 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday')
-    LIMIT 5
-");
-$stmt->execute([$teacherId, $schoolId]);
-$upcomingClasses = $stmt->fetchAll(PDO::FETCH_ASSOC);
-
-$todayName = strtolower(date('l'));
-$stmt = $pdo->prepare("SELECT COUNT(*) FROM class_schedule WHERE teacher_id = ? AND LOWER(day) = ?");
-$stmt->execute([$teacherId, $todayName]);
-$todayLessons = (int)$stmt->fetchColumn();
-
-// Announcements
-$stmt = $pdo->prepare("SELECT title, created_at FROM announcements WHERE school_id = ? ORDER BY created_at DESC LIMIT 3");
-$stmt->execute([$schoolId]);
-$recentAnnouncements = $stmt->fetchAll(PDO::FETCH_ASSOC);
+ob_start();
 ?>
 
-<!DOCTYPE html>
-<html lang="sq">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Paneli i Mësuesit</title>
-    <script src="https://cdn.tailwindcss.com"></script>
-    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
-    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
-</head>
-<body class="bg-gray-50 dark:bg-gray-950 text-gray-800 dark:text-gray-200">
+<div class="px-4 sm:px-6 lg:px-8">
+    <div class="mb-8">
+        <h1 class="text-3xl font-bold text-slate-900">Mirëseerdhe, Prof. <?= htmlspecialchars($teacherName) ?></h1>
+        <p class="text-slate-500">Përmbledhja e angazhimit tuaj mësimor për sot.</p>
+    </div>
 
-    <main class="min-h-screen md:ml-64 transition-all duration-300">
-        
-        <header class="p-6 lg:p-10">
-            <div class="flex flex-col md:flex-row md:items-center justify-between gap-4">
-                <div>
-                    <h1 class="text-3xl font-bold tracking-tight text-gray-900 dark:text-white">
-                        Mirë se vini, <?= htmlspecialchars($teacherName) ?>!
-                    </h1>
-                    <p class="text-gray-500 mt-1">Sot është <?= date('l, d F Y') ?> | Ora: <span id="currentTime" class="font-mono text-indigo-600"></span></p>
-                </div>
-                <div class="flex gap-3">
-                    <div class="bg-white dark:bg-gray-900 px-4 py-2 rounded-lg shadow-sm border dark:border-gray-800 flex items-center gap-2">
-                        <span class="w-2 h-2 bg-green-500 rounded-full animate-pulse"></span>
-                        <span class="text-sm font-medium">Sistemi Online</span>
-                    </div>
-                </div>
+    <div class="grid grid-cols-1 sm:grid-cols-3 gap-6 mb-10">
+        <div class="bg-white p-6 rounded-[24px] border shadow-sm border-blue-100">
+            <h3 class="text-xs font-bold text-slate-500 uppercase">Nxënësit e mi</h3>
+            <p class="text-3xl font-black mt-1 text-blue-600"><?= $myTotalStudents ?></p>
+        </div>
+        <div class="bg-white p-6 rounded-[24px] border shadow-sm border-purple-100">
+            <h3 class="text-xs font-bold text-slate-500 uppercase">Klasat e caktuara</h3>
+            <p class="text-3xl font-black mt-1 text-purple-600"><?= $myTotalClasses ?></p>
+        </div>
+        <div class="bg-white p-6 rounded-[24px] border shadow-sm border-emerald-100">
+            <h3 class="text-xs font-bold text-slate-500 uppercase">Lëndët që jap</h3>
+            <p class="text-3xl font-black mt-1 text-emerald-600"><?= $myTotalSubjects ?></p>
+        </div>
+    </div>
+
+    <div class="grid grid-cols-1 lg:grid-cols-2 gap-8 mb-8">
+        <div class="bg-white p-8 rounded-[32px] border">
+            <h2 class="font-bold mb-4 text-slate-800">Pjesëmarrja e Nxënësve të mi (Sot)</h2>
+            <div class="h-[260px]">
+                <?php if ($presentToday + $missingToday > 0): ?>
+                    <canvas id="teacherAttendanceChart"></canvas>
+                <?php else: ?>
+                    <div class="h-full flex items-center justify-center text-slate-400 italic">Nuk ka të dhëna për sot</div>
+                <?php endif; ?>
             </div>
+        </div>
 
-            <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6 mt-10">
-                <div class="bg-white dark:bg-gray-900 p-6 rounded-2xl shadow-sm border dark:border-gray-800">
-                    <div class="flex items-center justify-between mb-2">
-                        <span class="text-gray-500 text-sm font-medium uppercase">Klasat</span>
-                        <i class="fas fa-chalkboard text-blue-500"></i>
-                    </div>
-                    <div class="text-3xl font-bold"><?= $myClasses ?></div>
-                </div>
-
-                <div class="bg-white dark:bg-gray-900 p-6 rounded-2xl shadow-sm border dark:border-gray-800">
-                    <div class="flex items-center justify-between mb-2">
-                        <span class="text-gray-500 text-sm font-medium uppercase">Nxënës</span>
-                        <i class="fas fa-users text-green-500"></i>
-                    </div>
-                    <div class="text-3xl font-bold"><?= $totalStudents ?></div>
-                </div>
-
-                <div class="bg-white dark:bg-gray-900 p-6 rounded-2xl shadow-sm border dark:border-gray-800">
-                    <div class="flex items-center justify-between mb-2">
-                        <span class="text-gray-500 text-sm font-medium uppercase">Orë Sot</span>
-                        <i class="fas fa-calendar-day text-purple-500"></i>
-                    </div>
-                    <div class="text-3xl font-bold"><?= $todayLessons ?></div>
-                </div>
-
-                <div class="bg-white dark:bg-gray-900 p-6 rounded-2xl shadow-sm border dark:border-gray-800">
-                    <div class="flex items-center justify-between mb-2">
-                        <span class="text-gray-500 text-sm font-medium uppercase">Detyra</span>
-                        <i class="fas fa-tasks text-yellow-500"></i>
-                    </div>
-                    <div class="text-3xl font-bold"><?= $pendingTasks ?></div>
-                </div>
+        <div class="bg-white p-8 rounded-[32px] border">
+            <h2 class="font-bold mb-4 text-slate-800">Trendi i Pjesëmarrjes (7 Ditë)</h2>
+            <div class="h-[260px]">
+                <canvas id="teacherTrendChart"></canvas>
             </div>
+        </div>
+    </div>
 
-            <div class="grid grid-cols-1 lg:grid-cols-2 gap-8 mt-8">
-                <div class="bg-white dark:bg-gray-900 p-6 rounded-2xl shadow-sm border dark:border-gray-800">
-                    <h3 class="font-bold mb-4">Prezenca Sot</h3>
-                    <div class="h-64"><canvas id="attendanceChart"></canvas></div>
-                </div>
-                <div class="bg-white dark:bg-gray-900 p-6 rounded-2xl shadow-sm border dark:border-gray-800">
-                    <h3 class="font-bold mb-4">Statusi i Detyrave</h3>
-                    <div class="h-64"><canvas id="assignmentsChart"></canvas></div>
-                </div>
-            </div>
-
-            <div class="grid grid-cols-1 xl:grid-cols-3 gap-8 mt-8">
-                <div class="xl:col-span-2 bg-white dark:bg-gray-900 p-6 rounded-2xl shadow-sm border dark:border-gray-800">
-                    <h3 class="font-bold mb-4">Mesatarja e Notave për Klasë</h3>
-                    <div class="h-72"><canvas id="gradesChart"></canvas></div>
-                </div>
-
-                <div class="bg-white dark:bg-gray-900 p-6 rounded-2xl shadow-sm border dark:border-gray-800">
-                    <h3 class="font-bold mb-4">Orari i Radhës</h3>
-                    <div class="space-y-4">
-                        <?php foreach ($upcomingClasses as $c): ?>
-                        <div class="flex items-center justify-between p-3 bg-gray-50 dark:bg-gray-800 rounded-xl">
-                            <div>
-                                <div class="font-bold text-sm"><?= htmlspecialchars($c['grade']) ?></div>
-                                <div class="text-xs text-gray-500"><?= htmlspecialchars($c['subject_name']) ?></div>
-                            </div>
-                            <div class="text-xs font-mono bg-white dark:bg-gray-900 px-2 py-1 rounded shadow-sm">
-                                <?= substr($c['start_time'],0,5) ?>
-                            </div>
-                        </div>
-                        <?php endforeach; ?>
-                    </div>
-                </div>
-            </div>
-
-            <div class="grid grid-cols-1 lg:grid-cols-3 gap-8 mt-8 pb-10">
-                <div class="lg:col-span-2 bg-white dark:bg-gray-900 p-6 rounded-2xl shadow-sm border dark:border-gray-800">
-                    <h3 class="font-bold mb-4">Trendi i Prezencës (7 Ditët e Fundit)</h3>
-                    <div class="h-64"><canvas id="attendanceTrendChart"></canvas></div>
-                </div>
-                
-                <div class="bg-white dark:bg-gray-900 p-6 rounded-2xl shadow-sm border dark:border-gray-800">
-                    <h3 class="font-bold mb-4">Njoftimet e Shkollës</h3>
-                    <div class="space-y-4">
-                        <?php if ($recentAnnouncements): ?>
-                            <?php foreach ($recentAnnouncements as $a): ?>
-                                <div class="border-l-4 border-indigo-500 pl-4 py-1">
-                                    <p class="text-sm font-bold"><?= htmlspecialchars($a['title']) ?></p>
-                                    <p class="text-xs text-gray-400"><?= date('d/m/Y', strtotime($a['created_at'])) ?></p>
+    <div class="bg-white p-6 rounded-[24px] border mb-8">
+        <h3 class="font-bold mb-4">Raporti sipas Klasave</h3>
+        <div class="overflow-x-auto">
+            <table class="w-full">
+                <thead>
+                    <tr class="text-left text-sm text-slate-500 border-b">
+                        <th class="pb-3">Klasa</th>
+                        <th class="pb-3">Prezent</th>
+                        <th class="pb-3">Mungesa</th>
+                        <th class="pb-3">Përqindja</th>
+                    </tr>
+                </thead>
+                <tbody class="divide-y divide-slate-100">
+                    <?php foreach ($myClassesAttendance as $row): 
+                        $rate = round(($row['present'] / $row['total']) * 100);
+                    ?>
+                    <tr>
+                        <td class="py-4 font-bold text-slate-700">Klasa <?= htmlspecialchars($row['class_name']) ?></td>
+                        <td class="py-4 text-emerald-600 font-medium"><?= $row['present'] ?></td>
+                        <td class="py-4 text-red-500 font-medium"><?= $row['total'] - $row['present'] ?></td>
+                        <td class="py-4">
+                            <div class="flex items-center gap-2">
+                                <div class="w-16 bg-slate-100 h-1.5 rounded-full overflow-hidden">
+                                    <div class="bg-blue-500 h-full" style="width: <?= $rate ?>%"></div>
                                 </div>
-                            <?php endforeach; ?>
-                        <?php else: ?>
-                            <p class="text-gray-500 text-sm italic text-center py-10">Nuk ka njoftime të reja.</p>
-                        <?php endif; ?>
-                    </div>
-                </div>
-            </div>
-        </header>
-    </main>
+                                <span class="text-xs font-bold"><?= $rate ?>%</span>
+                            </div>
+                        </td>
+                    </tr>
+                    <?php endforeach; ?>
+                </tbody>
+            </table>
+        </div>
+    </div>
+</div>
 
-    <script>
-        // Digital Clock
-        function tick() {
-            document.getElementById('currentTime').innerText = new Date().toLocaleTimeString('sq-AL');
-        }
-        setInterval(tick, 1000); tick();
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+<script>
+// Doughnut Chart
+const ctx1 = document.getElementById('teacherAttendanceChart');
+if(ctx1) {
+    new Chart(ctx1, {
+        type: 'doughnut',
+        data: {
+            labels: ['Prezent', 'Mungon'],
+            datasets: [{
+                data: [<?= $presentToday ?>, <?= $missingToday ?>],
+                backgroundColor: ['#10b981', '#f43f5e'],
+                borderWidth: 0,
+                cutout: '75%'
+            }]
+        },
+        options: { plugins: { legend: { position: 'bottom' } } }
+    });
+}
 
-        // Chart defaults
-        Chart.defaults.color = '#94a3b8';
-        Chart.defaults.font.family = 'Inter, ui-sans-serif, system-ui';
+// Trend Chart
+new Chart(document.getElementById('teacherTrendChart'), {
+    type: 'line',
+    data: {
+        labels: <?= json_encode($attendanceDates) ?>,
+        datasets: [{
+            label: 'Pjesëmarrja %',
+            data: <?= json_encode($attendanceRates) ?>,
+            borderColor: '#6366f1',
+            tension: 0.4,
+            fill: true,
+            backgroundColor: 'rgba(99, 102, 241, 0.1)'
+        }]
+    },
+    options: {
+        scales: { y: { beginAtZero: true, max: 100 } },
+        plugins: { legend: { display: false } }
+    }
+});
+</script>
 
-        // 1. Attendance Today
-        new Chart(document.getElementById('attendanceChart'), {
-            type: 'doughnut',
-            data: {
-                labels: ['Prezente', 'Mungesa'],
-                datasets: [{
-                    data: [<?= $presentToday ?>, <?= $missingToday ?>],
-                    backgroundColor: ['#10b981', '#ef4444'],
-                    borderWidth: 0
-                }]
-            },
-            options: { cutout: '70%', maintainAspectRatio: false }
-        });
-
-        // 2. Assignments status
-        new Chart(document.getElementById('assignmentsChart'), {
-            type: 'pie',
-            data: {
-                labels: ['Dorëzuara', 'Në Pritje', 'Vonuar'],
-                datasets: [{
-                    data: [<?= $assignmentsCompleted ?>, <?= $assignmentsPending ?>, <?= $assignmentsOverdue ?>],
-                    backgroundColor: ['#10b981', '#f59e0b', '#ef4444'],
-                    borderWidth: 0
-                }]
-            },
-            options: { maintainAspectRatio: false }
-        });
-
-        // 3. Average Grades
-        new Chart(document.getElementById('gradesChart'), {
-            type: 'bar',
-            data: {
-                labels: <?= json_encode($gradeLabels) ?>,
-                datasets: [{
-                    label: 'Nota Mesatare',
-                    data: <?= json_encode($gradeValues) ?>,
-                    backgroundColor: '#6366f1',
-                    borderRadius: 8
-                }]
-            },
-            options: { 
-                maintainAspectRatio: false,
-                scales: { y: { beginAtZero: true, max: 5 } }
-            }
-        });
-
-        // 4. Trend Line
-        new Chart(document.getElementById('attendanceTrendChart'), {
-            type: 'line',
-            data: {
-                labels: <?= json_encode($trendDates) ?>,
-                datasets: [{
-                    label: 'Prezenca %',
-                    data: <?= json_encode($trendRates) ?>,
-                    borderColor: '#6366f1',
-                    backgroundColor: 'rgba(99, 102, 241, 0.1)',
-                    fill: true,
-                    tension: 0.4
-                }]
-            },
-            options: { 
-                maintainAspectRatio: false,
-                scales: { y: { beginAtZero: true, max: 100 } }
-            }
-        });
-    </script>
-</body>
-</html>
+<?php
+$content = ob_get_clean();
+require_once __DIR__ . '/index.php';
+?>
