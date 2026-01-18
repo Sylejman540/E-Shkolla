@@ -1,68 +1,68 @@
 <?php
 session_start();
-require_once '../../../../db.php';
+header('Content-Type: application/json');
+require_once __DIR__ . '/../../../../db.php';
 
-if (!isset($_SESSION['user'])) {
-    http_response_code(403);
-    exit;
-}
-
+$schoolId = $_SESSION['user']['school_id'] ?? null;
 $data = json_decode(file_get_contents('php://input'), true);
 
-$parentId = (int)($data['userId'] ?? 0);
-$field    = $data['field'] ?? '';
-$value    = trim($data['value'] ?? '');
+if (!$schoolId || !$data) {
+    http_response_code(403);
+    echo json_encode(['status' => 'error', 'message' => 'Unauthorized']);
+    exit;
+}
 
-if (!$parentId || !$field) {
+$userId = $data['userId'] ?? null;
+$field  = $data['field'] ?? null;
+$value  = trim($data['value'] ?? '');
+
+$allowedFields = ['name', 'phone', 'email', 'relation', 'status'];
+if (!in_array($field, $allowedFields)) {
     http_response_code(400);
+    echo json_encode(['status' => 'error', 'message' => 'Fushë e pavlefshme']);
     exit;
 }
 
-/**
- * Allowed fields
- */
-$allowedFields = ['name', 'email', 'phone', 'relation', 'status'];
+try {
+    // 1. Fetch current value to check for no change
+    $checkStmt = $pdo->prepare("SELECT $field FROM parents WHERE user_id = ? AND school_id = ?");
+    $checkStmt->execute([$userId, $schoolId]);
+    $currentValue = $checkStmt->fetchColumn();
 
-if (!in_array($field, $allowedFields, true)) {
-    http_response_code(400);
-    exit;
+    if ($currentValue === $value) {
+        echo json_encode(['status' => 'no_change', 'message' => 'Nuk ka ndryshime.']);
+        exit;
+    }
+
+    // 2. Email uniqueness check
+    if ($field === 'email') {
+        $emailStmt = $pdo->prepare("SELECT id FROM users WHERE email = ? AND id != ? LIMIT 1");
+        $emailStmt->execute([$value, $userId]);
+        if ($emailStmt->fetch()) {
+            echo json_encode(['status' => 'error', 'message' => 'Ky email ekziston në sistem.']);
+            exit;
+        }
+    }
+
+    // 3. Begin Transaction
+    $pdo->beginTransaction();
+
+    // Update Parents
+    $stmt1 = $pdo->prepare("UPDATE parents SET $field = ? WHERE user_id = ? AND school_id = ?");
+    $stmt1->execute([$value, $userId, $schoolId]);
+
+    // Update Users for shared fields
+    $sharedFields = ['name', 'email', 'status'];
+    if (in_array($field, $sharedFields)) {
+        $stmt2 = $pdo->prepare("UPDATE users SET $field = ? WHERE id = ? AND school_id = ?");
+        $stmt2->execute([$value, $userId, $schoolId]);
+    }
+
+    $pdo->commit();
+    echo json_encode(['status' => 'success']);
+
+} catch (PDOException $e) {
+    if ($pdo->inTransaction()) $pdo->rollBack();
+    http_response_code(500);
+    echo json_encode(['status' => 'error', 'message' => 'Gabim në server: ' . $e->getMessage()]);
 }
-
-/**
- * Get linked user_id from parents
- */
-$stmt = $pdo->prepare("SELECT user_id FROM parents WHERE id = ?");
-$stmt->execute([$parentId]);
-$parent = $stmt->fetch(PDO::FETCH_ASSOC);
-
-if (!$parent) {
-    http_response_code(404);
-    exit;
-}
-
-$userId = (int)$parent['user_id'];
-
-/**
- * 1️⃣ UPDATE PARENTS TABLE
- */
-$stmt = $pdo->prepare("
-    UPDATE parents
-    SET `$field` = ?, updated_at = NOW()
-    WHERE id = ?
-");
-$stmt->execute([$value, $parentId]);
-
-/**
- * 2️⃣ SYNC USERS TABLE (ONLY WHEN NEEDED)
- */
-if (in_array($field, ['name', 'email', 'status'], true)) {
-
-    $stmt = $pdo->prepare("
-        UPDATE users
-        SET `$field` = ?, updated_at = NOW()
-        WHERE id = ?
-    ");
-    $stmt->execute([$value, $userId]);
-}
-
-echo json_encode(['success' => true]);
