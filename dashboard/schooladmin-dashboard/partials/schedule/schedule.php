@@ -71,7 +71,7 @@ async function toggleSchedule(classId) {
     if (row.classList.contains('hidden')) {
         row.classList.remove('hidden');
         // Rruga relative pa /E-Shkolla/ për të shmangur gabimin 404
-        const res = await fetch(`partials/schedule/get-schedule-grid.php?class_id=${classId}`);
+        const res = await fetch(`/E-Shkolla/dashboard/schooladmin-dashboard/partials/schedule/get-schedule-grid.php?class_id=${classId}`);
         container.innerHTML = await res.text();
     } else {
         row.classList.add('hidden');
