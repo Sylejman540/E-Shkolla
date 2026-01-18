@@ -20,32 +20,34 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['add_schedule'])) {
         $_SESSION['success'] = "Orari u shtua me sukses!";
     }
     
-    // Redirect te faqja kryesore e orarit
     header("Location: " . $_SERVER['HTTP_REFERER']); 
     exit;
 }
 ?>
 
-<div id="addScheduleForm" class="hidden fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm overflow-y-auto p-4">
+<div id="addScheduleForm" class="hidden fixed inset-0 z-[100] flex items-center justify-center bg-slate-900/40 backdrop-blur-sm p-4 overflow-y-auto">
     
-    <div class="w-full max-w-2xl bg-white dark:bg-gray-900 rounded-xl shadow-2xl ring-1 ring-gray-200 dark:ring-white/10 overflow-hidden">
+    <div class="relative w-full max-w-2xl bg-white rounded-2xl shadow-2xl border border-slate-200 overflow-hidden transform transition-all">
         
-         <div class="flex justify-between items-center">
-            <div class="p-6 border-b border-gray-100 dark:border-white/5">
-                <h2 class="text-xl font-semibold text-gray-900 dark:text-white">Shto orar të ri</h2>
-                <p class="mt-1 text-sm text-gray-600 dark:text-gray-400">Plotësoni të dhënat për të caktuar orarin e klasës.</p>
+        <div class="flex items-center justify-between px-8 py-6 border-b border-slate-100 bg-slate-50/50">
+            <div>
+                <h2 class="text-xl font-bold text-slate-800">Shto orar të ri</h2>
+                <p class="mt-1 text-xs font-medium text-slate-500 uppercase tracking-wider">Cakto lëndët dhe mësuesit për klasat</p>
             </div>
-            <button type="button" onclick="document.getElementById('addScheduleForm').classList.add('hidden')" class="text-gray-400 hover:text-gray-600 text-2xl mr-6">&times;</button>
+            <button type="button" onclick="document.getElementById('addScheduleForm').classList.add('hidden')" class="p-2 rounded-lg text-slate-400 hover:text-slate-600 hover:bg-slate-100 transition-colors">
+                <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/></svg>
+            </button>
         </div>
 
-        <form action="" method="post" class="p-6">
-            <input type="hidden" name="user_id" value="<?= $user_id ?>">
+        <form action="" method="post" class="p-8">
+            <input type="hidden" name="add_schedule" value="1">
+            <input type="hidden" name="user_id" value="<?= $_SESSION['user']['id'] ?? '' ?>">
             
-            <div class="grid grid-cols-1 gap-y-6 gap-x-4 sm:grid-cols-6">
+            <div class="grid grid-cols-1 gap-y-5 gap-x-4 sm:grid-cols-6">
                 
                 <div class="sm:col-span-6">
-                    <label class="block text-sm font-medium text-gray-700 dark:text-gray-300">Dita</label>
-                    <select name="day" class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 sm:text-sm dark:bg-gray-800 dark:border-gray-700 dark:text-white p-2 border">
+                    <label class="block text-sm font-bold text-slate-700 mb-1.5">Dita e javës</label>
+                    <select name="day" class="w-full rounded-xl border-slate-200 bg-white text-sm font-medium text-slate-700 focus:border-blue-500 focus:ring-4 focus:ring-blue-500/10 transition-all p-3 border">
                         <option value="monday">E hënë</option>
                         <option value="tuesday">E martë</option>
                         <option value="wednesday">E mërkurë</option>
@@ -55,31 +57,31 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['add_schedule'])) {
                 </div>
 
                 <div class="sm:col-span-3">
-                    <label class="block text-sm font-medium text-gray-700 dark:text-gray-300">Ora e fillimit</label>
-                    <input type="time" name="start_time" required class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 sm:text-sm dark:bg-gray-800 dark:border-gray-700 dark:text-white p-2 border">
+                    <label class="block text-sm font-bold text-slate-700 mb-1.5">Ora e fillimit</label>
+                    <input type="time" name="start_time" required class="w-full rounded-xl border-slate-200 bg-white text-sm font-medium text-slate-700 focus:border-blue-500 focus:ring-4 focus:ring-blue-500/10 transition-all p-3 border">
                 </div>
 
                 <div class="sm:col-span-3">
-                    <label class="block text-sm font-medium text-gray-700 dark:text-gray-300">Ora e përfundimit</label>
-                    <input type="time" name="end_time" required class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 sm:text-sm dark:bg-gray-800 dark:border-gray-700 dark:text-white p-2 border">
+                    <label class="block text-sm font-bold text-slate-700 mb-1.5">Ora e përfundimit</label>
+                    <input type="time" name="end_time" required class="w-full rounded-xl border-slate-200 bg-white text-sm font-medium text-slate-700 focus:border-blue-500 focus:ring-4 focus:ring-blue-500/10 transition-all p-3 border">
                 </div>
 
                 <div class="sm:col-span-3">
-                    <label class="block text-sm font-medium text-gray-700 dark:text-gray-300">Klasa</label>
-                    <select name="class_id" class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 sm:text-sm dark:bg-gray-800 dark:border-gray-700 dark:text-white p-2 border">
+                    <label class="block text-sm font-bold text-slate-700 mb-1.5">Zgjidh Klasën</label>
+                    <select name="class_id" class="w-full rounded-xl border-slate-200 bg-white text-sm font-medium text-slate-700 focus:border-blue-500 focus:ring-4 focus:ring-blue-500/10 transition-all p-3 border">
                         <?php
                         $stmt_classes = $pdo->prepare("SELECT id, grade FROM classes WHERE school_id = ?");
                         $stmt_classes->execute([$schoolId]);
                         foreach ($stmt_classes as $class):
                         ?>
-                            <option value="<?= $class['id'] ?>"><?= htmlspecialchars($class['grade']) ?></option>
+                            <option value="<?= $class['id'] ?>">Klasa <?= htmlspecialchars($class['grade']) ?></option>
                         <?php endforeach; ?>
                     </select>
                 </div>
 
                 <div class="sm:col-span-3">
-                    <label class="block text-sm font-medium text-gray-700 dark:text-gray-300">Lënda</label>
-                    <select name="subject_id" class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 sm:text-sm dark:bg-gray-800 dark:border-gray-700 dark:text-white p-2 border">
+                    <label class="block text-sm font-bold text-slate-700 mb-1.5">Lënda</label>
+                    <select name="subject_id" id="f_subject" class="w-full rounded-xl border-slate-200 bg-white text-sm font-medium text-slate-700 focus:border-blue-500 focus:ring-4 focus:ring-blue-500/10 transition-all p-3 border">
                         <?php
                         $stmt_subjects = $pdo->prepare("SELECT id, subject_name FROM subjects WHERE school_id = ?");
                         $stmt_subjects->execute([$schoolId]);
@@ -91,8 +93,9 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['add_schedule'])) {
                 </div>
 
                 <div class="sm:col-span-4">
-                    <label class="block text-sm font-medium text-gray-700 dark:text-gray-300">Mësuesi</label>
-                    <select name="teacher_id" class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 sm:text-sm dark:bg-gray-800 dark:border-gray-700 dark:text-white p-2 border">
+                    <label class="block text-sm font-bold text-slate-700 mb-1.5">Mësuesi</label>
+                    <select name="teacher_id" id="f_teacher" onchange="autoSelectSubject()" class="w-full rounded-xl border-slate-200 bg-white text-sm font-medium text-slate-700 focus:border-blue-500 focus:ring-4 focus:ring-blue-500/10 transition-all p-3 border">
+                        <option value="">Zgjidh Mësuesin</option>
                         <?php
                         $stmt_teachers = $pdo->prepare("SELECT id, name FROM teachers WHERE school_id = ?");
                         $stmt_teachers->execute([$schoolId]);
@@ -104,17 +107,21 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['add_schedule'])) {
                 </div>
 
                 <div class="sm:col-span-2">
-                    <label class="block text-sm font-medium text-gray-700 dark:text-gray-300">Statusi</label>
-                    <select name="status" class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 sm:text-sm dark:bg-gray-800 dark:border-gray-700 dark:text-white p-2 border">
+                    <label class="block text-sm font-bold text-slate-700 mb-1.5">Statusi</label>
+                    <select name="status" class="w-full rounded-xl border-slate-200 bg-white text-sm font-medium text-slate-700 focus:border-blue-500 focus:ring-4 focus:ring-blue-500/10 transition-all p-3 border">
                         <option value="active">Aktive</option>
                         <option value="inactive">Joaktive</option>
                     </select>
                 </div>
             </div>
 
-            <div class="mt-8 flex items-center justify-end gap-x-4 border-t border-gray-100 dark:border-white/5 pt-6">
-                <button type="button" id="closeModal" class="text-sm font-semibold text-gray-700 hover:text-gray-900 dark:text-gray-300">Anulo</button>
-                <button type="submit" class="rounded-md bg-indigo-600 px-6 py-2 text-sm font-semibold text-white shadow-sm hover:bg-indigo-500 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-indigo-600 transition">Ruaj Orarin</button>
+            <div class="mt-10 flex items-center justify-end gap-x-4 border-t border-slate-100 pt-8">
+                <button type="button" id="closeModal" class="px-6 py-2.5 text-sm font-bold text-slate-500 hover:text-slate-800 transition-colors">
+                    Anulo
+                </button>
+                <button type="submit" class="rounded-xl bg-blue-600 px-8 py-2.5 text-sm font-bold text-white shadow-lg shadow-blue-500/20 hover:bg-blue-500 hover:-translate-y-0.5 transition-all active:scale-95">
+                    Ruaj Orarin
+                </button>
             </div>
         </form>
     </div>

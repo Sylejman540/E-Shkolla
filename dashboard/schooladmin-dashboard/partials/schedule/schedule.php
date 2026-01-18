@@ -130,7 +130,7 @@ async function deleteScheduleEntry(id, classId) {
     if(!confirm('A jeni të sigurt që dëshironi të fshini këtë orë mësimi?')) return;
     
     try {
-        const res = await fetch('partials/schedule/delete-entry.php', {
+        const res = await fetch('/E-Shkolla/dashboard/schooladmin-dashboard/partials/schedule/delete-entry.php', {
             method: 'POST',
             headers: {'Content-Type': 'application/json'},
             body: JSON.stringify({ id })
