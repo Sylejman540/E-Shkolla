@@ -1,112 +1,69 @@
 <?php
-if (session_status() === PHP_SESSION_NONE) {
-    session_start();
-}
+session_start();
+header('Content-Type: application/json');
+require_once __DIR__ . '/../../../../db.php';
 
-header("Content-Type: application/json");
+$schoolId = $_SESSION['user']['school_id'] ?? null;
+$data = json_decode(file_get_contents('php://input'), true);
 
-require_once __DIR__ . "/../../../../db.php";
-
-$input = json_decode(file_get_contents("php://input"), true);
-
-$userId   = (int)($input["userId"] ?? 0);
-$field    = $input["field"] ?? null;
-$value    = trim($input["value"] ?? "");
-$schoolId = $_SESSION["user"]["school_id"] ?? null;
-
-// Allowed editable fields
-$allowedFields = [
-    "name",
-    "email",
-    "gender",
-    "class_name",
-    "date_birth",
-    "status"
-];
-
-// Basic validation
-if (!$schoolId || !$userId || !in_array($field, $allowedFields, true)) {
-    echo json_encode(["error" => "Kërkesë e pavlefshme."]);
+if (!$schoolId || !$data) {
+    http_response_code(403);
+    echo json_encode(['status' => 'error', 'message' => 'Unauthorized']);
     exit;
 }
 
-// Field-specific validation
-switch ($field) {
+$userId = $data['userId'] ?? null;
+$field  = $data['field'] ?? null;
+$value  = trim($data['value'] ?? '');
 
-    case "name":
-        if (!preg_match("/^[a-zA-ZÇçËë\s]+$/u", $value)) {
-            echo json_encode(["error" => "Emri duhet të përmbajë vetëm shkronja."]);
-            exit;
-        }
-        break;
-
-    case "email":
-
-        if (!filter_var($value, FILTER_VALIDATE_EMAIL)) {
-            echo json_encode(["error" => "Email jo valid."]);
-            exit;
-        }
-
-        // UNIQUE EMAIL CHECK IN users TABLE
-        $check = $pdo->prepare("
-            SELECT id 
-            FROM users 
-            WHERE email = ? AND id != ?
-        ");
-        $check->execute([$value, $userId]);
-
-        if ($check->fetch()) {
-            echo json_encode(["error" => "Ky email është i regjistruar nga një përdorues tjetër."]);
-            exit;
-        }
-        break;
-
-    case "gender":
-        if (!in_array($value, ["male", "female", "other"], true)) {
-            echo json_encode(["error" => "Gjinia nuk është valide."]);
-            exit;
-        }
-        break;
-
-    case "date_birth":
-        if (!preg_match("/^\d{4}-\d{2}-\d{2}$/", $value)) {
-            echo json_encode(["error" => "Formati i datës duhet të jetë YYYY-MM-DD."]);
-            exit;
-        }
-        break;
-
-    case "status":
-        if (!in_array($value, ["active", "inactive"], true)) {
-            echo json_encode(["error" => "Status jo valid."]);
-            exit;
-        }
-        break;
+// Allowed Student Fields
+$allowedFields = ['name', 'email', 'status', 'gender', 'class_name', 'date_birth'];
+if (!in_array($field, $allowedFields)) {
+    http_response_code(400);
+    echo json_encode(['status' => 'error', 'message' => 'Fushë e pavlefshme']);
+    exit;
 }
 
 try {
+    // 1. Check for no change
+    $checkStmt = $pdo->prepare("SELECT $field FROM students WHERE user_id = ? AND school_id = ?");
+    $checkStmt->execute([$userId, $schoolId]);
+    $currentValue = $checkStmt->fetchColumn();
 
-    // UPDATE students table
-    $stmtStudent = $pdo->prepare("
-        UPDATE students
-        SET $field = ?
-        WHERE user_id = ? AND school_id = ?
-    ");
-    $stmtStudent->execute([$value, $userId, $schoolId]);
-
-
-    // IF EMAIL OR NAME IS CHANGED → ALSO UPDATE users TABLE
-    if ($field === "email" || $field === "name") {
-
-        $stmtUser = $pdo->prepare("
-            UPDATE users
-            SET $field = ?
-            WHERE id = ?
-        ");
-        $stmtUser->execute([$value, $userId]);
+    if ($currentValue === $value) {
+        echo json_encode(['status' => 'no_change']);
+        exit;
     }
 
-    echo json_encode(["success" => true]);
+    // 2. Email uniqueness check in users table
+    if ($field === 'email') {
+        $emailStmt = $pdo->prepare("SELECT id FROM users WHERE email = ? AND id != ? LIMIT 1");
+        $emailStmt->execute([$value, $userId]);
+        if ($emailStmt->fetch()) {
+            echo json_encode(['status' => 'error', 'message' => 'Ky email ekziston në sistem.']);
+            exit;
+        }
+    }
 
-} catch (Exception $e) {
-    echo json_encode(["error" => $e->getMessage()]);
+    // 3. Begin Transaction
+    $pdo->beginTransaction();
+
+    // Update Students Table
+    $stmt1 = $pdo->prepare("UPDATE students SET $field = ? WHERE user_id = ? AND school_id = ?");
+    $stmt1->execute([$value, $userId, $schoolId]);
+
+    // Sync with Users Table if shared field
+    $sharedFields = ['name', 'email', 'status'];
+    if (in_array($field, $sharedFields)) {
+        $stmt2 = $pdo->prepare("UPDATE users SET $field = ? WHERE id = ? AND school_id = ?");
+        $stmt2->execute([$value, $userId, $schoolId]);
+    }
+
+    $pdo->commit();
+    echo json_encode(['status' => 'success']);
+
+} catch (PDOException $e) {
+    if ($pdo->inTransaction()) $pdo->rollBack();
+    http_response_code(500);
+    echo json_encode(['status' => 'error', 'message' => 'Gabim serveri.']);
 }

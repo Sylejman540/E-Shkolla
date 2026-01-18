@@ -1,68 +1,73 @@
 <?php
 session_start();
-require_once '../../../../db.php';
+header('Content-Type: application/json');
+require_once __DIR__ . '/../../../../db.php';
 
-if (
-    !isset($_SESSION['user']) ||
-    !in_array($_SESSION['user']['role'], ['super_admin', 'school_admin'], true)
-) {
-    http_response_code(403);
-    exit;
-}
-
+$schoolId = $_SESSION['user']['school_id'] ?? null;
 $data = json_decode(file_get_contents('php://input'), true);
 
-$userId = (int) ($data['userId'] ?? 0);
-$field  = $data['field'] ?? '';
+if (!$schoolId || !$data) {
+    http_response_code(403);
+    echo json_encode(['status' => 'error', 'message' => 'Unauthorized']);
+    exit;
+}
+
+$userId = $data['userId'] ?? null;
+$field  = $data['field'] ?? null;
 $value  = trim($data['value'] ?? '');
 
-if (!$userId || !$field) {
+$allowedFields = ['name', 'email', 'status', 'gender', 'phone', 'subject_name'];
+if (!in_array($field, $allowedFields)) {
     http_response_code(400);
+    echo json_encode(['status' => 'error', 'message' => 'Fushë e pavlefshme']);
     exit;
 }
 
-$teacherFields = ['phone', 'gender', 'subject_name'];
-$userFields    = ['name', 'email', 'status'];
-$subjectFields = ['subject_name', 'description', 'status', 'name'];
+try {
+    $pdo->beginTransaction();
 
-if ($field === 'status') {
-
-    $pdo->prepare("UPDATE users SET status = ? WHERE id = ?")->execute([$value, $userId]);
-
-    $pdo->prepare("UPDATE teachers SET status = ? WHERE user_id = ?")->execute([$value, $userId]);
-
-    $pdo->prepare("UPDATE subjects SET status = ? WHERE user_id = ?")->execute([$value, $userId]);
-
-    exit;
-}
-
-if (in_array($field, $userFields, true)) {
-
-    $pdo->prepare("UPDATE users SET `$field` = ? WHERE id = ?")->execute([$value, $userId]);
-
+    // 1. Get the OLD name before updating (needed to find matches in subjects table)
+    $oldName = null;
     if ($field === 'name') {
-        $pdo->prepare("UPDATE teachers SET name = ? WHERE user_id = ?")->execute([$value, $userId]);
-
-        $pdo->prepare("UPDATE subjects SET name = ? WHERE user_id = ?")->execute([$value, $userId]);
-    }
-    exit;
-}
-
-if (in_array($field, $teacherFields, true)) {
-
-    $pdo->prepare("UPDATE teachers SET `$field` = ? WHERE user_id = ?")->execute([$value, $userId]);
-
-    if ($field === 'subject_name') {
-        $pdo->prepare("UPDATE subjects SET subject_name = ? WHERE user_id = ?")->execute([$value, $userId]);
+        $nameStmt = $pdo->prepare("SELECT name FROM users WHERE id = ? LIMIT 1");
+        $nameStmt->execute([$userId]);
+        $oldName = $nameStmt->fetchColumn();
     }
 
-    exit;
+    // 2. Email uniqueness check
+    if ($field === 'email') {
+        $emailStmt = $pdo->prepare("SELECT id FROM users WHERE email = ? AND id != ? LIMIT 1");
+        $emailStmt->execute([$value, $userId]);
+        if ($emailStmt->fetch()) {
+            $pdo->rollBack();
+            echo json_encode(['status' => 'error', 'message' => 'Ky email ekziston në sistem.']);
+            exit;
+        }
+    }
+
+    // 3. Update Teachers Table
+    $stmt1 = $pdo->prepare("UPDATE teachers SET $field = ? WHERE user_id = ? AND school_id = ?");
+    $stmt1->execute([$value, $userId, $schoolId]);
+
+    // 4. Update Users Table (for shared login fields)
+    $sharedFields = ['name', 'email', 'status'];
+    if (in_array($field, $sharedFields)) {
+        $stmt2 = $pdo->prepare("UPDATE users SET $field = ? WHERE id = ? AND school_id = ?");
+        $stmt2->execute([$value, $userId, $schoolId]);
+    }
+
+    // 5. SYNC SUBJECTS TABLE
+    // If name changed, update every subject where this teacher was assigned by name
+    if ($field === 'name' && $oldName) {
+        $stmt3 = $pdo->prepare("UPDATE subjects SET name = ? WHERE name = ? AND school_id = ?");
+        $stmt3->execute([$value, $oldName, $schoolId]);
+    }
+
+    $pdo->commit();
+    echo json_encode(['status' => 'success']);
+
+} catch (PDOException $e) {
+    if ($pdo->inTransaction()) $pdo->rollBack();
+    http_response_code(500);
+    echo json_encode(['status' => 'error', 'message' => 'Gabim në server: ' . $e->getMessage()]);
 }
-
-if (in_array($field, $subjectFields, true)) {
-
-    $pdo->prepare("UPDATE subjects SET `$field` = ? WHERE user_id = ?")->execute([$value, $userId]);
-    exit;
-}
-
-http_response_code(400);
