@@ -13,7 +13,7 @@ $stmt = $pdo->prepare("
         t.status AS teacher_display_status,
         t.user_id AS teacher_user_id
     FROM subjects s
-    LEFT JOIN teachers t ON s.user_id = t.user_id
+    LEFT JOIN teachers t ON s.user_id = t.user_id AND s.school_id = t.school_id
     WHERE s.school_id = ?
     ORDER BY s.subject_name ASC
 ");
@@ -72,10 +72,11 @@ ob_start();
                             <td class="px-6 py-4 whitespace-nowrap">
                                 <div class="flex items-center gap-2">
                                     <div class="h-8 w-8 rounded-full bg-slate-100 dark:bg-gray-800 flex items-center justify-center text-xs font-bold text-indigo-600">
-                                        <?= strtoupper(substr($row['name'] ?? 'P', 0, 1)) ?>
+                                        <?= strtoupper(substr($row['teacher_display_name'] ?? 'P', 0, 1)) ?>
                                     </div>
                                     <span class="text-sm font-medium text-slate-600 dark:text-slate-300" data-original="<?= htmlspecialchars($row['teacher_display_name'] ?? 'I pacaktuar') ?>">
-                                        <?= htmlspecialchars($row['status'] ?? 'I pacaktuar') ?>
+                                        <?= htmlspecialchars($row['teacher_display_name'] ?? 'I pacaktuar') ?>
+
                                     </span>
                                 </div>
                             </td>
