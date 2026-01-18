@@ -33,6 +33,8 @@ if ($totalPages <= 7) {
     else { $range = [1, '...', $page - 1, $page, $page + 1, '...', $totalPages]; }
 }
 
+$openForm = isset($_GET['open_form']) && $_GET['open_form'] == '1';
+
 ob_start(); 
 ?>
 
@@ -133,6 +135,11 @@ ob_start();
         <?php endif; ?>
     </div>
 </div>
+<?php
+if ($openForm) {
+    include __DIR__ . '/form.php';
+}
+?>
 
 <div id="statusModal" class="hidden fixed inset-0 z-[100] flex items-center justify-center p-4">
     <div class="absolute inset-0 bg-slate-900/60 backdrop-blur-sm"></div>
