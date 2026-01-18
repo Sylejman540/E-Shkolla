@@ -7,81 +7,127 @@ require_once __DIR__ . '/../../../../db.php';
 
 $schoolId = $_SESSION['user']['school_id'] ?? null;
 
-if (!$schoolId) {
-    die('School ID missing');
+// 1. AUTO-GENERATE ACADEMIC YEAR
+$currentMonth = date('n');
+$currentYear = date('Y');
+$autoYear = ($currentMonth >= 9) ? $currentYear . '/' . ($currentYear + 1) : ($currentYear - 1) . '/' . $currentYear;
+
+// Marrja e mësuesve aktivë
+$teachers = [];
+if ($schoolId) {
+    $tStmt = $pdo->prepare("SELECT user_id, name FROM teachers WHERE school_id = ? AND status = 'active' ORDER BY name ASC");
+    $tStmt->execute([$schoolId]);
+    $teachers = $tStmt->fetchAll(PDO::FETCH_ASSOC);
 }
 
+// Mesazhet nga sesioni
+$error = $_SESSION['error'] ?? null;
+$success = $_SESSION['success'] ?? null;
+unset($_SESSION['error'], $_SESSION['success']);
+
+// Trajtimi i POST
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
+    try {
+        $academic_year = $_POST['academic_year'];
+        $base_grade    = $_POST['base_grade']; // Numri 1-12
+        $parallel      = trim($_POST['parallel']); // p.sh. 1, 2, A, B
+        $max_students  = (int)$_POST['max_students'];
+        $status        = $_POST['status'];
+        $teacherId     = !empty($_POST['teacher_id']) ? $_POST['teacher_id'] : null;
 
-    $academic_year = $_POST['academic_year'];
-    $grade         = $_POST['grade'];
-    $max_students  = $_POST['max_students'];
-    $status        = $_POST['status'];
+        // Bashkimi i klasës (p.sh. 12/1)
+        $full_grade = $base_grade . ($parallel !== '' ? '/' . $parallel : '');
 
-    $stmt = $pdo->prepare("INSERT INTO classes(school_id, user_id, academic_year, grade, max_students, status) VALUES (?, ?, ?, ?, ?, ?)");
-    $stmt->execute([$schoolId, $teacherUserId, $academic_year, $grade, $max_students, $status]);
+        $stmt = $pdo->prepare("INSERT INTO classes (school_id, user_id, academic_year, grade, max_students, status) VALUES (?, ?, ?, ?, ?, ?)");
+        $stmt->execute([$schoolId, $teacherId, $academic_year, $full_grade, $max_students, $status]);
 
-    header("Location: /E-Shkolla/classes");
-    exit;
+        $_SESSION['success'] = "Klasa $full_grade u shtua me sukses!";
+        header("Location: /E-Shkolla/classes");
+        exit;
+    } catch (Exception $e) {
+        $_SESSION['error'] = "Gabim: " . $e->getMessage();
+        header("Location: /E-Shkolla/classes?open_form=1");
+        exit;
+    }
 }
+
+$shouldOpen = isset($_GET['open_form']) || $error;
 ?>
 
-<div id="addSchoolForm" class="hidden fixed inset-0 z-50 flex items-start justify-center bg-black/30 overflow-y-auto pt-10">
-     
-    <div class="w-full max-w-3xl px-4">
-
-      <div class="rounded-xl bg-white p-8 shadow-sm ring-1 ring-gray-200 dark:bg-gray-900 dark:ring-white/10">
-        
-        <div class="mb-8">
-          <h2 class="text-xl font-semibold text-gray-900 dark:text-white">
-            Shto klasë te re
-          </h2>
-          <p class="mt-1 text-sm text-gray-600 dark:text-gray-400">
-            Plotësoni të dhënat bazë për mësuesin.
-          </p>
-        </div>
-
-        <div class="grid grid-cols-1 gap-x-8 gap-y-10 border-b border-gray-900/10 pb-8 md:grid-cols-3 dark:border-white/10">
+<div id="addClassForm" class="<?= $shouldOpen ? '' : 'hidden' ?> fixed inset-0 z-50 flex items-start justify-center bg-black/40 overflow-y-auto pt-10">
+    <div class="w-full max-w-2xl px-4 pb-10">
+        <div class="bg-white dark:bg-gray-900 rounded-xl shadow-2xl p-8 ring-1 ring-gray-200 dark:ring-white/10">
             
-        <form action="/E-Shkolla/dashboard/schooladmin-dashboard/partials/classes/form.php" method="post" class="grid max-w-2xl grid-cols-1 gap-x-6 gap-y-8 sm:grid-cols-6 md:col-span-2">
-            <div class="sm:col-span-3">
-            <label for="academic_year" class="block text-sm/6 font-medium text-gray-900 dark:text-white">Viti akademik</label>
-            <div class="mt-2">
-                <input id="academic_year" type="text" name="academic_year" autocomplete="academic_year" class="border border-1 block w-full rounded-md bg-white px-3 py-1.5 text-base text-gray-900 outline-1 -outline-offset-1 outline-gray-300 placeholder:text-gray-400 focus:outline-2 focus:-outline-offset-2 focus:outline-indigo-600 sm:text-sm/6 dark:bg-white/5 dark:text-white dark:outline-white/10 dark:placeholder:text-gray-500 dark:focus:outline-indigo-500" />
-            </div>
+            <div class="mb-6 flex justify-between items-center">
+                <h2 class="text-xl font-bold text-gray-900 dark:text-white">Shto Klasë të Re</h2>
+                <button type="button" onclick="window.location.href='/E-Shkolla/classes'" class="text-gray-400 hover:text-gray-600 text-2xl">&times;</button>
             </div>
 
-            <div class="sm:col-span-3">
-            <label for="grade" class="block text-sm/6 font-medium text-gray-900 dark:text-white">Klasa</label>
-            <div class="mt-2">
-                <input id="grade" type="text" name="grade" autocomplete="school_admin" class="border border-1 block w-full rounded-md bg-white px-3 py-1.5 text-base text-gray-900 outline-1 -outline-offset-1 outline-gray-300 placeholder:text-gray-400 focus:outline-2 focus:-outline-offset-2 focus:outline-indigo-600 sm:text-sm/6 dark:bg-white/5 dark:text-white dark:outline-white/10 dark:placeholder:text-gray-500 dark:focus:outline-indigo-500" />
-            </div>
-            </div>
+            <?php if ($error): ?>
+                <div class="mb-4 p-3 rounded-lg bg-red-100 border border-red-200 text-red-700 text-sm">
+                    <?= htmlspecialchars($error) ?>
+                </div>
+            <?php endif; ?>
 
-            <div class="sm:col-span-3">
-            <label for="max_students" class="block text-sm/6 font-medium text-gray-900 dark:text-white">Numri i nxënësve</label>
-            <div class="mt-2">
-                <input id="max_students" type="text" name="max_students" autocomplete="max_students" class="border border-1 block w-full rounded-md bg-white px-3 py-1.5 text-base text-gray-900 outline-1 -outline-offset-1 outline-gray-300 placeholder:text-gray-400 focus:outline-2 focus:-outline-offset-2 focus:outline-indigo-600 sm:text-sm/6 dark:bg-white/5 dark:text-white dark:outline-white/10 dark:placeholder:text-gray-500 dark:focus:outline-indigo-500" />
-            </div>
-            </div>
+            <?php if ($success): ?>
+                <div class="mb-4 p-3 rounded-lg bg-green-100 border border-green-200 text-green-700 text-sm">
+                    <?= htmlspecialchars($success) ?>
+                </div>
+            <?php endif; ?>
 
-            <div class="sm:col-span-2">
-            <label for="status" class="block text-sm/6 font-medium text-gray-900 dark:text-white">Status</label>
-            <div class="mt-2">
-              <select id="status" name="status" autocomplete="status" class="border block w-full rounded-md bg-white px-3 py-1.5 text-base text-gray-900 outline-gray-300 focus:outline-2 focus:outline-indigo-600 sm:text-sm dark:bg-white/5 dark:text-white dark:outline-white/10 dark:focus:outline-indigo-500">
-                <option value="active">Aktive</option>
-                <option value="inactive">Joaktive</option>
-              </select>
-            </div>
-            </div>
+            <form action="/E-Shkolla/dashboard/schooladmin-dashboard/partials/classes/form.php" method="POST" class="grid grid-cols-1 gap-y-6 gap-x-4 sm:grid-cols-6">
+                
+                <div class="sm:col-span-3">
+                    <label class="block text-sm font-medium dark:text-gray-300">Viti Akademik</label>
+                    <input type="text" name="academic_year" value="<?= $autoYear ?>" readonly
+                           class="mt-1 block w-full rounded-lg border border-gray-300 bg-gray-50 px-3 py-2 dark:bg-gray-800 dark:border-white/10 dark:text-gray-400 cursor-not-allowed outline-none">
+                </div>
+
+                <div class="sm:col-span-3">
+                    <label class="block text-sm font-medium dark:text-gray-300">Klasa & Paralelja</label>
+                    <div class="flex gap-2 mt-1">
+                        <select name="base_grade" required class="block w-24 rounded-lg border border-gray-300 px-3 py-2 dark:bg-gray-800 dark:text-white focus:ring-2 focus:ring-indigo-500 outline-none">
+                            <?php for($i = 1; $i <= 12; $i++): ?>
+                                <option value="<?= $i ?>"><?= $i ?></option>
+                            <?php endfor; ?>
+                        </select>
+                        <span class="text-2xl text-gray-400">/</span>
+                        <input type="text" name="parallel" placeholder="p.sh. 1 ose A" required
+                               class="block w-full rounded-lg border border-gray-300 px-3 py-2 dark:bg-gray-800 dark:border-white/10 dark:text-white focus:ring-2 focus:ring-indigo-500 outline-none">
+                    </div>
+                </div>
+
+                <div class="sm:col-span-3">
+                    <label class="block text-sm font-medium dark:text-gray-300">Mësuesi Kujdestar</label>
+                    <select name="teacher_id" class="mt-1 block w-full rounded-lg border border-gray-300 px-3 py-2 dark:bg-gray-800 dark:text-white focus:ring-2 focus:ring-indigo-500 outline-none">
+                        <option value="">Pa kujdestar</option>
+                        <?php foreach($teachers as $t): ?>
+                            <option value="<?= $t['user_id'] ?>"><?= htmlspecialchars($t['name']) ?></option>
+                        <?php endforeach; ?>
+                    </select>
+                </div>
+
+                <div class="sm:col-span-3">
+                    <label class="block text-sm font-medium dark:text-gray-300">Kapaciteti Max (Nxënës)</label>
+                    <input type="number" name="max_students" value="30" min="1"
+                           class="mt-1 block w-full rounded-lg border border-gray-300 px-3 py-2 dark:bg-gray-800 dark:text-white focus:ring-2 focus:ring-indigo-500 outline-none">
+                </div>
+
+                <div class="sm:col-span-3">
+                    <label class="block text-sm font-medium dark:text-gray-300">Statusi i Klasës</label>
+                    <select name="status" class="mt-1 block w-full rounded-lg border border-gray-300 px-3 py-2 dark:bg-gray-800 dark:text-white focus:ring-2 focus:ring-indigo-500 outline-none">
+                        <option value="active">Aktive</option>
+                        <option value="inactive">Joaktive</option>
+                    </select>
+                </div>
+
+                <div class="sm:col-span-6 flex justify-end gap-x-4 mt-4">
+                    <button type="button" onclick="window.location.href='/E-Shkolla/classes'" class="px-4 py-2 text-sm font-semibold text-gray-600 dark:text-gray-400 hover:text-gray-800 transition">Anulo</button>
+                    <button type="submit" class="rounded-lg bg-indigo-600 px-6 py-2 text-sm font-semibold text-white shadow hover:bg-indigo-500 transition focus:ring-2 focus:ring-offset-2 focus:ring-indigo-600">
+                        Ruaj Klasën
+                    </button>
+                </div>
+            </form>
         </div>
-
-        <div class="mt-6 flex justify-end gap-x-4">
-            <button type="button" id="cancel" class="text-sm font-semibold text-gray-700 hover:text-gray-900 dark:text-gray-300">Cancel</button>
-
-            <button type="submit" class="rounded-md bg-indigo-600 px-4 py-2 text-sm font-semibold text-white shadow hover:bg-indigo-500 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-indigo-600 dark:bg-indigo-500">Save</button>
-        </div>
-        </form>
     </div>
-  </div>
 </div>
