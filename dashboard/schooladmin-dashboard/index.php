@@ -183,13 +183,13 @@ function isAnyActive(array $paths) {
         </button>
     </aside>
 
-    <div :class="sidebarCollapsed ? 'lg:pl-20' : 'lg:pl-72'" class="h-full custom-transition">
+    <div :class="sidebarCollapsed ? 'lg:pl-20' : 'lg:pl-72'" class="md:block hidden h-full custom-transition">
         <div class="lg:hidden sticky top-0 flex items-center justify-between bg-white px-4 py-3 border-b border-slate-100 z-40">
             <a href="/E-Shkolla/school-admin-dashboard" class="flex h-20 shrink-0 items-center px-4 overflow-hidden border-b border-slate-50">
             <img src="/E-Shkolla/images/icon.png" class="h-10 w-auto min-w-[40px]" alt="Logo">
             <div x-show="!sidebarCollapsed" x-transition class="ml-3 whitespace-nowrap">
               <h1 class="text-xl font-bold tracking-tight text-slate-800">E-Shkolla</h1>
-              <p class="text-[10px] font-bold uppercase tracking-widest text-slate-400">School Admin</p>
+              <p class="text-[10px] font-bold uppercase tracking-widest text-blue-400">School Admin</p>
             </div>
             </a>
             <button @click="mobileOpen = true" class="p-2 text-slate-600">
@@ -197,9 +197,29 @@ function isAnyActive(array $paths) {
             </button>
         </div>
 
-        <main class="p-8">
+        <main class="p-8 md:block hidden">
            <?= $content ?? '' ?>
         </main>
+    </div>
+
+    <div class="lg:hidden md:hidden  flex fixed top-0 left-0 right-0 flex items-center justify-between bg-white px-4 py-3 border-b border-slate-100 z-50">
+
+        <a href="/E-Shkolla/super-admin-dashboard" class="flex h-12 shrink-0 items-center overflow-hidden">
+            <img src="/E-Shkolla/images/icon.png" class="h-6 w-auto min-w-[48px]" alt="Logo">
+            <div x-show="!sidebarCollapsed" x-transition class="ml-3 whitespace-nowrap">
+                <h1 class="text-xl font-bold tracking-tight text-slate-800">E-Shkolla</h1>
+                <p class="text-[10px] font-bold uppercase tracking-widest text-blue-400">School Admin</p>
+            </div>
+        </a>
+        <button @click="mobileOpen = true" class="p-2 text-slate-600">
+            <svg class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path d="M4 6h16M4 12h16M4 18h16" stroke-width="2" stroke-linecap="round"/></svg>
+        </button>
+    </div>
+
+    <div :class="sidebarCollapsed ? '' : ''" class="md:hidden  flex h-full custom-transition">
+        <main class="h-full p-8 pt-20 lg:pt-8">
+            <?= $content ?? '' ?>
+            </main>
     </div>
 
 </body>

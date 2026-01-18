@@ -1,270 +1,153 @@
 <?php 
-if(session_status() === PHP_SESSION_NONE){
-    session_start();
-}
-
-require_once __DIR__ . '/../../index.php'; 
-
+if (session_status() === PHP_SESSION_NONE) { session_start(); }
 require_once __DIR__ . '/../../../../db.php';
 
 $schoolId = $_SESSION['user']['school_id'] ?? null;
 
-$stmt = $pdo->prepare("SELECT * FROM classes WHERE school_id = ?");
+// Fetch Classes
+$stmt = $pdo->prepare("SELECT * FROM classes WHERE school_id = ? ORDER BY grade ASC");
 $stmt->execute([$schoolId]);
-
 $classes = $stmt->fetchAll(PDO::FETCH_ASSOC);
 
+ob_start(); 
 ?>
-<!DOCTYPE html>
-<html lang="en">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>E-Shkolla</title>
-    <script src="https://cdn.tailwindcss.com"></script>
-    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
-</head>
-<body>
-<main class="lg:pl-72">
-  <div class="xl:pl-18">
-    <div class="px-4 py-10 sm:px-6 lg:px-8 lg:py-6">
-        <div class="px-4 sm:px-6 lg:px-8">
-        <div class="sm:flex sm:items-center">
-            <div class="sm:flex-auto">
-                <h1 class="text-base font-semibold text-gray-900 dark:text-white">Orari i klasave</h1>
-                <p class="mt-2 text-sm text-gray-700 dark:text-gray-300">
-                Menaxhoni orarin javor për secilën klasë në shkollë
-                </p>
+
+<div class="px-4 sm:px-6 lg:px-8">
+    <div class="sm:flex sm:items-center">
+        <div class="mt-5 sm:flex-auto">
+            <h1 class="text-xl sm:text-2xl font-bold tracking-tight text-slate-900 dark:text-white">Orari i Mësimit</h1>
+            <p class="mt-2 text-sm text-slate-500 dark:text-slate-400">Menaxhoni orarin javor për secilën klasë dhe shmangni përplasjet.</p>
+        </div>
+        <div class="mt-4 sm:mt-0 sm:ml-16">
+            <button type="button" onclick="openGlobalScheduleForm()" class="rounded-lg bg-indigo-600 px-8 py-2.5 text-sm font-semibold text-white shadow-md hover:bg-indigo-700 transition">
+                Shto Orë Mësimi
+            </button>
+        </div>
+    </div>
+
+    <?php if (isset($_SESSION['success'])): ?>
+        <div id="success-alert" class="mt-6 p-4 text-sm text-green-800 bg-green-50 border border-green-200 rounded-lg transition-opacity duration-500">
+            <?= htmlspecialchars($_SESSION['success']); unset($_SESSION['success']); ?>
+        </div>
+    <?php endif; ?>
+
+    <div class="mt-8 flow-root">
+        <div class="-mx-4 -my-2 overflow-x-auto sm:-mx-6 lg:-mx-8">
+            <div class="inline-block min-w-full py-2 align-middle sm:px-6 lg:px-8">
+                <table class="min-w-full divide-y divide-gray-300 dark:divide-white/10">
+                    <thead>
+                        <tr>
+                            <th class="py-3.5 pl-4 pr-3 text-left text-sm font-semibold text-gray-900 dark:text-white sm:pl-0">Klasa</th>
+                            <th class="px-3 py-3.5 text-left text-sm font-semibold text-gray-900 dark:text-white">Viti Akademik</th>
+                            <th class="px-3 py-3.5 text-left text-sm font-semibold text-gray-900 dark:text-white">Nr. Nxënësve</th>
+                            <th class="px-3 py-3.5 text-right text-sm font-semibold text-gray-900 dark:text-white">Veprime</th>
+                        </tr>
+                    </thead>
+                    <tbody class="divide-y divide-gray-200 dark:divide-white/5">
+                        <?php foreach($classes as $row): ?>
+                        <tr class="hover:bg-gray-50 dark:hover:bg-white/5 transition group">
+                            <td class="py-4 pl-4 pr-3 whitespace-nowrap text-sm font-bold text-indigo-600 dark:text-indigo-400 sm:pl-0">
+                                <?= htmlspecialchars($row['grade']) ?>
+                            </td>
+                            <td class="px-3 py-4 text-sm text-gray-500 dark:text-gray-400">
+                                <?= htmlspecialchars($row['academic_year']) ?>
+                            </td>
+                            <td class="px-3 py-4 text-sm text-gray-500 dark:text-gray-400">
+                                <?= htmlspecialchars($row['max_students']) ?>
+                            </td>
+                            <td class="py-4 text-right text-sm font-medium">
+                                <button onclick="toggleSchedule(<?= $row['id'] ?>)" class="text-indigo-600 hover:text-indigo-900 dark:text-indigo-400 bg-indigo-50 dark:bg-indigo-900/30 px-3 py-1 rounded-md transition font-semibold">
+                                    Shiko/Edito Orarin
+                                </button>
+                            </td>
+                        </tr>
+                        <tr id="sched-row-<?= $row['id'] ?>" class="hidden bg-slate-50 dark:bg-gray-900/50">
+                            <td colspan="4" class="p-6">
+                                <div id="grid-container-<?= $row['id'] ?>" class="bg-white dark:bg-gray-800 rounded-xl shadow-inner border dark:border-white/10 p-4 min-h-[100px]">
+                                    <div class="flex justify-center p-10">
+                                        <div class="animate-spin rounded-full h-8 w-8 border-b-2 border-indigo-600"></div>
+                                    </div>
+                                </div>
+                            </td>
+                        </tr>
+                        <?php endforeach; ?>
+                    </tbody>
+                </table>
             </div>
         </div>
-        <div class="mt-8 flow-root">
-            <div class="-mx-4 -my-2 overflow-x-auto sm:-mx-6 lg:-mx-8">
-            <div class="inline-block min-w-full py-2 align-middle sm:px-6 lg:px-8">
-                <table class="min-w-full divide-y divide-gray-300 dark:divide-white/15">
-        <thead>
-            <tr>
-                <th class="py-3.5 pr-3 pl-4 text-left text-sm font-semibold text-gray-900 sm:pl-0 dark:text-white">Viti akademik</th>
-                <th class="px-3 py-3.5 text-left text-sm font-semibold text-gray-900 dark:text-white">Klasa</th>
-                <th class="px-3 py-3.5 text-left text-sm font-semibold text-gray-900 dark:text-white">Nr i nxënësve</th>
-                <th class="px-3 py-3.5 text-left text-sm font-semibold text-gray-900 dark:text-white">Statusi</th>
-                <th class="px-3 py-3.5 text-left text-sm font-semibold text-gray-900 dark:text-white">Created At</th>
-                <th class="py-3.5 pr-4 text-right"></th>
-            </tr>
-        </thead>
-
-        <tbody class="divide-y divide-gray-200 dark:divide-white/10">
-        <?php if (!empty($classes)): ?>
-            <?php foreach ($classes as $row): ?>
-
-            <tr>
-                <td class="py-4 pr-3 pl-4 text-sm font-medium whitespace-nowrap text-gray-900 sm:pl-0 dark:text-white"><?= htmlspecialchars($row['academic_year']) ?></td>
-                <td class="px-3 py-4 text-sm whitespace-nowrap text-gray-500 dark:text-gray-400"><?= htmlspecialchars($row['grade']) ?></td>
-                <td class="px-3 py-4 text-sm whitespace-nowrap text-gray-500 dark:text-gray-400"><?= htmlspecialchars($row['max_students']) ?></td>
-                <td class="px-3 py-4">
-                    <span class="px-2 py-1 text-xs">
-                        <button class="status-toggle px-3 py-1 rounded-full text-xs font-semibold
-                            <?= $row['status']==='active'
-                            ? 'bg-green-100 text-green-700'
-                            : 'bg-red-100 text-red-600' ?>"
-                            data-id="<?= $row['user_id'] ?>"
-                            data-field="status"
-                            data-value="<?= $row['status'] ?>">
-                            <?= ucfirst(htmlspecialchars($row['status'])) ?>
-                        </button>
-                    </span>
-                </td>
-                <td class="px-3 py-4 text-sm text-gray-400">
-                    <?= date('Y-m-d', strtotime($row['created_at'])) ?>
-                </td>
-                <td class="px-3 py-4 text-sm whitespace-nowrap text-gray-500 dark:text-gray-400">
-                    <button type="button" class="text-indigo-600 hover:text-indigo-900" onclick="toggleSchedule(<?= (int)$row['id'] ?>)">Shiko orarin</button>
-                </td>
-                <td class="px-1 py-4 text-sm whitespace-nowrap text-gray-500 dark:text-gray-400">
-                    <button type="button" class="addScheduleBtn text-indigo-600 hover:text-indigo-900" data-class-id="<?= (int)$row['id'] ?>">Shto orar</button>
-                </td>
-            </tr>
-            <?php  
-
-                $classId = (int) $row['id'];
-
-                $stmt = $pdo->prepare("
-                    SELECT 
-                        cs.day,
-                        cs.start_time,
-                        cs.end_time,
-                        s.subject_name,
-                        t.name AS teacher_name,
-                        c.grade AS class_name
-                    FROM class_schedule cs
-                    JOIN subjects s ON s.id = cs.subject_id
-                    JOIN teachers t ON t.id = cs.teacher_id
-                    JOIN classes c ON c.id = cs.class_id
-                    WHERE cs.class_id = ?
-                    ORDER BY cs.start_time
-                ");
-                $stmt->execute([$classId]);
-
-                $schedule = $stmt->fetchAll(PDO::FETCH_ASSOC);
-
-                $grid = [];
-
-                foreach ($schedule as $lesson) {
-                    $timeKey = $lesson['start_time'] . ' - ' . $lesson['end_time'];
-                    $dayMap = [
-                        'E Hënë'     => 'monday',
-                        'E Martë'    => 'tuesday',
-                        'E Mërkurë'  => 'wednesday',
-                        'E Enjte'    => 'thursday',
-                        'E Premte'   => 'friday',
-                        'Monday'     => 'monday',
-                        'Tuesday'    => 'tuesday',
-                        'Wednesday'  => 'wednesday',
-                        'Thursday'   => 'thursday',
-                        'Friday'     => 'friday',
-                    ];
-
-                    $normalizedDay = strtolower(trim($lesson['day']));
-                    $normalizedDay = $dayMap[$lesson['day']] ?? $normalizedDay;
-
-                    $grid[$timeKey][$normalizedDay] = $lesson;
-                }
-            ?>
-            <tr id="schedule-<?= (int)$row['id'] ?>" class="hidden bg-gray-50 dark:bg-gray-900">
-                <td colspan="8" class="p-4">
-                    <table class="min-w-full text-sm border border-gray-200 rounded-md overflow-hidden">
-                        <thead class="bg-gray-100">
-                            <tr class="uppercase text-xs text-gray-600">
-                                <th class="py-2 px-2 text-left">Ora</th>
-                                <th class="py-2 px-2 text-center">E Hënë</th>
-                                <th class="py-2 px-2 text-center">E Martë</th>
-                                <th class="py-2 px-2 text-center">E Mërkurë</th>
-                                <th class="py-2 px-2 text-center">E Enjte</th>
-                                <th class="py-2 px-2 text-center">E Premte</th>
-                            </tr>
-                        </thead>
-
-                        <tbody>
-                        <?php if (!empty($grid)): ?>
-                            <?php foreach ($grid as $time => $days): ?>
-                                <tr class="border-t">
-                                    <td class="py-2 px-2 font-medium text-gray-700">
-                                        <?= htmlspecialchars($time) ?>
-                                    </td>
-
-                                    <?php foreach (['monday','tuesday','wednesday','thursday','friday'] as $day): ?>
-                                        <td class="py-2 px-2 text-center">
-                                            <?php if (isset($days[$day])): ?>
-                                                <div class="text-sm font-semibold">
-                                                    <?= htmlspecialchars($days[$day]['subject_name']) ?>
-                                                </div>
-                                                <div class="text-xs text-gray-500">
-                                                    <?= htmlspecialchars($days[$day]['teacher_name']) ?>
-                                                </div>
-                                                <div class="text-xs text-gray-500">
-                                                    <?= htmlspecialchars($days[$day]['class_name']) ?>
-                                                </div>
-                                            <?php else: ?>
-                                                <span class="text-gray-400">–</span>
-                                            <?php endif; ?>
-                                        </td>
-                                    <?php endforeach; ?>
-                                </tr>
-                            <?php endforeach; ?>
-                        <?php else: ?>
-                            <tr>
-                                <td colspan="6" class="py-4 text-center text-gray-500">
-                                    Nuk ka orar për këtë klasë
-                                </td>
-                            </tr>
-                        <?php endif; ?>
-                        </tbody>
-                    </table>
-                </td>
-            </tr>
-            <?php endforeach; ?>
-        <?php else: ?>
-            <tr>
-                <td colspan="7" class="py-10 text-center text-gray-500">
-                    Tabela nuk përmban të dhëna
-                </td>
-            </tr>
-        <?php endif; ?>
-        </tbody>
-    </table>
     </div>
-    </div>
-
     <?php require_once 'form.php'; ?>
+</div>
 
-    </div>
-    </div>
-    </div>
-  </div>
-</main>
+<?php $content = ob_get_clean(); require_once __DIR__ . '/../../index.php'; ?>
+
 <script>
-document.addEventListener('DOMContentLoaded', function () {
-  const form = document.getElementById('addSchoolForm');
-  const cancel = document.getElementById('cancel');
-
-  document.addEventListener('click', function (e) {
-    const btn = e.target.closest('.addScheduleBtn');
-    if (!btn) return;
-
-    const classId = btn.dataset.classId;
-
-    const classInput = form.querySelector('input[name="class_id"]');
-    if (classInput) {
-      classInput.value = classId;
+// --- Modal Logic ---
+function openGlobalScheduleForm() {
+    const modal = document.getElementById('addScheduleModal');
+    if (modal) {
+        modal.classList.remove('hidden');
     }
+}
 
-    form.classList.remove('hidden');
-    form.scrollIntoView({ behavior: 'smooth', block: 'start' });
-  });
-
-  cancel?.addEventListener('click', () => {
-    form.classList.add('hidden');
-  });
-
-  const params = new URLSearchParams(window.location.search);
-  if (params.get('open_form') === '1') {
-    form.classList.remove('hidden');
-    form.scrollIntoView({ behavior: 'smooth', block: 'start' });
-  }
+// Close logic is already in form.php, but we can ensure it here
+document.addEventListener('click', (e) => {
+    const modal = document.getElementById('addScheduleModal');
+    if (e.target === modal) {
+        modal.classList.add('hidden');
+    }
 });
 
-
-function toggleSchedule(classId) {
-    const row = document.getElementById('schedule-' + classId);
-    row.classList.toggle('hidden');
-}
-
-const teacherSelect = document.getElementById('teacherSelect');
-const subjectSelect = document.getElementById('subjectSelect');
-const subjectInput  = document.getElementById('subject_id');
-
-function syncSubject() {
-    const teacherId = teacherSelect.value;
-    let found = false;
-
-    [...subjectSelect.options].forEach(opt => {
-        if (opt.dataset.teacherId === teacherId) {
-            opt.hidden = false;
-            opt.selected = true;
-            subjectInput.value = opt.value;
-            found = true;
-        } else {
-            opt.hidden = true;
+// --- Toggle and Load Schedule Grid ---
+async function toggleSchedule(classId) {
+    const row = document.getElementById(`sched-row-${classId}`);
+    const container = document.getElementById(`grid-container-${classId}`);
+    
+    if (row.classList.contains('hidden')) {
+        row.classList.remove('hidden');
+        try {
+            // Sigurohuni që ky path është i saktë
+            const response = await fetch(`/E-Shkolla/dashboard/schooladmin-dashboard/partials/schedule/get-schedule-grid.php?class_id=${classId}`);
+            if (!response.ok) throw new Error('Network response was not ok');
+            container.innerHTML = await response.text();
+        } catch (err) {
+            container.innerHTML = '<div class="p-4 text-red-500 bg-red-50 rounded-lg text-sm">Gabim: Nuk u mundësua ngarkimi i orarit.</div>';
         }
-    });
-
-    if (!found) {
-        subjectInput.value = '';
+    } else {
+        row.classList.add('hidden');
     }
 }
 
-syncSubject();
-teacherSelect.addEventListener('change', syncSubject);
-</script>
+// --- Inline Delete Action ---
+async function deleteScheduleEntry(id, classId) {
+    if(!confirm('A jeni të sigurt që dëshironi të fshini këtë orë mësimi?')) return;
+    
+    try {
+        const res = await fetch('delete-entry.php', {
+            method: 'POST',
+            headers: {'Content-Type': 'application/json'},
+            body: JSON.stringify({ id })
+        });
+        
+        if(res.ok) {
+            // Refresh grid
+            const container = document.getElementById(`grid-container-${classId}`);
+            container.innerHTML = '<div class="flex justify-center p-10"><div class="animate-spin rounded-full h-8 w-8 border-b-2 border-indigo-600"></div></div>';
+            
+            const response = await fetch(`/E-Shkolla/dashboard/schooladmin-dashboard/partials/schedule/get-schedule-grid.php?class_id=${classId}`);
+            container.innerHTML = await response.text();
+        }
+    } catch (err) {
+        alert("Ndodhi një gabim gjatë fshirjes.");
+    }
+}
 
-</body>
-</html>
+// --- Auto-hide alerts ---
+setTimeout(() => {
+    const alert = document.getElementById("success-alert");
+    if (alert) {
+        alert.style.opacity = "0";
+        setTimeout(() => alert.remove(), 700);
+    }
+}, 3000);
+</script>

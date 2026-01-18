@@ -357,7 +357,7 @@ ob_start();
             <h3 class="font-bold mb-4">Grades Distribution (Last 30 Days)</h3>
             <div class="space-y-3">
                 <?php 
-                $gradeLabels = ['A', 'B', 'C', 'D', 'F'];
+                $gradeLabels = ['5', '4', '3', '2', '1'];
                 $totalGrades = array_sum($gradesDistribution);
                 foreach ($gradeLabels as $grade): 
                     $count = $gradesDistribution[$grade] ?? 0;
@@ -372,10 +372,10 @@ ob_start();
                             <div class="h-2 rounded-full" 
                                  style="width: <?= $percentage ?>%; 
                                         background-color: <?= 
-                                            $grade === 'A' ? '#10b981' : 
-                                            ($grade === 'B' ? '#f59e0b' : 
-                                            ($grade === 'C' ? '#6366f1' : 
-                                            ($grade === 'D' ? '#8b5cf6' : '#ef4444'))) ?>">
+                                            $grade === '5' ? '#10b981' : 
+                                            ($grade === '4' ? '#f59e0b' : 
+                                            ($grade === '3' ? '#6366f1' : 
+                                            ($grade === '2' ? '#8b5cf6' : '#ef4444'))) ?>">
                             </div>
                         </div>
                     </div>
