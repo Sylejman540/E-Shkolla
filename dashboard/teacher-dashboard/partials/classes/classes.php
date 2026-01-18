@@ -3,22 +3,35 @@ if(session_status() === PHP_SESSION_NONE){
     session_start();
 }
 
+
+$schoolId = $_SESSION['user']['school_id'] ?? null;
+$teacherId = $_SESSION['user']['teacher_id'] ?? null; // Assumes teacher_id is stored in session
+if (!$teacherId) {
+    die("Teacher ID not found in session.");
+}
+
+
 // Ensure $content is being captured correctly if using a layout wrapper
 require_once __DIR__ . '/../../../../db.php';
 
-$userId = $_SESSION['user']['id']; 
+
 $stmt = $pdo->prepare("
     SELECT 
-        tc.id, tc.class_id, tc.subject_id,
-        c.grade AS class_name, c.max_students,
-        t.subject_name, tc.created_at
+        tc.id,
+        tc.class_id,
+        tc.subject_id,
+        c.grade AS class_name,
+        c.max_students,
+        s.subject_name
     FROM teacher_class tc
-    INNER JOIN teachers t ON t.id = tc.teacher_id
     INNER JOIN classes c ON c.id = tc.class_id
-    WHERE t.user_id = ?
+    INNER JOIN subjects s ON s.id = tc.subject_id
+    WHERE tc.teacher_id = ?
 ");
-$stmt->execute([$userId]);
+$stmt->execute([$teacherId]);
+
 $classes = $stmt->fetchAll(PDO::FETCH_ASSOC);
+
 
 ob_start();
 ?>

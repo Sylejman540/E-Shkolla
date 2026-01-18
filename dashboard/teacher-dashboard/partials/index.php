@@ -55,7 +55,7 @@ function isAnyActive(array $paths) {
             mobileOpen ? 'translate-x-0' : '-translate-x-full lg:translate-x-0'
         ]">
 
-        <a href="/E-Shkolla/school-admin-dashboard" class="flex h-20 shrink-0 items-center px-5 overflow-hidden border-b border-slate-50">
+        <a href="/E-Shkolla/teacher-dashboard" class="flex h-20 shrink-0 items-center px-5 overflow-hidden border-b border-slate-50">
             <img src="/E-Shkolla/images/icon.png" class="h-10 w-auto min-w-[40px]" alt="Logo">
             <div x-show="!sidebarCollapsed" x-transition class="ml-3 whitespace-nowrap">
               <h1 class="text-xl font-bold tracking-tight text-slate-800">E-Shkolla</h1>
