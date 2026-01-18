@@ -58,10 +58,10 @@
 
         // 5. SYNC SUBJECTS TABLE
         // If name changed, update every subject where this teacher was assigned by name
-        if ($field === 'name' && $oldName) {
-            $stmt3 = $pdo->prepare("UPDATE subjects SET name = ? WHERE name = ? AND school_id = ?");
-            $stmt3->execute([$value, $oldName, $schoolId]);
-        }
+if (in_array($field, ['name', 'subject_name'])) {
+    $stmt2 = $pdo->prepare("UPDATE subjects SET $field = ? WHERE user_id = ? AND school_id = ?");
+    $stmt2->execute([$value, $userId, $schoolId]);
+}
 
         $pdo->commit();
         echo json_encode(['status' => 'success']);
