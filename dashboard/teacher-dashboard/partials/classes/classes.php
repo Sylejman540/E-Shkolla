@@ -62,10 +62,9 @@ $classes = $stmt->fetchAll(PDO::FETCH_ASSOC);
                                     <td class="whitespace-nowrap py-4 pl-4 pr-3 text-sm sm:pl-6">
                                         <div class="flex items-center">
                                             <div class="h-10 w-10 flex-shrink-0 flex items-center justify-center rounded-lg bg-indigo-600 text-white font-bold">
-                                                <?= htmlspecialchars(substr($row['class_name'], 0, 2)) ?>
+                                                <?= htmlspecialchars($row['class_name']) ?>
                                             </div>
                                             <div class="ml-4">
-                                                <div class="font-semibold text-gray-900 dark:text-white"><?= htmlspecialchars($row['class_name']) ?></div>
                                                 <div class="sm:hidden text-gray-500 dark:text-gray-400 italic text-xs">
                                                     <?= htmlspecialchars($row['subject_name']) ?>
                                                 </div>
