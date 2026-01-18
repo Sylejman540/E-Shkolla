@@ -9,7 +9,7 @@ $schoolId = $_SESSION['user']['school_id'] ?? null;
 
 // Pagination Logic
 $limit = 10;
-$page  = isset($_GET['page']) && is_numeric($_GET['page']) ? (int)$GET['page'] : 1;
+$page  = isset($_GET['page']) && is_numeric($_GET['page']) ? (int)$_GET['page'] : 1;
 $offset = ($page - 1) * $limit;
 
 // Total rows for this specific school

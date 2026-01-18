@@ -3,8 +3,8 @@ if (session_status() === PHP_SESSION_NONE) { session_start(); }
 require_once __DIR__ . '/../../../../db.php';
 
 $schoolId = $_SESSION['user']['school_id'] ?? null;
+if (!$schoolId) die("Aksesi i ndaluar.");
 
-// Fetch Classes
 $stmt = $pdo->prepare("SELECT * FROM classes WHERE school_id = ? ORDER BY grade ASC");
 $stmt->execute([$schoolId]);
 $classes = $stmt->fetchAll(PDO::FETCH_ASSOC);
@@ -13,67 +13,50 @@ ob_start();
 ?>
 
 <div class="px-4 sm:px-6 lg:px-8">
-    <div class="sm:flex sm:items-center">
-        <div class="mt-5 sm:flex-auto">
-            <h1 class="text-xl sm:text-2xl font-bold tracking-tight text-slate-900 dark:text-white">Orari i Mësimit</h1>
-            <p class="mt-2 text-sm text-slate-500 dark:text-slate-400">Menaxhoni orarin javor për secilën klasë dhe shmangni përplasjet.</p>
+    <div class="sm:flex sm:items-center py-6">
+        <div class="sm:flex-auto">
+            <h1 class="text-2xl font-bold text-slate-900 dark:text-white">Orari i Mësimit</h1>
         </div>
-        <div class="mt-4 sm:mt-0 sm:ml-16">
-            <button type="button" onclick="openGlobalScheduleForm()" class="rounded-lg bg-indigo-600 px-8 py-2.5 text-sm font-semibold text-white shadow-md hover:bg-indigo-700 transition">
+        <div class="mt-4 sm:mt-0">
+            <button onclick="openGlobalScheduleForm()" class="rounded-lg bg-indigo-600 px-6 py-2 text-sm font-semibold text-white hover:bg-indigo-700 transition">
                 Shto Orë Mësimi
             </button>
         </div>
     </div>
 
     <?php if (isset($_SESSION['success'])): ?>
-        <div id="success-alert" class="mt-6 p-4 text-sm text-green-800 bg-green-50 border border-green-200 rounded-lg transition-opacity duration-500">
+        <div id="success-alert" class="mb-4 p-4 bg-green-50 text-green-800 border border-green-200 rounded-lg transition-opacity duration-500">
             <?= htmlspecialchars($_SESSION['success']); unset($_SESSION['success']); ?>
         </div>
     <?php endif; ?>
 
-    <div class="mt-8 flow-root">
-        <div class="-mx-4 -my-2 overflow-x-auto sm:-mx-6 lg:-mx-8">
-            <div class="inline-block min-w-full py-2 align-middle sm:px-6 lg:px-8">
-                <table class="min-w-full divide-y divide-gray-300 dark:divide-white/10">
-                    <thead>
-                        <tr>
-                            <th class="py-3.5 pl-4 pr-3 text-left text-sm font-semibold text-gray-900 dark:text-white sm:pl-0">Klasa</th>
-                            <th class="px-3 py-3.5 text-left text-sm font-semibold text-gray-900 dark:text-white">Viti Akademik</th>
-                            <th class="px-3 py-3.5 text-left text-sm font-semibold text-gray-900 dark:text-white">Nr. Nxënësve</th>
-                            <th class="px-3 py-3.5 text-right text-sm font-semibold text-gray-900 dark:text-white">Veprime</th>
-                        </tr>
-                    </thead>
-                    <tbody class="divide-y divide-gray-200 dark:divide-white/5">
-                        <?php foreach($classes as $row): ?>
-                        <tr class="hover:bg-gray-50 dark:hover:bg-white/5 transition group">
-                            <td class="py-4 pl-4 pr-3 whitespace-nowrap text-sm font-bold text-indigo-600 dark:text-indigo-400 sm:pl-0">
-                                <?= htmlspecialchars($row['grade']) ?>
-                            </td>
-                            <td class="px-3 py-4 text-sm text-gray-500 dark:text-gray-400">
-                                <?= htmlspecialchars($row['academic_year']) ?>
-                            </td>
-                            <td class="px-3 py-4 text-sm text-gray-500 dark:text-gray-400">
-                                <?= htmlspecialchars($row['max_students']) ?>
-                            </td>
-                            <td class="py-4 text-right text-sm font-medium">
-                                <button onclick="toggleSchedule(<?= $row['id'] ?>)" class="text-indigo-600 hover:text-indigo-900 dark:text-indigo-400 bg-indigo-50 dark:bg-indigo-900/30 px-3 py-1 rounded-md transition font-semibold">
-                                    Shiko/Edito Orarin
-                                </button>
-                            </td>
-                        </tr>
-                        <tr id="sched-row-<?= $row['id'] ?>" class="hidden bg-slate-50 dark:bg-gray-900/50">
-                            <td colspan="4" class="p-6">
-                                <div id="grid-container-<?= $row['id'] ?>" class="bg-white dark:bg-gray-800 rounded-xl shadow-inner border dark:border-white/10 p-4 min-h-[100px]">
-                                    <div class="flex justify-center p-10">
-                                        <div class="animate-spin rounded-full h-8 w-8 border-b-2 border-indigo-600"></div>
-                                    </div>
-                                </div>
-                            </td>
-                        </tr>
-                        <?php endforeach; ?>
-                    </tbody>
-                </table>
-            </div>
+    <div class="mt-4 flow-root">
+        <div class="inline-block min-w-full align-middle">
+            <table class="min-w-full divide-y divide-gray-300 dark:divide-white/10">
+                <thead>
+                    <tr>
+                        <th class="py-3.5 pl-4 pr-3 text-left text-sm font-semibold text-gray-900 dark:text-white">Klasa</th>
+                        <th class="px-3 py-3.5 text-right text-sm font-semibold text-gray-900 dark:text-white">Veprime</th>
+                    </tr>
+                </thead>
+                <tbody class="divide-y divide-gray-200 dark:divide-white/5">
+                    <?php foreach($classes as $row): ?>
+                    <tr>
+                        <td class="py-4 pl-4 pr-3 text-sm font-bold text-indigo-600 dark:text-indigo-400">Klasa <?= htmlspecialchars($row['grade']) ?></td>
+                        <td class="py-4 text-right">
+                            <button onclick="toggleSchedule(<?= $row['id'] ?>)" class="text-indigo-600 bg-indigo-50 px-3 py-1 rounded-md text-sm font-medium">Shiko Orarin</button>
+                        </td>
+                    </tr>
+                    <tr id="sched-row-<?= $row['id'] ?>" class="hidden bg-slate-50 dark:bg-gray-900/50">
+                        <td colspan="2" class="p-4">
+                            <div id="grid-container-<?= $row['id'] ?>" class="bg-white dark:bg-gray-800 rounded-xl p-4 shadow-inner border dark:border-white/10">
+                                <p class="text-center text-gray-500">Duke ngarkuar...</p>
+                            </div>
+                        </td>
+                    </tr>
+                    <?php endforeach; ?>
+                </tbody>
+            </table>
         </div>
     </div>
     <?php require_once 'form.php'; ?>
@@ -82,72 +65,51 @@ ob_start();
 <?php $content = ob_get_clean(); require_once __DIR__ . '/../../index.php'; ?>
 
 <script>
-// --- Modal Logic ---
-function openGlobalScheduleForm() {
-    const modal = document.getElementById('addScheduleModal');
-    if (modal) {
-        modal.classList.remove('hidden');
-    }
-}
-
-// Close logic is already in form.php, but we can ensure it here
-document.addEventListener('click', (e) => {
-    const modal = document.getElementById('addScheduleModal');
-    if (e.target === modal) {
-        modal.classList.add('hidden');
-    }
-});
-
-// --- Toggle and Load Schedule Grid ---
 async function toggleSchedule(classId) {
     const row = document.getElementById(`sched-row-${classId}`);
     const container = document.getElementById(`grid-container-${classId}`);
-    
     if (row.classList.contains('hidden')) {
         row.classList.remove('hidden');
-        try {
-            // Sigurohuni që ky path është i saktë
-            const response = await fetch(`/E-Shkolla/dashboard/schooladmin-dashboard/partials/schedule/get-schedule-grid.php?class_id=${classId}`);
-            if (!response.ok) throw new Error('Network response was not ok');
-            container.innerHTML = await response.text();
-        } catch (err) {
-            container.innerHTML = '<div class="p-4 text-red-500 bg-red-50 rounded-lg text-sm">Gabim: Nuk u mundësua ngarkimi i orarit.</div>';
-        }
+        // Rruga relative pa /E-Shkolla/ për të shmangur gabimin 404
+        const res = await fetch(`partials/schedule/get-schedule-grid.php?class_id=${classId}`);
+        container.innerHTML = await res.text();
     } else {
         row.classList.add('hidden');
     }
 }
 
-// --- Inline Delete Action ---
 async function deleteScheduleEntry(id, classId) {
-    if(!confirm('A jeni të sigurt që dëshironi të fshini këtë orë mësimi?')) return;
-    
+    if(!confirm('A jeni të sigurt?')) return;
     try {
-        const res = await fetch('delete-entry.php', {
+        const res = await fetch('partials/schedule/delete-entry.php', {
             method: 'POST',
             headers: {'Content-Type': 'application/json'},
             body: JSON.stringify({ id })
         });
-        
-        if(res.ok) {
-            // Refresh grid
+        const data = await res.json();
+        if(data.success) {
+            // Refresh grid-in pa reload faqen
             const container = document.getElementById(`grid-container-${classId}`);
-            container.innerHTML = '<div class="flex justify-center p-10"><div class="animate-spin rounded-full h-8 w-8 border-b-2 border-indigo-600"></div></div>';
-            
-            const response = await fetch(`/E-Shkolla/dashboard/schooladmin-dashboard/partials/schedule/get-schedule-grid.php?class_id=${classId}`);
-            container.innerHTML = await response.text();
+            const refresh = await fetch(`/E-Shkolla/dashboard/schooladmin-dashboard/partials/schedule/get-schedule-grid.php?class_id=${classId}`);
+            container.innerHTML = await refresh.text();
         }
-    } catch (err) {
-        alert("Ndodhi një gabim gjatë fshirjes.");
-    }
+    } catch (err) { alert("Gabim gjatë fshirjes."); }
 }
 
-// --- Auto-hide alerts ---
+function openGlobalScheduleForm() { document.getElementById('addScheduleModal').classList.remove('hidden'); }
+function closeModalFunc() { document.getElementById('addScheduleModal').classList.add('hidden'); }
+
 setTimeout(() => {
     const alert = document.getElementById("success-alert");
-    if (alert) {
-        alert.style.opacity = "0";
-        setTimeout(() => alert.remove(), 700);
-    }
+    if (alert) alert.style.opacity = "0";
 }, 3000);
+
+function autoSelectSubject() {
+    const teacher = document.getElementById('f_teacher');
+    const subject = document.getElementById('f_subject');
+    const subId = teacher.options[teacher.selectedIndex].getAttribute('data-sub');
+    if(subId) {
+        subject.value = subId;
+    }
+}
 </script>

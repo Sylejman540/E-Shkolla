@@ -135,18 +135,6 @@ function isAnyActive(array $paths) {
                         <li><a href="/E-Shkolla/schedule" class="block p-2 text-xs font-medium text-slate-500 hover:text-blue-600">Orari</a></li>
                     </ul>
                 </li>
-
-                <li>
-                    <a href="/E-Shkolla/attendance" class="relative group flex items-center gap-x-3 rounded-xl p-3 text-sm font-semibold text-slate-500 hover:bg-slate-50 hover:text-blue-600 transition-all">
-                        <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="size-6">
-                          <path stroke-linecap="round" stroke-linejoin="round" d="M12 21V15.848M4.26 10.174L12 4.5l7.74 5.674M4.26 10.174v5.326A1.5 1.5 0 005.76 17h12.48a1.5 1.5 0 001.5-1.5V10.174M4.26 10.174L12 15.848l7.74-5.674" />
-                        </svg>
-                        <span x-show="!sidebarCollapsed">Pjesëmarrja</span>
-                    </a>
-                </li>
-
-                <div class="my-4 border-t border-slate-50"></div>
-
                 <li>
                     <a href="/E-Shkolla/school-settings" class="relative group flex items-center gap-x-3 rounded-xl p-3 text-sm font-semibold text-slate-500 hover:bg-slate-50 hover:text-blue-600 transition-all">
                         <svg class="h-6 w-6 stroke-[1.5] fill-none" viewBox="0 0 24 24" stroke="currentColor">
@@ -188,7 +176,7 @@ function isAnyActive(array $paths) {
             <a href="/E-Shkolla/school-admin-dashboard" class="flex h-20 shrink-0 items-center px-4 overflow-hidden border-b border-slate-50">
             <img src="/E-Shkolla/images/icon.png" class="h-10 w-auto min-w-[40px]" alt="Logo">
             <div x-show="!sidebarCollapsed" x-transition class="ml-3 whitespace-nowrap">
-              <h1 class="text-xl font-bold tracking-tight text-slate-800">E-Shkolla</h1>
+              <h1 class="text-xl font-bold tracking-tight text-blue-800">E-Shkolla</h1>
               <p class="text-[10px] font-bold uppercase tracking-widest text-blue-400">School Admin</p>
             </div>
             </a>

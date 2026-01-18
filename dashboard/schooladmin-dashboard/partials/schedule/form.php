@@ -1,26 +1,27 @@
 <?php
-if (session_status() === PHP_SESSION_NONE) {
-    session_start();
-}
-
+if (session_status() === PHP_SESSION_NONE) { session_start(); }
 require_once __DIR__ . '/../../../../db.php';
 
-$schoolId = $_SESSION['user']['school_id'] ?? null;
-$user_id = $_SESSION['user']['id'] ?? null;
-
-if ($_SERVER['REQUEST_METHOD'] === 'POST') {
+if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['add_schedule'])) {
+    $schoolId = $_SESSION['user']['school_id'] ?? null;
+    $user_id = $_SESSION['user']['id'] ?? null;
+    
     $day = $_POST['day'];
     $start_time = $_POST['start_time'];
     $end_time = $_POST['end_time'];
-    $status = $_POST['status'];
+    $status = $_POST['status'] ?? 'active';
     $subjectId = $_POST['subject_id'];
     $teacherId = $_POST['teacher_id'];    
     $classId = $_POST['class_id'];
 
     $stmt = $pdo->prepare("INSERT INTO class_schedule (school_id, user_id, class_id, day, start_time, end_time, subject_id, teacher_id, status) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)");
-    $stmt->execute([$schoolId, $user_id, $classId, $day, $start_time, $end_time, $subjectId, $teacherId, $status]);
-
-    header("Location: /E-Shkolla/schedule");
+    
+    if ($stmt->execute([$schoolId, $user_id, $classId, $day, $start_time, $end_time, $subjectId, $teacherId, $status])) {
+        $_SESSION['success'] = "Orari u shtua me sukses!";
+    }
+    
+    // Redirect te faqja kryesore e orarit
+    header("Location: " . $_SERVER['HTTP_REFERER']); 
     exit;
 }
 ?>
