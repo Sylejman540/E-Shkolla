@@ -1,33 +1,37 @@
 <?php
-session_start();
-require_once '../../../../db.php';
-
 header('Content-Type: application/json');
+require_once __DIR__ . '/../../../../db.php';
 
-if (!isset($_SESSION['user'])) {
-    http_response_code(403);
+if (session_status() === PHP_SESSION_NONE) { session_start(); }
+
+$input = json_decode(file_get_contents('php://input'), true);
+$schoolId = $_SESSION['user']['school_id'] ?? null;
+
+if (!$input || !$schoolId) {
+    echo json_encode(['status' => 'error', 'message' => 'Kërkesë e pavlefshme']);
     exit;
 }
 
-$data = json_decode(file_get_contents('php://input'), true);
+$classId = $input['classId'];
+$field = $input['field'];
+$value = $input['value'];
 
-$classId = (int)($data['classId'] ?? 0);
-$field   = $data['field'] ?? '';
-$value   = trim($data['value'] ?? '');
-
+// Lejo vetëm fushat specifike për siguri
 $allowedFields = ['grade', 'max_students', 'status'];
-
-if (!$classId || !in_array($field, $allowedFields)) {
-    echo json_encode(['success' => false, 'message' => 'Invalid data']);
-    http_response_code(400);
+if (!in_array($field, $allowedFields)) {
+    echo json_encode(['status' => 'error', 'message' => 'Fusha nuk lejohet']);
     exit;
 }
 
 try {
-    $stmt = $pdo->prepare("UPDATE classes SET `$field` = ?, updated_at = NOW() WHERE id = ?");
-    $stmt->execute([$value, $classId]);
-    echo json_encode(['success' => true]);
+    $stmt = $pdo->prepare("UPDATE classes SET $field = :value WHERE id = :id AND school_id = :school_id");
+    $stmt->execute([
+        ':value' => $value,
+        ':id' => $classId,
+        ':school_id' => $schoolId
+    ]);
+
+    echo json_encode(['status' => 'success']);
 } catch (Exception $e) {
-    echo json_encode(['success' => false, 'message' => $e->getMessage()]);
-    http_response_code(500);
+    echo json_encode(['status' => 'error', 'message' => 'Dështoi përditësimi']);
 }

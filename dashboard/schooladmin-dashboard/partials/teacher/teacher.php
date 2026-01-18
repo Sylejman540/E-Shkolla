@@ -205,6 +205,19 @@ function filterTeachers() {
         row.style.display = row.innerText.toLowerCase().includes(filter) ? "" : "none";
     });
 }
+
+const btn = document.getElementById('addTeacherBtn');
+const form = document.getElementById('addTeacherForm');
+const cancel = document.getElementById('cancel');
+
+btn?.addEventListener('click', () => {
+ form.classList.remove('hidden');
+ form.scrollIntoView({ behavior: 'smooth', block: 'start' });
+});
+
+cancel?.addEventListener('click', () => {
+ form.classList.add('hidden');
+});
 </script>
 
 <?php $content = ob_get_clean(); require_once __DIR__ . '/../../index.php'; ?>

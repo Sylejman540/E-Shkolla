@@ -191,6 +191,19 @@ function filterParents() {
         row.style.display = text.includes(filter) ? "" : "none";
     });
 }
+
+const btn = document.getElementById('addParentBtn');
+const form = document.getElementById('addParentForm');
+const cancel = document.getElementById('cancel');
+
+btn?.addEventListener('click', () => {
+ form.classList.remove('hidden');
+ form.scrollIntoView({ behavior: 'smooth', block: 'start' });
+});
+
+cancel?.addEventListener('click', () => {
+ form.classList.add('hidden');
+});
 </script>
 
 <?php 
