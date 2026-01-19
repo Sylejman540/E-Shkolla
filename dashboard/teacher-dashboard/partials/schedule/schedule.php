@@ -1,41 +1,33 @@
 <?php
-
-
 if (session_status() === PHP_SESSION_NONE) session_start();
 require_once __DIR__ . '/../../../../db.php';
 
 $userId = (int) ($_SESSION['user']['id'] ?? 0);
 $schoolId = (int) ($_SESSION['user']['school_id'] ?? 0);
 
-// Get actual teacher_id
-$stmt = $pdo->prepare("SELECT id FROM teachers WHERE user_id = ?");
-$stmt->execute([$userId]);
-$teacherId = (int) $stmt->fetchColumn();
-
-$schoolId  = (int) ($_SESSION['user']['school_id'] ?? 0);
-$today     = strtolower(date('l')); // p.sh. "monday"
+// 1. Get actual teacher_id
+$tStmt = $pdo->prepare("SELECT id FROM teachers WHERE user_id = ?");
+$tStmt->execute([$userId]);
+$teacherId = (int) $tStmt->fetchColumn();
 
 if (!$teacherId || !$schoolId) {
     die('Gabim: Sesioni ka skaduar.');
 }
 
-$stmt = $pdo->prepare("SELECT id FROM teachers WHERE user_id = ?");
-$stmt->execute([$_SESSION['user']['id']]);
-$teacherId = (int) $stmt->fetchColumn();
+$todayEng = strtolower(date('l'));
+$currentTime = date('H:i:s');
 
-
+// 2. Fetch Schedule
 $stmt = $pdo->prepare("
     SELECT cs.*, c.grade AS class_name, s.name AS subject_name
     FROM class_schedule cs
     JOIN classes c ON cs.class_id = c.id
     JOIN subjects s ON cs.subject_id = s.id
     WHERE cs.teacher_id = ? AND cs.school_id = ?
+    ORDER BY cs.start_time ASC
 ");
 $stmt->execute([$teacherId, $schoolId]);
-
 $scheduleItems = $stmt->fetchAll(PDO::FETCH_ASSOC);
-
-
 
 $dayMap = [
     'monday'    => 'E Hënë',
@@ -45,7 +37,39 @@ $dayMap = [
     'friday'    => 'E Premte',
 ];
 
-// Funksion për ngjyrat dhe ikonat
+// 3. Logic for Weekly Load & Busiest Day
+$totalHours = 0;
+$totalClasses = count($scheduleItems);
+$dayCounts = [];
+$todayClasses = [];
+
+foreach ($scheduleItems as $item) {
+    // Calculate total hours
+    $start = strtotime($item['start_time']);
+    $end = strtotime($item['end_time']);
+    $totalHours += ($end - $start) / 3600;
+
+    // Count lessons per day
+    $d = strtolower($item['day']);
+    $dayCounts[$d] = ($dayCounts[$d] ?? 0) + 1;
+
+    // Filter today's classes and determine status
+    if ($d === $todayEng) {
+        $status = 'upcoming';
+        if ($currentTime >= $item['start_time'] && $currentTime <= $item['end_time']) {
+            $status = 'ongoing';
+        } elseif ($currentTime > $item['end_time']) {
+            $status = 'completed';
+        }
+        $item['status'] = $status;
+        $todayClasses[] = $item;
+    }
+}
+
+$busiestDayKey = !empty($dayCounts) ? array_search(max($dayCounts), $dayCounts) : null;
+$busiestDayLabel = $busiestDayKey ? $dayMap[$busiestDayKey] : 'N/A';
+$busiestCount = $dayCounts[$busiestDayKey] ?? 0;
+
 function getSubjectStyle($subject) {
     $subject = mb_strtolower($subject);
     if (str_contains($subject, 'matematik')) return ['bg' => 'bg-orange-50', 'border' => 'border-orange-500', 'text' => 'text-orange-700', 'icon' => '📐'];
@@ -65,63 +89,100 @@ foreach ($scheduleItems as $item) {
 ob_start();
 ?>
 
-<div class="space-y-6 max-w-full overflow-hidden">
-    <div class="flex items-center justify-between print:hidden">
+<div class="space-y-6 max-w-full overflow-hidden pb-10">
+    <div class="flex flex-col md:flex-row md:items-center justify-between gap-4 print:hidden">
         <div>
-            <h1 class="text-2xl font-black text-slate-900 dark:text-white tracking-tight">Orari Javor</h1>
-            <p class="text-sm text-slate-500 italic">Sot është: <span class="font-bold text-indigo-600"><?= $dayMap[$today] ?? 'Fundjavë' ?></span></p>
+            <h1 class="text-2xl font-black text-slate-900 dark:text-white tracking-tight">Orari Im</h1>
+            <p class="text-sm text-slate-500 italic">Mirësevini në modulin e planifikimit.</p>
         </div>
-        <div class="flex gap-2">
-            <button onclick="window.print()" class="bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 px-4 py-2 rounded-xl text-sm font-bold flex items-center gap-2 hover:bg-slate-50 transition-all shadow-sm">
-                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 17h2a2 2 0 002-2v-4a2 2 0 00-2-2H5a2 2 0 00-2 2v4a2 2 0 002 2h2m2 4h6a2 2 0 002-2v-4a2 2 0 00-2-2H9a2 2 0 00-2 2v4a2 2 0 002 2zm8-12V5a2 2 0 00-2-2H9a2 2 0 00-2 2v4h10z"/></svg>
-                Printo
-            </button>
+        
+        <button onclick="window.print()" class="no-print inline-flex items-center gap-2 bg-white border border-slate-200 px-4 py-2 rounded-xl text-sm font-semibold text-slate-700 hover:bg-slate-50 transition-all shadow-sm">
+            <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 17h2a2 2 0 002-2v-4a2 2 0 00-2-2H5a2 2 0 00-2 2v4a2 2 0 002 2h2m2 4h6a2 2 0 002-2v-4a2 2 0 00-2-2H9a2 2 0 00-2 2v4a2 2 0 002 2zm8-12V5a2 2 0 00-2-2H9a2 2 0 00-2 2v4h10z"/>
+            </svg>
+            Printo Raportin
+        </button>
+    </div>
+
+    <div class="grid grid-cols-1 sm:grid-cols-3 gap-4 print:hidden">
+        <div class="bg-white dark:bg-slate-900 p-5 rounded-2xl border border-slate-200 dark:border-white/10 shadow-sm">
+            <p class="text-xs font-bold text-slate-400 uppercase tracking-wider">Ngarkesa Javore</p>
+            <div class="flex items-end gap-2 mt-1">
+                <span class="text-2xl font-black text-slate-900 dark:text-white"><?= round($totalHours, 1) ?>h</span>
+                <span class="text-xs text-slate-500 mb-1">gjithsej</span>
+            </div>
+        </div>
+        <div class="bg-white dark:bg-slate-900 p-5 rounded-2xl border border-slate-200 dark:border-white/10 shadow-sm">
+            <p class="text-xs font-bold text-slate-400 uppercase tracking-wider">Lëndë këtë javë</p>
+            <span class="text-2xl font-black text-slate-900 dark:text-white mt-1 block"><?= $totalClasses ?></span>
+        </div>
+        <div class="bg-white dark:bg-slate-900 p-5 rounded-2xl border border-slate-200 dark:border-white/10 shadow-sm ring-2 ring-indigo-500/10">
+            <p class="text-xs font-bold text-slate-400 uppercase tracking-wider">Dita më e ngarkuar</p>
+            <span class="text-lg font-black text-indigo-600 dark:text-indigo-400 mt-1 block"><?= $busiestDayLabel ?> (<?= $busiestCount ?>)</span>
         </div>
     </div>
 
+    <?php if (!empty($todayClasses)): ?>
+    <div class="lg:hidden print:hidden">
+        <h3 class="text-sm font-bold text-slate-900 dark:text-white mb-4 flex items-center gap-2">
+            <span class="relative flex h-2 w-2">
+                <span class="animate-ping absolute inline-flex h-full w-full rounded-full bg-indigo-400 opacity-75"></span>
+                <span class="relative inline-flex rounded-full h-2 w-2 bg-indigo-500"></span>
+            </span>
+            Axhenda e Sotme
+        </h3>
+        <div class="space-y-3">
+            <?php foreach ($todayClasses as $tc): 
+                $style = getSubjectStyle($tc['subject_name']);
+                $statusColor = ['ongoing' => 'bg-emerald-500 ring-emerald-500/20', 'upcoming' => 'bg-amber-500 ring-amber-500/20', 'completed' => 'bg-slate-300 dark:bg-slate-700 ring-transparent'][$tc['status']];
+            ?>
+            <div class="relative flex items-center gap-4 p-4 bg-white dark:bg-slate-900 rounded-2xl border border-slate-200 dark:border-white/10 shadow-sm overflow-hidden">
+                <div class="absolute left-0 top-0 bottom-0 w-1 <?= $tc['status'] === 'ongoing' ? 'bg-emerald-500' : 'bg-slate-200 dark:bg-slate-800' ?>"></div>
+                <div class="text-center min-w-[55px]">
+                    <span class="block text-xs font-black text-slate-900 dark:text-white"><?= date('H:i', strtotime($tc['start_time'])) ?></span>
+                    <div class="mt-1 flex justify-center"><span class="h-1.5 w-1.5 rounded-full <?= $statusColor ?> ring-4"></span></div>
+                </div>
+                <div class="flex-1">
+                    <h4 class="text-sm font-bold text-slate-900 dark:text-white leading-none mb-1"><?= htmlspecialchars($tc['subject_name']) ?></h4>
+                    <p class="text-[10px] text-slate-500 font-medium">Klasa <?= htmlspecialchars($tc['class_name']) ?></p>
+                </div>
+                <span class="text-xl"><?= $style['icon'] ?></span>
+            </div>
+            <?php endforeach; ?>
+        </div>
+    </div>
+    <?php endif; ?>
+
     <div class="hidden lg:block bg-white dark:bg-slate-900 border border-slate-200 dark:border-white/10 rounded-3xl shadow-xl overflow-hidden print:border-none print:shadow-none">
-        <div class="grid grid-cols-5 divide-x divide-slate-100 dark:divide-white/5 bg-slate-50 dark:bg-white/5 border-b dark:border-white/10">
-            <?php foreach ($dayMap as $eng => $label): 
-                $isToday = ($eng === $today); ?>
-                <div class="px-4 py-4 text-center <?= $isToday ? 'bg-indigo-50/50 dark:bg-indigo-500/10' : '' ?>">
-                    <span class="text-[11px] font-black uppercase tracking-widest <?= $isToday ? 'text-indigo-600' : 'text-slate-400' ?>">
-                        <?= $label ?>
-                    </span>
+        <div class="grid grid-cols-5 divide-x divide-slate-100 dark:divide-white/5 bg-slate-50 dark:bg-white/5 border-b dark:border-white/10 text-center">
+            <?php foreach ($dayMap as $eng => $label): $isToday = ($eng === $todayEng); ?>
+                <div class="px-4 py-4 <?= $isToday ? 'bg-indigo-50/50 dark:bg-indigo-500/10' : '' ?>">
+                    <span class="text-[11px] font-black uppercase tracking-widest <?= $isToday ? 'text-indigo-600' : 'text-slate-400' ?>"><?= $label ?></span>
                 </div>
             <?php endforeach; ?>
         </div>
 
-        <div class="grid grid-cols-5 divide-x divide-slate-100 dark:divide-white/5 min-h-[650px]">
-            <?php foreach (array_keys($dayMap) as $engDay): 
-                $isToday = ($engDay === $today); ?>
-                <div class="p-3 space-y-6 <?= $isToday ? 'bg-indigo-50/20 dark:bg-indigo-500/5 ring-2 ring-inset ring-indigo-500/20' : '' ?>">
+        <div class="grid grid-cols-5 divide-x divide-slate-100 dark:divide-white/5 min-h-[600px]">
+            <?php foreach (array_keys($dayMap) as $engDay): $isToday = ($engDay === $todayEng); ?>
+                <div class="p-3 space-y-6 <?= $isToday ? 'bg-indigo-50/10 dark:bg-indigo-500/5' : '' ?>">
                     <?php if (empty($grouped[$engDay])): ?>
                         <div class="h-full flex items-center justify-center opacity-20 italic text-xs">Pushim</div>
                     <?php else: ?>
-                        <?php foreach (['Mëngjes', 'Pasdite', 'Mbrëmje'] as $blockName): ?>
-                            <?php if (!empty($grouped[$engDay][$blockName])): ?>
+                        <?php foreach (['Mëngjes', 'Pasdite', 'Mbrëmje'] as $block): ?>
+                            <?php if (!empty($grouped[$engDay][$block])): ?>
                                 <div class="space-y-3">
-                                    <div class="flex items-center gap-2">
-                                        <span class="h-[1px] flex-1 bg-slate-100 dark:bg-white/5"></span>
-                                        <span class="text-[9px] font-bold text-slate-400 uppercase tracking-tighter"><?= $blockName ?></span>
-                                        <span class="h-[1px] flex-1 bg-slate-100 dark:bg-white/5"></span>
-                                    </div>
-                                    <?php foreach ($grouped[$engDay][$blockName] as $class): 
-                                        $style = getSubjectStyle($class['subject_name']); ?>
-                                        <div class="group relative bg-white dark:bg-slate-800 border-l-4 <?= $style['border'] ?> rounded-xl p-3 shadow-sm hover:shadow-md transition-all border border-slate-100 dark:border-white/5">
+                                    <span class="text-[9px] font-bold text-slate-400 uppercase tracking-tighter block border-b border-slate-100 dark:border-white/5 pb-1"><?= $block ?></span>
+                                    <?php foreach ($grouped[$engDay][$block] as $class): $style = getSubjectStyle($class['subject_name']); ?>
+                                        <div class="group bg-white dark:bg-slate-800 border-l-4 <?= $style['border'] ?> rounded-xl p-3 shadow-sm hover:shadow-md transition-all border border-slate-100 dark:border-white/5">
                                             <div class="flex justify-between items-start mb-1">
-                                                <span class="text-[10px] font-bold <?= $style['text'] ?> bg-opacity-10">
-                                                    <?= date('H:i', strtotime($class['start_time'])) ?>
+                                                <span class="text-[10px] font-black text-slate-900 dark:text-white leading-tight">
+                                                    <?= date('H:i', strtotime($class['start_time'])) ?><br>
+                                                    <span class="text-slate-400 font-medium font-sans">- <?= date('H:i', strtotime($class['end_time'])) ?></span>
                                                 </span>
-                                                <span><?= $style['icon'] ?></span>
+                                                <span class="text-lg"><?= $style['icon'] ?></span>
                                             </div>
-                                            <div class="font-bold text-slate-800 dark:text-white text-sm truncate">
-                                                <?= htmlspecialchars($class['subject_name'] ?? '--') ?>
-                                            </div>
-                                            <div class="text-[11px] text-slate-500 mt-1 flex items-center gap-1">
-                                                <svg class="w-3 h-3 opacity-50" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path d="M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0h2m-2 0h-5m-9 0H3m2 0h5M9 7h1m-1 4h1m4-4h1m-1 4h1m-5 10v-5a1 1 0 011-1h2a1 1 0 011 1v5m-4 0h4" stroke-width="2"/></svg>
-                                                Klasa <?= htmlspecialchars($class['class_name'] ?? '--') ?>
-                                            </div>
+                                            <div class="font-bold text-slate-800 dark:text-white text-sm truncate"><?= htmlspecialchars($class['subject_name']) ?></div>
+                                            <div class="text-[10px] text-slate-500 mt-1 font-medium">Klasa <?= htmlspecialchars($class['class_name']) ?></div>
                                         </div>
                                     <?php endforeach; ?>
                                 </div>
@@ -132,61 +193,17 @@ ob_start();
             <?php endforeach; ?>
         </div>
     </div>
-
-    <div class="lg:hidden space-y-4">
-        <?php foreach ($dayMap as $engDay => $dayLabel): 
-            $isToday = ($engDay === $today); ?>
-            <details class="group bg-white dark:bg-slate-800 rounded-2xl border <?= $isToday ? 'border-indigo-500 ring-4 ring-indigo-500/10' : 'border-slate-100 dark:border-white/5' ?> overflow-hidden transition-all" <?= $isToday ? 'open' : '' ?>>
-                <summary class="flex items-center justify-between p-4 cursor-pointer list-none">
-                    <div class="flex items-center gap-3">
-                        <span class="w-2 h-2 rounded-full <?= $isToday ? 'bg-indigo-500 animate-pulse' : 'bg-slate-300' ?>"></span>
-                        <h3 class="font-bold text-slate-900 dark:text-white"><?= $dayLabel ?></h3>
-                        <?php if($isToday): ?>
-                            <span class="text-[10px] bg-indigo-100 text-indigo-700 px-2 py-0.5 rounded-full font-black uppercase">Sot</span>
-                        <?php endif; ?>
-                    </div>
-                    <svg class="w-5 h-5 text-slate-400 group-open:rotate-180 transition-transform" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"/></svg>
-                </summary>
-                
-                <div class="p-4 pt-0 space-y-3 border-t border-slate-50 dark:border-white/5">
-                    <?php if (empty($grouped[$engDay])): ?>
-                        <p class="text-xs text-slate-400 italic py-4 text-center">Nuk ka mësim.</p>
-                    <?php else: ?>
-                        <?php foreach (['Mëngjes', 'Pasdite', 'Mbrëmje'] as $blockName): ?>
-                            <?php if (!empty($grouped[$engDay][$blockName])): ?>
-                                <?php foreach ($grouped[$engDay][$blockName] as $class): 
-                                    $style = getSubjectStyle($class['subject_name']); ?>
-                                    <div class="flex items-center gap-4 p-3 bg-slate-50 dark:bg-white/5 rounded-xl">
-                                        <div class="text-center min-w-[55px]">
-                                            <span class="block text-xs font-black text-slate-900 dark:text-white"><?= date('H:i', strtotime($class['start_time'])) ?></span>
-                                            <span class="block text-[10px] text-slate-400 font-medium"><?= date('H:i', strtotime($class['end_time'])) ?></span>
-                                        </div>
-                                        <div class="w-1 h-8 rounded-full <?= $style['border'] ?> bg-current"></div>
-                                        <div class="flex-1">
-                                            <div class="text-sm font-bold text-slate-900 dark:text-white">
-                                                <?= $style['icon'] ?> <?= htmlspecialchars($class['subject_name']) ?>
-                                            </div>
-                                            <div class="text-xs text-slate-500 italic">Klasa <?= htmlspecialchars($class['class_name']) ?></div>
-                                        </div>
-                                    </div>
-                                <?php endforeach; ?>
-                            <?php endif; ?>
-                        <?php endforeach; ?>
-                    <?php endif; ?>
-                </div>
-            </details>
-        <?php endforeach; ?>
-    </div>
 </div>
 
 <style>
 @media print {
-    body { background: white !important; }
-    .dark { color-scheme: light; }
+    nav, aside, header, .print\:hidden, button, details summary svg { display: none !important; }
+    body { background: white !important; color: black !important; -webkit-print-color-adjust: exact !important; print-color-adjust: exact !important; }
+    .lg\:block { display: block !important; }
+    .lg\:hidden { display: none !important; }
+    .grid-cols-5 { display: grid !important; grid-template-columns: repeat(5, 1fr) !important; width: 100% !important; }
     main { padding: 0 !important; margin: 0 !important; }
-    details { display: block !important; border: 1px solid #eee !important; }
-    summary { pointer-events: none; }
-    summary svg { display: none; }
+    .rounded-3xl { border-radius: 8px !important; border: 1px solid #ddd !important; }
 }
 </style>
 

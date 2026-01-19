@@ -70,8 +70,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             <div class="mb-8">
                 <div class="flex justify-between items-center">
                     <div>
-                        <h2 class="text-xl font-semibold text-gray-900 dark:text-white">Shto mësues të ri</h2>
-                        <p class="mt-1 text-sm text-gray-600 dark:text-gray-400">Plotësoni të dhënat për të krijuar llogarinë e mësuesit.</p>
+                        <h2 class="text-xl font-semibold text-gray-900 dark:text-white">Shto detyrë të ri</h2>
+                        <p class="mt-1 text-sm text-gray-600 dark:text-gray-400">Plotësoni të dhënat për të krijuar detyrë.</p>
                     </div>
                     <button type="button" onclick="document.getElementById('addSchoolForm').classList.add('hidden')" class="text-gray-400 hover:text-gray-600 text-2xl">&times;</button>
                 </div>
