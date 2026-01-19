@@ -13,6 +13,7 @@ require_once __DIR__ . '/../../../../db.php';
 $userId   = $_SESSION['user']['id'] ?? null;
 $userRole = $_SESSION['user']['role'] ?? null;
 $schoolId = $_SESSION['user']['school_id'] ?? null;
+$studentId = $_SESSION['user']['student_id'] ?? null;
 
 if (!$userId || $userRole !== 'student' || !$schoolId) {
     header("Location: /login.php");
@@ -48,29 +49,24 @@ try {
         /* =========================
            3. FETCH ASSIGNMENTS
         ========================= */
-        $query = "
-        SELECT 
-            a.id, 
-            a.title, 
-            a.description, 
-            a.due_date,
-            GROUP_CONCAT(DISTINCT sub.subject_name ORDER BY sub.subject_name SEPARATOR ', ') AS subject_names,
-            u.name AS teacher_name
-        FROM assignments a
-        INNER JOIN users u ON u.id = a.teacher_id
-        LEFT JOIN class_subject cs ON cs.class_id = a.class_id
-        LEFT JOIN subjects sub ON sub.id = cs.subject_id
-        WHERE a.class_id = :class_id
-        AND a.school_id = :school_id
-        GROUP BY a.id, a.title, a.description, a.due_date, u.name
-        ORDER BY a.due_date ASC";
+$stmt = $pdo->prepare("
+    SELECT 
+        a.id,
+        a.title,
+        a.description,
+        a.due_date
+    FROM assignments a
+    JOIN classes c ON c.id = a.class_id
+    JOIN student_class sc ON sc.class_id = c.id
+    WHERE sc.student_id = ?
+      AND c.school_id = ?
+      AND a.due_date >= CURDATE()
+    ORDER BY a.due_date ASC
+    LIMIT 5
+");
+$stmt->execute([$studentId, $schoolId]);
+$upcomingAssignments = $stmt->fetchAll(PDO::FETCH_ASSOC);
 
-        $stmt = $pdo->prepare($query);
-        $stmt->execute([
-            ':class_id'  => (int)$classId,
-            ':school_id' => (int)$schoolId
-        ]);
-        $assignments = $stmt->fetchAll(PDO::FETCH_ASSOC);
     }
 
 } catch (PDOException $e) {
@@ -111,7 +107,7 @@ ob_start();
                         </tr>
                     </thead>
                     <tbody class="bg-white divide-y divide-gray-100">
-                        <?php foreach ($assignments as $a): 
+                        <?php foreach ($upcomingAssignments as $a): 
                             $dueDateTimestamp = strtotime($a['due_date']);
                             $isOverdue = $dueDateTimestamp < time();
                         ?>
