@@ -3,198 +3,153 @@ if(session_status() === PHP_SESSION_NONE){
     session_start();
 }
 
-require_once __DIR__ . '/../index.php'; 
-
+// Sigurohuni që këto shtigje janë të sakta në serverin tuaj
 require_once __DIR__ . '/../../../../../db.php';
 
+/* ===== LOGJIKA POST (RUAJTJA E PREZENCËS) ===== */
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
-
     $schoolId  = (int) ($_SESSION['user']['school_id'] ?? 0);
-    $teacherId = (int) ($_SESSION['user']['id'] ?? 0);
+    $teacherId = (int) ($_SESSION['user']['id'] ?? 0); // Ose teacher_id varësisht nga sesioni juaj
 
     $studentId = (int) ($_POST['student_id'] ?? 0);
     $classId   = (int) ($_POST['class_id'] ?? 0);
     $subjectId = (int) ($_POST['subject_id'] ?? 0);
 
     if (!$schoolId || !$teacherId || !$studentId || !$classId || !$subjectId) {
-        die('Invalid attendance data');
+        die('Të dhëna të pavlefshme për prezencën');
     }
 
-    $present = isset($_POST['present']) ? 1 : 0;
-    $missing = isset($_POST['missing']) ? 1 : 0;
+    $present = isset($_POST['present_action']) ? 1 : 0;
+    $missing = isset($_POST['missing_action']) ? 1 : 0;
 
-    /* ===== 1 HOUR LOCK CHECK ===== */
+    /* ===== KONTROLLI I LOCK-UT (1 ORË) ===== */
     $lockStmt = $pdo->prepare("
-        SELECT id
-        FROM attendance
-        WHERE student_id = ?
-          AND class_id   = ?
-          AND subject_id = ?
-          AND teacher_id = ?
-          AND created_at >= NOW() - INTERVAL 1 HOUR
-        LIMIT 1
+        SELECT id FROM attendance 
+        WHERE student_id = ? AND class_id = ? AND subject_id = ? AND teacher_id = ? 
+        AND created_at >= NOW() - INTERVAL 1 HOUR LIMIT 1
     ");
-    $lockStmt->execute([
-        $studentId,
-        $classId,
-        $subjectId,
-        $teacherId
-    ]);
+    $lockStmt->execute([$studentId, $classId, $subjectId, $teacherId]);
 
     if ($lockStmt->fetch()) {
-        // Already recorded in the last hour
-        header("Location: " . $_SERVER['REQUEST_URI'] . "&error=locked");
+        header("Location: /E-Shkolla/class-attendance?class_id=$classId&subject_id=$subjectId&error=locked");
         exit;
     }
 
-    /* ===== INSERT ATTENDANCE ===== */
+    /* ===== INSERTIMI I PREZENCËS ===== */
     $stmt = $pdo->prepare("
-        INSERT INTO attendance
-            (school_id, student_id, class_id, subject_id, teacher_id, present, missing)
+        INSERT INTO attendance (school_id, student_id, class_id, subject_id, teacher_id, present, missing)
         VALUES (?, ?, ?, ?, ?, ?, ?)
     ");
+    $stmt->execute([$schoolId, $studentId, $classId, $subjectId, $teacherId, $present, $missing]);
 
-    $stmt->execute([
-        $schoolId,
-        $studentId,
-        $classId,
-        $subjectId,
-        $teacherId,
-        $present,
-        $missing
-    ]);
-
-    header("Location: " . $_SERVER['REQUEST_URI']);
+    header("Location: /E-Shkolla/class-attendance?class_id=$classId&subject_id=$subjectId&success=1");
     exit;
 }
 
-
+/* ===== LOGJIKA GET (SHFAQJA E LISTËS) ===== */
 $classId = (int)($_GET['class_id'] ?? 0);
+$subjectId = (int)($_GET['subject_id'] ?? 0); // E nevojshme për formën POST
 
 if ($classId <= 0) {
-    die('Invalid class ID');
+    die('ID e klasës e pavlefshme');
 }
 
 $stmt = $pdo->prepare("
-    SELECT 
-        sc.id AS student_class_id,
-        sc.class_id,
-        s.student_id,
-        s.name,
-        s.email,
-        s.status
+    SELECT s.student_id, s.name, s.email, s.status
     FROM student_class sc
     INNER JOIN students s ON s.student_id = sc.student_id
     WHERE sc.class_id = ?
     ORDER BY s.name ASC
 ");
-
 $stmt->execute([$classId]);
 $students = $stmt->fetchAll(PDO::FETCH_ASSOC);
+
+// Përfshirja e template-it të faqes (Sidebar etj)
+ob_start();
 ?>
-<!DOCTYPE html>
-<html lang="en">
-<head> 
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>E-Shkolla</title>
-    <script src="https://cdn.tailwindcss.com"></script>
-    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
-</head>
-<body>
-<main class="lg:pl-72">
-  <div class="xl:pl-18">
-    <div class="px-4 py-10 sm:px-6 lg:px-8 lg:py-6">
-        <div class="px-4 sm:px-6 lg:px-8">
-        <div class="sm:flex sm:items-center">
-            <div class="sm:flex-auto">
-            <h1 class="text-base font-semibold text-gray-900 dark:text-white">Nxënës</h1>
-            <p class="mt-2 text-sm text-gray-700 dark:text-gray-300">Lista e të gjithë nxënësve në klasë</p>
+
+            <div class="sm:flex-auto mt-5">
+                <h1 class="text-2xl font-bold text-gray-900">Regjistrimi i Prezencës</h1>
+                <p class="mt-2 text-sm text-gray-600">Lista e nxënësve për klasën dhe lëndën e përzgjedhur.</p>
             </div>
         </div>
-        <div class="mt-8 flow-root">
-            <div class="-mx-4 -my-2 overflow-x-auto sm:-mx-6 lg:-mx-8">
-            <div class="inline-block min-w-full py-2 align-middle sm:px-6 lg:px-8">
-                <?php if (isset($_GET['error']) && $_GET['error'] === 'locked'): ?>
-  <div class="mb-4 rounded-md bg-yellow-100 px-4 py-3 text-sm text-yellow-800">
-    Prezenca për këtë nxënës është regjistruar tashmë gjatë orës së fundit.
-  </div>
-<?php endif; ?>
 
-                <table class="relative min-w-full divide-y divide-gray-300 dark:divide-white/15">
-                <thead>
-                    <tr>
-                        <th scope="col" class="py-3.5 pr-3 pl-4 text-left text-sm font-semibold text-gray-900 sm:pl-0 dark:text-white">Emri</th>
-                        <th scope="col" class="px-3 py-3.5 text-left text-sm font-semibold text-gray-900 dark:text-white">Email</th>
-                        <th scope="col" class="px-3 py-3.5 text-left text-sm font-semibold text-gray-900 dark:text-white">Statusi</th>
-                        <th scope="col" class="px-3 py-3.5 text-left text-sm font-semibold text-gray-900 dark:text-white">Veprime</th>
-                        <th scope="col" class="py-3.5 pr-4 pl-3 sm:pr-0">
-                            <span class="sr-only">Edit</span>
-                        </th>
-                    </tr>
-                </thead>
-                <?php if(!empty($students)): ?>
-                <?php foreach($students as $row): ?>
-                <tbody class="divide-y divide-gray-200 dark:divide-white/10">
-                    <tr>
-                        <td class="py-4 pr-3 pl-4 text-sm font-medium whitespace-nowrap text-gray-900 sm:pl-0 dark:text-white"><?= htmlspecialchars($row['name']) ?></td>
-                        <td class="px-3 py-4 text-sm whitespace-nowrap text-gray-500 dark:text-gray-400"><?= htmlspecialchars($row['email']) ?></td>
-                        <td class="px-3 py-4 text-sm whitespace-nowrap text-gray-500 dark:text-gray-400">
-                            <button class="status-toggle px-3 py-1 rounded-full text-xs font-semibold
-                                <?= $row['status']==='active'
-                                ? 'bg-green-100 text-green-700'
-                                : 'bg-red-100 text-red-600' ?>"
-                               
-                                data-field="status"
-                                data-value="<?= $row['status'] ?>">
-                                <?= ucfirst($row['status']) ?>
-                            </button>
-                
-                        </td>   
-                        <td class="px-3 py-4 text-sm whitespace-nowrap">
-                            <div class="flex gap-2">
-                                <form method="post" class="flex gap-2">
-                                    <input type="hidden" name="student_id" value="<?= (int)$row['student_id'] ?>">
-                                    <input type="hidden" name="class_id" value="<?= $classId ?>">
-                                    <input type="hidden" name="subject_id" value="<?= (int)$subjectId ?>">
+        <?php if (isset($_GET['error']) && $_GET['error'] === 'locked'): ?>
+            <div id="alert-locked" class="mb-4 mt-4 p-4 rounded-xl bg-amber-50 border border-amber-200 flex items-center gap-3 text-amber-800 shadow-sm transition-opacity duration-500">
+                <svg class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"/>
+                </svg>
+                <span class="font-medium">Vërejtje: Prezenca për këtë nxënës është regjistruar para më pak se një ore.</span>
+            </div>
 
-                                    <button type="submit" name="present" class="px-3 py-1.5 text-xs font-medium rounded-full bg-blue-100 text-blue-800 hover:bg-blue-200 transition">Prezent</button>
+            <script>
+                setTimeout(() => {
+                    const alertBox = document.getElementById('alert-locked');
+                    if (alertBox) {
+                        alertBox.style.opacity = '0';
+                        setTimeout(() => alertBox.remove(), 500); // remove after fade out
+                    }
+                }, 5000); // 5 seconds
+            </script>
+        <?php endif; ?>
 
-                                    <button type="submit" name="missing" class="px-3 py-1.5 text-xs font-medium rounded-full bg-red-100 text-red-800 hover:bg-red-200 transition">Mungon</button>
-                                </form>
-                            </div>
-                        </td>
-                    </tr>
-                </tbody>
-                <?php endforeach ?>
-                <?php else: ?>
-                    <tr>
-                        <td colspan="8" class="py-10 text-center text-sm text-gray-500 dark:text-gray-400">
-                            Tabela nuk përmban të dhëna
-                        </td>
-                    </tr>
-                <?php endif; ?>
+
+        <div class="bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden mt-5">
+            <div class="overflow-x-auto">
+                <table class="min-w-full divide-y divide-gray-200">
+                    <thead class="bg-gray-50">
+                        <tr>
+                            <th class="px-6 py-4 text-left text-xs font-semibold text-gray-500 uppercase tracking-wider">Nxënësi</th>
+                            <th class="px-6 py-4 text-left text-xs font-semibold text-gray-500 uppercase tracking-wider text-center">Statusi</th>
+                            <th class="px-6 py-4 text-right text-xs font-semibold text-gray-500 uppercase tracking-wider">Veprimi</th>
+                        </tr>
+                    </thead>
+                    <tbody class="divide-y divide-gray-100 bg-white">
+                        <?php if(!empty($students)): ?>
+                            <?php foreach($students as $row): ?>
+                                <tr class="hover:bg-gray-50/50 transition-colors">
+                                    <td class="px-6 py-4 whitespace-nowrap">
+                                        <div class="flex flex-col">
+                                            <span class="text-sm font-bold text-gray-900"><?= htmlspecialchars($row['name']) ?></span>
+                                            <span class="text-xs text-gray-500"><?= htmlspecialchars($row['email']) ?></span>
+                                        </div>
+                                    </td>
+                                    <td class="px-6 py-4 whitespace-nowrap text-center">
+                                        <span class="px-2.5 py-1 rounded-lg text-xs font-bold inline-flex <?= $row['status'] === 'active' ? 'bg-emerald-100 text-emerald-700' : 'bg-rose-100 text-rose-700' ?>">
+                                            <?= strtoupper($row['status']) ?>
+                                        </span>
+                                    </td>
+                                    <td class="px-6 py-4 whitespace-nowrap text-right">
+                                        <form method="POST" class="inline-flex gap-2">
+                                            <input type="hidden" name="student_id" value="<?= (int)$row['student_id'] ?>">
+                                            <input type="hidden" name="class_id" value="<?= $classId ?>">
+                                            <input type="hidden" name="subject_id" value="<?= $subjectId ?>">
+
+                                            <button type="submit" name="present_action" class="inline-flex items-center px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white text-xs font-bold rounded-xl transition-all shadow-sm active:scale-95">
+                                                Prezent
+                                            </button>
+
+                                            <button type="submit" name="missing_action" class="inline-flex items-center px-4 py-2 bg-white border border-rose-200 text-rose-600 hover:bg-rose-50 text-xs font-bold rounded-xl transition-all active:scale-95">
+                                                Mungon
+                                            </button>
+                                        </form>
+                                    </td>
+                                </tr>
+                            <?php endforeach; ?>
+                        <?php else: ?>
+                            <tr>
+                                <td colspan="3" class="px-6 py-12 text-center text-gray-400 italic">
+                                    Nuk u gjet asnjë nxënës në këtë klasë.
+                                </td>
+                            </tr>
+                        <?php endif; ?>
+                    </tbody>
                 </table>
             </div>
-            </div>
-        </div>
         </div>
     </div>
-  </div>
 </main>
-<script>
-  const btn = document.getElementById('addSchoolBtn');
-  const form = document.getElementById('addSchoolForm');
-  const cancel = document.getElementById('cancel');
-
-  btn?.addEventListener('click', () => {
-    form.classList.remove('hidden');
-    form.scrollIntoView({ behavior: 'smooth', block: 'start' });
-  });
-
-  cancel?.addEventListener('click', () => {
-    form.classList.add('hidden');
-  });
-</script>
-</body>
-</html>
+<?php
+$content = ob_get_clean();
+require_once __DIR__ . '/../index.php';
+?>

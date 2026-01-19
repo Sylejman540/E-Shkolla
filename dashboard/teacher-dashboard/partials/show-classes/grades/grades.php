@@ -1,11 +1,14 @@
 <?php
+ini_set('display_errors', 1);
+error_reporting(E_ALL);
+
 if (session_status() === PHP_SESSION_NONE) {
     session_start();
 }
 
-require_once __DIR__ . '/../index.php';
 require_once __DIR__ . '/../../../../../db.php';
 
+// 1. Siguria & Validimi i Sesionit
 $schoolId = (int) ($_SESSION['user']['school_id'] ?? 0);
 $userId   = (int) ($_SESSION['user']['id'] ?? 0);
 
@@ -14,229 +17,153 @@ $stmt->execute([$userId]);
 $teacherId = (int) $stmt->fetchColumn();
 
 if (!$schoolId || !$teacherId) {
-    die('Invalid teacher session');
+    die('Sesion i pavlefshëm.');
 }
 
+// 2. Trajtimi i POST (Ruajtja e Notës)
 if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['student_id'])) {
+    $studentId = (int) $_POST['student_id'];
+    $classId   = (int) $_POST['class_id'];
+    $subjectId = (int) $_POST['subject_id'];
+    $grade     = filter_var($_POST['grade'], FILTER_VALIDATE_INT);
+    $comment   = trim(filter_var($_POST['comment'], FILTER_SANITIZE_STRING));
 
-    $studentId = (int) ($_POST['student_id'] ?? 0);
-    $classId   = (int) ($_POST['class_id'] ?? 0);
-    $subjectId = (int) ($_POST['subject_id'] ?? 0);
-
-    $grade     = $_POST['grade'] ?? null;
-    $comment   = $_POST['comment'] ?? null;
-
-    if (!$studentId || !$classId || !$subjectId) {
-        die('Invalid grade data');
+    // Validimi i rrezes së notës (1-5)
+    if ($grade === false || $grade < 1 || $grade > 5) {
+        $_SESSION['error'] = "Nota duhet të jetë midis 1 dhe 5.";
+    } else {
+        try {
+            $stmt = $pdo->prepare("
+                INSERT INTO grades (school_id, teacher_id, student_id, class_id, subject_id, grade, comment)
+                VALUES (?, ?, ?, ?, ?, ?, ?)
+                ON DUPLICATE KEY UPDATE 
+                    grade = VALUES(grade), 
+                    comment = VALUES(comment),
+                    updated_at = NOW()");
+            
+            $stmt->execute([$schoolId, $teacherId, $studentId, $classId, $subjectId, $grade, $comment]);
+            $_SESSION['success'] = "Nota u ruajt me sukses!";
+        } catch (Exception $e) {
+            $_SESSION['error'] = "Gabim gjatë ruajtjes.";
+        }
     }
-
-    $stmt = $pdo->prepare("
-        INSERT INTO grades(school_id, teacher_id, student_id, class_id, subject_id, grade, comment)
-        VALUES (?, ?, ?, ?, ?, ?, ?)
-        ON DUPLICATE KEY UPDATE grade = VALUES(grade),  comment = VALUES(comment)");
-
-    $stmt->execute([$schoolId, $teacherId, $studentId, $classId, $subjectId, $grade, $comment]);
-
     header("Location: " . $_SERVER['REQUEST_URI']);
     exit;
 }
 
+// 3. Marrja e të dhënave (Optimizuar)
 $classId   = (int) ($_GET['class_id'] ?? 0);
 $subjectId = (int) ($_GET['subject_id'] ?? 0);
 
-if (!$classId || !$subjectId) {
-    die('Missing class or subject');
-}
-
+// Statistikat
 $stmt = $pdo->prepare("
-    SELECT
-        AVG(grade)         AS avg_grade,
-        MAX(grade)         AS max_grade,
-        MIN(grade)         AS min_grade,
-        SUM(grade IS NULL) AS no_grade_count
-    FROM grades
-    WHERE school_id = ?
-      AND class_id = ?
-      AND subject_id = ?");
+    SELECT 
+        ROUND(AVG(grade), 2) as avg_grade, 
+        MAX(grade) as max_grade, 
+        MIN(grade) as min_grade,
+        COUNT(CASE WHEN grade IS NULL THEN 1 END) as no_grade
+    FROM grades WHERE class_id = ? AND subject_id = ?");
+$stmt->execute([$classId, $subjectId]);
+$stats = $stmt->fetch();
 
-$stmt->execute([$schoolId, $classId, $subjectId]);
-$stats = $stmt->fetch(PDO::FETCH_ASSOC);
-
-$avgGrade = $stats['avg_grade'] !== null ? number_format($stats['avg_grade'], 2) : '-';
-$maxGrade = $stats['max_grade'] ?? '-';
-$minGrade = $stats['min_grade'] ?? '-';
-$noGrade  = $stats['no_grade_count'] ?? 0;
-
-$stmt = $pdo->prepare("SELECT name FROM subjects WHERE id = ?");
-$stmt->execute([$subjectId]);
-$subjectName = $stmt->fetchColumn() ?: 'Lënda';
-
-$stmt = $pdo->prepare("SELECT s.student_id, s.name, s.email, s.status FROM student_class sc INNER JOIN students s ON s.student_id = sc.student_id WHERE sc.class_id = ? ORDER BY s.name ASC");
-
-$stmt->execute([$classId]);
-$students = $stmt->fetchAll(PDO::FETCH_ASSOC);
-
-$stmt = $pdo->prepare("SELECT student_id, grade, comment FROM grades WHERE school_id = ? AND class_id = ? AND subject_id = ?");
-
-$stmt->execute([$schoolId, $classId, $subjectId]);
-
-$grades = [];
-foreach ($stmt->fetchAll(PDO::FETCH_ASSOC) as $row) {
-    $grades[$row['student_id']] = $row;
-}
+// Lista e studentëve dhe notat ekzistuese
+$stmt = $pdo->prepare("
+    SELECT s.student_id, s.name, g.grade, g.comment 
+    FROM student_class sc 
+    JOIN students s ON s.student_id = sc.student_id 
+    LEFT JOIN grades g ON g.student_id = s.student_id AND g.subject_id = ?
+    WHERE sc.class_id = ? 
+    ORDER BY s.name ASC");
+$stmt->execute([$subjectId, $classId]);
+$students = $stmt->fetchAll();
 ?>
+
 <!DOCTYPE html>
-<html lang="en">
-<head> 
+<html lang="sq">
+<head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>E-Shkolla</title>
+    <title>Menaxhimi i Notave</title>
     <script src="https://cdn.tailwindcss.com"></script>
-    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <style>
+        @keyframes fade-out { from { opacity: 1; } to { opacity: 0; } }
+        .toast { animation: fade-out 1s ease 3s forwards; }
+    </style>
 </head>
-<body>
-<main class="lg:pl-72">
-  <div class="xl:pl-18">
-    <div class="px-4 py-10 sm:px-6 lg:px-8 lg:py-6">
-        <div class="px-4 sm:px-6 lg:px-8">
-        <div class="sm:flex sm:items-center">
-        <div class="sm:flex-auto">
-            <h1 class="text-base font-semibold text-gray-900 dark:text-white">
-            Notat – <?= htmlspecialchars($subjectName) ?>
-            </h1>
-            <p class="mt-2 text-sm text-gray-700 dark:text-gray-300">
-            Statistika për klasën aktuale
-            </p>
-        </div>
+<body class="bg-gray-50 dark:bg-gray-900">
+
+<?php if (isset($_SESSION['success'])): ?>
+    <div class="toast fixed top-5 right-5 z-50 bg-green-600 text-white px-6 py-3 rounded-lg shadow-xl">
+        <?= $_SESSION['success']; unset($_SESSION['success']); ?>
+    </div>
+<?php endif; ?>        
+        <div class="mb-8">
+            <h1 class="text-2xl font-bold text-gray-900 dark:text-white">Notat: <?= htmlspecialchars($subjectName ?? 'Lënda') ?></h1>
+            <div class="grid grid-cols-1 sm:grid-cols-4 gap-4 mt-6">
+                <div class="bg-white dark:bg-gray-800 p-4 rounded-2xl shadow-sm border border-gray-100 dark:border-gray-700">
+                    <p class="text-xs font-semibold text-gray-400 uppercase">Mesatarja</p>
+                    <p class="text-2xl font-bold text-indigo-600"><?= $stats['avg_grade'] ?: '0.00' ?></p>
+                </div>
+                </div>
         </div>
 
-        <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6 mb-10 mt-4">
-        
-        <div class="rounded-xl bg-white p-5 shadow">
-            <p class="text-sm text-gray-500">Mesatarja e notave</p>
-            <p class="mt-2 text-2xl font-bold text-gray-900">
-            <?= $avgGrade ?>
-            </p>
-        </div>
-
-        <div class="rounded-xl bg-white p-5 shadow">
-            <p class="text-sm text-gray-500">Nxënës pa notë</p>
-            <p class="mt-2 text-2xl font-bold text-indigo-600">
-            <?= $noGrade ?>
-            </p>
-        </div>
-
-        <div class="rounded-xl bg-white p-5 shadow">
-            <p class="text-sm text-gray-500">Nota më e lartë</p>
-            <p class="mt-2 text-2xl font-bold text-green-600">
-            <?= $maxGrade ?>
-            </p>
-        </div>
-
-        <div class="rounded-xl bg-white p-5 shadow">
-            <p class="text-sm text-gray-500">Nota më e ulët</p>
-            <p class="mt-2 text-2xl font-bold text-pink-600">
-            <?= $minGrade ?>
-            </p>
-        </div>
-        </div>
-        <div class="mt-8 flow-root">
-            <div class="-mx-4 -my-2 overflow-x-auto sm:-mx-6 lg:-mx-8">
-            <div class="inline-block min-w-full py-2 align-middle sm:px-6 lg:px-8">
-                <table class="relative min-w-full divide-y divide-gray-300 dark:divide-white/15">
-                <thead>
+        <div class="bg-white dark:bg-gray-800 shadow-sm rounded-2xl overflow-hidden border border-gray-100 dark:border-gray-700">
+            <table class="w-full text-left">
+                <thead class="bg-gray-50 dark:bg-gray-700/50">
                     <tr>
-                        <th scope="col" class="py-3.5 pr-3 pl-4 text-left text-sm font-semibold text-gray-900 sm:pl-0 dark:text-white">Emri i nxënësit</th>
-                        <th scope="col" class="px-3 py-3.5 text-left text-sm font-semibold text-gray-900 dark:text-white">Nota</th>
-                        <th scope="col" class="px-3 py-3.5 text-left text-sm font-semibold text-gray-900 dark:text-white">Koment</th>
-                        <th scope="col" class="px-3 py-3.5 text-left text-sm font-semibold text-gray-900 dark:text-white">Statusi</th>
-                        <th scope="col" class="py-3.5 pr-4 pl-3 sm:pr-0">
-                            <span class="sr-only">Edit</span>
-                        </th>
+                        <th class="px-6 py-4 text-sm font-semibold text-gray-900 dark:text-white">Nxënësi</th>
+                        <th class="px-6 py-4 text-sm font-semibold text-gray-900 dark:text-white">Nota (1-5)</th>
+                        <th class="px-6 py-4 text-sm font-semibold text-gray-900 dark:text-white">Koment</th>
+                        <th class="px-6 py-4 text-right">Veprimi</th>
                     </tr>
                 </thead>
-                <?php if(!empty($students)): ?>
-                <?php foreach($students as $row): ?>
-                <tbody class="divide-y divide-gray-200 dark:divide-white/10">
-                    <tr>
-                    <td class="py-4 pr-3 pl-4 text-sm font-medium text-gray-900 sm:pl-0 dark:text-white">
-                        <?= htmlspecialchars($row['name']) ?>
+                <tbody class="divide-y divide-gray-100 dark:divide-gray-700">
+                    <?php foreach ($students as $student): ?>
+                    <tr class="hover:bg-gray-50 dark:hover:bg-gray-700/30 transition-colors">
+                        <form method="POST" onsubmit="return handleFormSubmit(this);">
+                            <input type="hidden" name="student_id" value="<?= $student['student_id'] ?>">
+                            <input type="hidden" name="class_id" value="<?= $classId ?>">
+                            <input type="hidden" name="subject_id" value="<?= $subjectId ?>">
+                            
+                            <td class="px-6 py-4 font-medium text-gray-900 dark:text-white">
+                                <?= htmlspecialchars($student['name']) ?>
+                            </td>
+                            <td class="px-6 py-4">
+                                <input type="number" name="grade" min="1" max="5" 
+                                    value="<?= $student['grade'] ?>"
+                                    class="w-20 bg-gray-50 dark:bg-gray-900 border border-gray-200 dark:border-gray-600 rounded-xl px-3 py-2 focus:ring-2 focus:ring-indigo-500 outline-none font-bold <?= $student['grade'] == 1 ? 'text-red-500' : '' ?>">
+                            </td>
+<td class="px-6 py-4 whitespace-nowrap">
+                        <input type="text" name="comment" 
+                            value="<?= htmlspecialchars($student['comment'] ?? '') ?>"
+                            placeholder="Shto një shënim..."
+                            class="w-full min-w-[200px] px-3 py-2 bg-gray-50 dark:bg-gray-800 border border-gray-200 dark:border-white/10 rounded-xl focus:ring-2 focus:ring-indigo-500 outline-none text-sm">
                     </td>
-
-                    <td class="py-4 px-3">
-                        <form method="POST" class="flex items-center gap-3">
-                        <input type="hidden" name="student_id" value="<?= (int)$row['student_id'] ?>">
-                        <input type="hidden" name="class_id" value="<?= (int)$classId ?>">
-                        <input type="hidden" name="subject_id" value="<?= (int)$subjectId ?>">
-
-                        <input
-                            type="text"
-                            name="grade"
-                            value="<?= htmlspecialchars($grades[$row['student_id']]['grade'] ?? '') ?>"
-                            class="w-20 px-2 py-1 rounded outline-none hover:bg-gray-100 focus:bg-indigo-50 focus:ring-2 focus:ring-indigo-500"
-                            placeholder="1–5"
-                        />
-                    </td>
-
-                    <td class="py-4 px-3">
-                        <input
-                            type="text"
-                            name="comment"
-                            value="<?= htmlspecialchars($grades[$row['student_id']]['comment'] ?? '') ?>"
-                            class="min-w-[10rem] px-2 py-1 rounded outline-none hover:bg-gray-100 focus:bg-indigo-50 focus:ring-2 focus:ring-indigo-500"
-                            placeholder="Koment"
-                        />
-                    </td>
-
-                    <td class="px-3 py-4 text-sm whitespace-nowrap text-gray-500 dark:text-gray-400">
-                        <span class="px-3 py-1 rounded-full text-xs font-semibold
-                            <?= $row['status']==='active'
-                            ? 'bg-green-100 text-green-700'
-                            : 'bg-red-100 text-red-600' ?>">
-                            <?= ucfirst($row['status']) ?>
-                        </span>
-                    </td>
-
-                    <td class="py-4 pr-4 text-right">
-                        <button
-                            type="submit"
-                            class="rounded-md bg-indigo-600 font-semibold px-3 py-1.5 text-sm text-white hover:bg-indigo-700">
-                            Ruaj
-                        </button>
-                    </form>
-                    </td>
+                            <td class="px-6 py-4 text-right">
+                                <button type="submit" class="bg-indigo-600 hover:bg-indigo-700 text-white px-5 py-2 rounded-xl text-sm font-bold shadow-md transition-all active:scale-95">
+                                    Ruaj
+                                </button>
+                            </td>
+                        </form>
                     </tr>
+                    <?php endforeach; ?>
                 </tbody>
-                <?php endforeach ?>
-                <?php else: ?>
-                    <tr>
-                        <td colspan="8" class="py-10 text-center text-sm text-gray-500 dark:text-gray-400">
-                            Tabela nuk përmban të dhëna
-                        </td>
-                    </tr>
-                <?php endif; ?>
-                </table>
-            </div>
-            </div>
-        </div>
+            </table>
         </div>
     </div>
-  </div>
 </main>
+<?php
+$content = ob_get_clean();
+// Kjo siguron që kodi i mësipërm të shfaqet brenda strukturës tuaj kryesore
+require_once __DIR__ . '/../index.php'; 
+?>
 <script>
-  const btn = document.getElementById('addSchoolBtn');
-  const form = document.getElementById('addSchoolForm');
-  const cancel = document.getElementById('cancel');
-
-  btn?.addEventListener('click', () => {
-    form.classList.remove('hidden');
-    form.scrollIntoView({ behavior: 'smooth', block: 'start' });
-  });
-
-  cancel?.addEventListener('click', () => {
-    form.classList.add('hidden');
-  });
+function handleFormSubmit(form) {
+    const btn = form.querySelector('button[type="submit"]');
+    btn.disabled = true;
+    btn.innerHTML = '...';
+    btn.classList.add('opacity-50', 'cursor-not-allowed');
+    return true;
+}
 </script>
-
 </body>
 </html>
