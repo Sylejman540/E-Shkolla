@@ -1,169 +1,194 @@
-<?php
-ini_set('display_errors', 1);
-error_reporting(E_ALL);
-
-if (session_status() === PHP_SESSION_NONE) {
-    session_start();
-}
-
+<?php 
+if (session_status() === PHP_SESSION_NONE) { session_start(); }
 require_once __DIR__ . '/../../../../../db.php';
 
-// 1. Siguria & Validimi i Sesionit
-$schoolId = (int) ($_SESSION['user']['school_id'] ?? 0);
-$userId   = (int) ($_SESSION['user']['id'] ?? 0);
-
-$stmt = $pdo->prepare("SELECT id FROM teachers WHERE user_id = ?");
-$stmt->execute([$userId]);
-$teacherId = (int) $stmt->fetchColumn();
-
-if (!$schoolId || !$teacherId) {
-    die('Sesion i pavlefshëm.');
-}
-
-// 2. Trajtimi i POST (Ruajtja e Notës)
-if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['student_id'])) {
-    $studentId = (int) $_POST['student_id'];
-    $classId   = (int) $_POST['class_id'];
-    $subjectId = (int) $_POST['subject_id'];
-    $grade     = filter_var($_POST['grade'], FILTER_VALIDATE_INT);
-    $comment   = trim(filter_var($_POST['comment'], FILTER_SANITIZE_STRING));
-
-    // Validimi i rrezes së notës (1-5)
-    if ($grade === false || $grade < 1 || $grade > 5) {
-        $_SESSION['error'] = "Nota duhet të jetë midis 1 dhe 5.";
-    } else {
-        try {
-            $stmt = $pdo->prepare("
-                INSERT INTO grades (school_id, teacher_id, student_id, class_id, subject_id, grade, comment)
-                VALUES (?, ?, ?, ?, ?, ?, ?)
-                ON DUPLICATE KEY UPDATE 
-                    grade = VALUES(grade), 
-                    comment = VALUES(comment),
-                    updated_at = NOW()");
-            
-            $stmt->execute([$schoolId, $teacherId, $studentId, $classId, $subjectId, $grade, $comment]);
-            $_SESSION['success'] = "Nota u ruajt me sukses!";
-        } catch (Exception $e) {
-            $_SESSION['error'] = "Gabim gjatë ruajtjes.";
-        }
-    }
-    header("Location: " . $_SERVER['REQUEST_URI']);
-    exit;
-}
-
-// 3. Marrja e të dhënave (Optimizuar)
+$schoolId  = (int) ($_SESSION['user']['school_id'] ?? 0);
 $classId   = (int) ($_GET['class_id'] ?? 0);
 $subjectId = (int) ($_GET['subject_id'] ?? 0);
 
-// Statistikat
-$stmt = $pdo->prepare("
-    SELECT 
-        ROUND(AVG(grade), 2) as avg_grade, 
-        MAX(grade) as max_grade, 
-        MIN(grade) as min_grade,
-        COUNT(CASE WHEN grade IS NULL THEN 1 END) as no_grade
-    FROM grades WHERE class_id = ? AND subject_id = ?");
-$stmt->execute([$classId, $subjectId]);
-$stats = $stmt->fetch();
+// 1. Logjika e Ruajtjes (POST)
+if ($_SERVER['REQUEST_METHOD'] === 'POST') {
+    $studentId = (int) $_POST['student_id'];
+    $grade     = isset($_POST['grade']) ? (int)$_POST['grade'] : null;
+    $comment   = isset($_POST['comment']) ? trim($_POST['comment']) : null;
+    $teacherId = (int) $_SESSION['user']['id'];
 
-// Lista e studentëve dhe notat ekzistuese
+    try {
+        // Marrim ID-në e mësuesit nga tabela teachers
+        $tStmt = $pdo->prepare("SELECT id FROM teachers WHERE user_id = ?");
+        $tStmt->execute([$teacherId]);
+        $realTeacherId = $tStmt->fetchColumn();
+
+        $stmt = $pdo->prepare("
+            INSERT INTO grades (school_id, teacher_id, student_id, class_id, subject_id, grade, comment)
+            VALUES (?, ?, ?, ?, ?, ?, ?)
+            ON DUPLICATE KEY UPDATE 
+                grade = COALESCE(?, grade), 
+                comment = COALESCE(?, comment),
+                updated_at = NOW()
+        ");
+        $stmt->execute([
+            $schoolId, $realTeacherId, $studentId, $classId, $subjectId, 
+            $grade, $comment, $grade, $comment
+        ]);
+        echo "success";
+    } catch (Exception $e) {
+        http_response_code(500);
+        echo "error";
+    }
+    exit;
+}
+
+// 2. Marrja e të dhënave
 $stmt = $pdo->prepare("
-    SELECT s.student_id, s.name, g.grade, g.comment 
+    SELECT s.student_id, s.name, s.email, g.grade, g.comment 
     FROM student_class sc 
     JOIN students s ON s.student_id = sc.student_id 
     LEFT JOIN grades g ON g.student_id = s.student_id AND g.subject_id = ?
     WHERE sc.class_id = ? 
     ORDER BY s.name ASC");
 $stmt->execute([$subjectId, $classId]);
-$students = $stmt->fetchAll();
+$students = $stmt->fetchAll(PDO::FETCH_ASSOC);
+
+ob_start();
 ?>
 
-<!DOCTYPE html>
-<html lang="sq">
-<head>
-    <meta charset="UTF-8">
-    <title>Menaxhimi i Notave</title>
-    <script src="https://cdn.tailwindcss.com"></script>
-    <style>
-        @keyframes fade-out { from { opacity: 1; } to { opacity: 0; } }
-        .toast { animation: fade-out 1s ease 3s forwards; }
-    </style>
-</head>
-<body class="bg-gray-50 dark:bg-gray-900">
-
-<?php if (isset($_SESSION['success'])): ?>
-    <div class="toast fixed top-5 right-5 z-50 bg-green-600 text-white px-6 py-3 rounded-lg shadow-xl">
-        <?= $_SESSION['success']; unset($_SESSION['success']); ?>
-    </div>
-<?php endif; ?>        
-        <div class="mb-8">
-            <h1 class="text-2xl font-bold text-gray-900 dark:text-white">Notat: <?= htmlspecialchars($subjectName ?? 'Lënda') ?></h1>
-            <div class="grid grid-cols-1 sm:grid-cols-4 gap-4 mt-6">
-                <div class="bg-white dark:bg-gray-800 p-4 rounded-2xl shadow-sm border border-gray-100 dark:border-gray-700">
-                    <p class="text-xs font-semibold text-gray-400 uppercase">Mesatarja</p>
-                    <p class="text-2xl font-bold text-indigo-600"><?= $stats['avg_grade'] ?: '0.00' ?></p>
-                </div>
-                </div>
+<div class="relative min-h-screen p-4">
+    <div class="flex flex-col md:flex-row md:items-center justify-between gap-4 mb-6">
+        <div>
+            <h1 class="text-2xl font-bold text-slate-900 dark:text-white tracking-tight text-indigo-600">Regjistri Digjital</h1>
+            <p class="text-sm text-slate-500">Të dhënat ruhen automatikisht pas çdo ndryshimi.</p>
         </div>
 
-        <div class="bg-white dark:bg-gray-800 shadow-sm rounded-2xl overflow-hidden border border-gray-100 dark:border-gray-700">
-            <table class="w-full text-left">
-                <thead class="bg-gray-50 dark:bg-gray-700/50">
-                    <tr>
-                        <th class="px-6 py-4 text-sm font-semibold text-gray-900 dark:text-white">Nxënësi</th>
-                        <th class="px-6 py-4 text-sm font-semibold text-gray-900 dark:text-white">Nota (1-5)</th>
-                        <th class="px-6 py-4 text-sm font-semibold text-gray-900 dark:text-white">Koment</th>
-                        <th class="px-6 py-4 text-right">Veprimi</th>
+        <div class="relative w-full md:w-80">
+            <input type="text" id="liveSearch" placeholder="Kërko nxënësin..." 
+                   class="w-full pl-10 pr-4 py-2.5 bg-white dark:bg-gray-900 border border-slate-200 dark:border-white/10 rounded-2xl text-sm focus:ring-2 focus:ring-indigo-500 outline-none transition-all dark:text-white shadow-sm">
+            <span class="absolute inset-y-0 left-0 pl-3 flex items-center text-slate-400">
+                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"/></svg>
+            </span>
+        </div>
+    </div>
+
+    <div class="bg-white dark:bg-gray-900 rounded-2xl border border-slate-200 dark:border-white/10 shadow-sm overflow-hidden">
+        <div class="overflow-x-auto">
+            <table class="w-full text-left border-collapse table-fixed min-w-[900px]">
+                <thead>
+                    <tr class="bg-slate-50 dark:bg-white/5 border-b border-slate-200 dark:border-white/10">
+                        <th class="w-[30%] px-6 py-4 text-xs font-bold uppercase tracking-wider text-slate-500 dark:text-slate-400">Nxënësi</th>
+                        <th class="w-[15%] px-6 py-4 text-xs font-bold uppercase tracking-wider text-slate-500 dark:text-slate-400 text-center">Nota (1-5)</th>
+                        <th class="w-[45%] px-6 py-4 text-xs font-bold uppercase tracking-wider text-slate-500 dark:text-slate-400">Koment/Vlerësimi</th>
+                        <th class="w-[10%] px-6 py-4 text-xs font-bold uppercase tracking-wider text-slate-500 dark:text-slate-400 text-right pr-6">Statusi</th>
                     </tr>
                 </thead>
-                <tbody class="divide-y divide-gray-100 dark:divide-gray-700">
-                    <?php foreach ($students as $student): ?>
-                    <tr class="hover:bg-gray-50 dark:hover:bg-gray-700/30 transition-colors">
-                        <form method="POST" onsubmit="return handleFormSubmit(this);">
-                            <input type="hidden" name="student_id" value="<?= $student['student_id'] ?>">
-                            <input type="hidden" name="class_id" value="<?= $classId ?>">
-                            <input type="hidden" name="subject_id" value="<?= $subjectId ?>">
-                            
-                            <td class="px-6 py-4 font-medium text-gray-900 dark:text-white">
-                                <?= htmlspecialchars($student['name']) ?>
-                            </td>
-                            <td class="px-6 py-4">
-                                <input type="number" name="grade" min="1" max="5" 
-                                    value="<?= $student['grade'] ?>"
-                                    class="w-20 bg-gray-50 dark:bg-gray-900 border border-gray-200 dark:border-gray-600 rounded-xl px-3 py-2 focus:ring-2 focus:ring-indigo-500 outline-none font-bold <?= $student['grade'] == 1 ? 'text-red-500' : '' ?>">
-                            </td>
-<td class="px-6 py-4 whitespace-nowrap">
-                        <input type="text" name="comment" 
-                            value="<?= htmlspecialchars($student['comment'] ?? '') ?>"
-                            placeholder="Shto një shënim..."
-                            class="w-full min-w-[200px] px-3 py-2 bg-gray-50 dark:bg-gray-800 border border-gray-200 dark:border-white/10 rounded-xl focus:ring-2 focus:ring-indigo-500 outline-none text-sm">
-                    </td>
-                            <td class="px-6 py-4 text-right">
-                                <button type="submit" class="bg-indigo-600 hover:bg-indigo-700 text-white px-5 py-2 rounded-xl text-sm font-bold shadow-md transition-all active:scale-95">
-                                    Ruaj
-                                </button>
-                            </td>
-                        </form>
+                <tbody id="studentTableBody" class="divide-y divide-slate-200 dark:divide-white/5">
+                    <?php foreach ($students as $row): ?>
+                    <tr class="group hover:bg-slate-50/50 dark:hover:bg-white/5 transition-colors">
+                        <td class="px-6 py-4 whitespace-nowrap">
+                            <div class="flex items-center gap-3">
+                                <div class="h-10 w-10 rounded-full bg-indigo-50 dark:bg-indigo-500/10 flex items-center justify-center text-indigo-600 dark:text-indigo-400 font-bold text-xs ring-1 ring-indigo-100 dark:ring-indigo-500/20">
+                                    <?= strtoupper(substr($row['name'], 0, 2)) ?>
+                                </div>
+                                <div class="flex flex-col truncate">
+                                    <span class="student-name text-sm font-semibold text-slate-900 dark:text-white truncate"><?= htmlspecialchars($row['name']) ?></span>
+                                    <span class="text-[11px] text-slate-400 truncate"><?= htmlspecialchars($row['email']) ?></span>
+                                </div>
+                            </div>
+                        </td>
+                        <td class="px-6 py-4 text-center">
+                            <input type="number" 
+                                   class="auto-save-grade w-16 text-center bg-slate-100 dark:bg-gray-800 border-none rounded-lg py-1.5 font-bold text-indigo-600 dark:text-indigo-400 focus:ring-2 focus:ring-indigo-500 outline-none transition-all"
+                                   data-student-id="<?= $row['student_id'] ?>" 
+                                   min="1" max="5" 
+                                   value="<?= $row['grade'] ?>">
+                        </td>
+                        <td class="px-6 py-4">
+                            <div class="relative">
+                                <input type="text" 
+                                       class="auto-save-comment w-full bg-transparent border-b border-transparent hover:border-slate-200 dark:hover:border-white/10 focus:border-indigo-500 outline-none text-sm py-1.5 transition-all text-slate-600 dark:text-slate-300 italic"
+                                       data-student-id="<?= $row['student_id'] ?>" 
+                                       placeholder="Shkruaj vlerësimin këtu..." 
+                                       value="<?= htmlspecialchars($row['comment'] ?? '') ?>">
+                            </div>
+                        </td>
+                        <td class="px-6 py-4 text-right pr-6">
+                            <div class="save-indicator opacity-0 transition-opacity duration-300" data-student-id="<?= $row['student_id'] ?>">
+                                <span class="text-[10px] font-bold text-emerald-500 dark:text-emerald-400 bg-emerald-50 dark:bg-emerald-500/10 px-2 py-1 rounded-md">RUJTUR</span>
+                            </div>
+                        </td>
                     </tr>
                     <?php endforeach; ?>
                 </tbody>
             </table>
         </div>
     </div>
-</main>
+</div>
+
+<script>
+// Funksioni kryesor për Ruajtjen (Auto-Save)
+function saveData(studentId, field, value) {
+    const indicator = document.querySelector(`.save-indicator[data-student-id="${studentId}"]`);
+    const formData = new FormData();
+    formData.append('student_id', studentId);
+    formData.append(field, value);
+
+    fetch(window.location.href, {
+        method: 'POST',
+        body: formData
+    })
+    .then(res => res.text())
+    .then(data => {
+        if(data.trim() === "success") {
+            indicator.style.opacity = "1";
+            setTimeout(() => { indicator.style.opacity = "0"; }, 1500);
+        }
+    });
+}
+
+// Eventet për Notën (Ruaj kur ndryshon)
+document.querySelectorAll('.auto-save-grade').forEach(input => {
+    input.addEventListener('change', function() {
+        saveData(this.dataset.studentId, 'grade', this.value);
+    });
+});
+
+// Eventet për Komentin (Ruaj kur mbaron së shkruari - blur)
+document.querySelectorAll('.auto-save-comment').forEach(input => {
+    input.addEventListener('blur', function() {
+        saveData(this.dataset.studentId, 'comment', this.value);
+    });
+    // Ose ruaj kur shtyp Enter
+    input.addEventListener('keypress', function(e) {
+        if (e.key === 'Enter') {
+            this.blur();
+        }
+    });
+});
+
+// Live Search me Highlight
+document.getElementById('liveSearch').addEventListener('input', function() {
+    let filter = this.value.toLowerCase();
+    let rows = document.querySelectorAll('#studentTableBody tr');
+
+    rows.forEach(row => {
+        let nameElement = row.querySelector('.student-name');
+        let nameText = nameElement.textContent;
+        
+        if (nameText.toLowerCase().includes(filter)) {
+            row.style.display = "";
+            if(filter) {
+                let regex = new RegExp(`(${filter})`, "gi");
+                nameElement.innerHTML = nameText.replace(regex, `<mark class="bg-indigo-100 text-indigo-700 dark:bg-indigo-500/30 dark:text-white rounded px-0.5">$1</mark>`);
+            } else {
+                nameElement.innerHTML = nameText;
+            }
+        } else {
+            row.style.display = "none";
+        }
+    });
+});
+</script>
+
 <?php
 $content = ob_get_clean();
-// Kjo siguron që kodi i mësipërm të shfaqet brenda strukturës tuaj kryesore
-require_once __DIR__ . '/../index.php'; 
+require_once __DIR__ . '/../index.php';
 ?>
-<script>
-function handleFormSubmit(form) {
-    const btn = form.querySelector('button[type="submit"]');
-    btn.disabled = true;
-    btn.innerHTML = '...';
-    btn.classList.add('opacity-50', 'cursor-not-allowed');
-    return true;
-}
-</script>
-</body>
-</html>

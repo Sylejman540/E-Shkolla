@@ -3,13 +3,12 @@ if(session_status() === PHP_SESSION_NONE){
     session_start();
 }
 
-// Sigurohuni që këto shtigje janë të sakta në serverin tuaj
 require_once __DIR__ . '/../../../../../db.php';
 
-/* ===== LOGJIKA POST (RUAJTJA E PREZENCËS) ===== */
+/* ===== 1. LOGJIKA POST (RUAJTJA E PREZENCËS) ===== */
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     $schoolId  = (int) ($_SESSION['user']['school_id'] ?? 0);
-    $teacherId = (int) ($_SESSION['user']['id'] ?? 0); // Ose teacher_id varësisht nga sesioni juaj
+    $teacherId = (int) ($_SESSION['user']['id'] ?? 0); 
 
     $studentId = (int) ($_POST['student_id'] ?? 0);
     $classId   = (int) ($_POST['class_id'] ?? 0);
@@ -36,19 +35,26 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     }
 
     /* ===== INSERTIMI I PREZENCËS ===== */
-    $stmt = $pdo->prepare("
-        INSERT INTO attendance (school_id, student_id, class_id, subject_id, teacher_id, present, missing)
-        VALUES (?, ?, ?, ?, ?, ?, ?)
-    ");
-    $stmt->execute([$schoolId, $studentId, $classId, $subjectId, $teacherId, $present, $missing]);
+    try {
+        $stmt = $pdo->prepare("
+            INSERT INTO attendance (school_id, student_id, class_id, subject_id, teacher_id, present, missing)
+            VALUES (?, ?, ?, ?, ?, ?, ?)
+        ");
+        $stmt->execute([$schoolId, $studentId, $classId, $subjectId, $teacherId, $present, $missing]);
 
-    header("Location: /E-Shkolla/class-attendance?class_id=$classId&subject_id=$subjectId&success=1");
-    exit;
+        // Ruajmë mesazhin në sesion
+        $_SESSION['success_msg'] = ($present) ? "Nxënësi u shënua PREZENT!" : "Nxënësi u shënua MUNGON!";
+        
+        header("Location: /E-Shkolla/class-attendance?class_id=$classId&subject_id=$subjectId");
+        exit;
+    } catch (Exception $e) {
+        die('Gabim gjatë ruajtjes: ' . $e->getMessage());
+    }
 }
 
-/* ===== LOGJIKA GET (SHFAQJA E LISTËS) ===== */
+/* ===== 2. LOGJIKA GET (SHFAQJA E LISTËS) ===== */
 $classId = (int)($_GET['class_id'] ?? 0);
-$subjectId = (int)($_GET['subject_id'] ?? 0); // E nevojshme për formën POST
+$subjectId = (int)($_GET['subject_id'] ?? 0);
 
 if ($classId <= 0) {
     die('ID e klasës e pavlefshme');
@@ -64,35 +70,50 @@ $stmt = $pdo->prepare("
 $stmt->execute([$classId]);
 $students = $stmt->fetchAll(PDO::FETCH_ASSOC);
 
-// Përfshirja e template-it të faqes (Sidebar etj)
 ob_start();
 ?>
 
+<div class="relative">
+
+        <?php if (isset($_SESSION['success_msg'])): ?>
+            <div id="toast-success" class="fixed top-5 right-5 z-[100] animate-bounce">
+                <div class="bg-emerald-600 text-white px-6 py-3 rounded-2xl shadow-2xl flex items-center gap-3 border border-emerald-500">
+                    <svg class="w-5 h-5 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="3" d="M5 13l4 4L19 7"></path>
+                    </svg>
+                    <span class="font-bold text-sm"><?= $_SESSION['success_msg']; ?></span>
+                </div>
+            </div>
+            <script>
+                setTimeout(() => {
+                    const toast = document.getElementById('toast-success');
+                    if (toast) {
+                        toast.style.transition = 'opacity 0.5s ease';
+                        toast.style.opacity = '0';
+                        setTimeout(() => toast.remove(), 500);
+                    }
+                }, 3000);
+            </script>
+            <?php unset($_SESSION['success_msg']); ?>
+        <?php endif; ?>
+
+        <?php if (isset($_GET['error']) && $_GET['error'] === 'locked'): ?>
+            <div id="alert-locked" class="mb-6 p-4 rounded-2xl bg-amber-50 border border-amber-200 flex items-center gap-3 text-amber-800 shadow-sm">
+                <svg class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"/>
+                </svg>
+                <span class="font-medium text-sm">Vërejtje: Prezenca për këtë nxënës është regjistruar para më pak se një ore.</span>
+            </div>
+            <script>
+                setTimeout(() => { document.getElementById('alert-locked')?.remove(); }, 5000);
+            </script>
+        <?php endif; ?>
+        
             <div class="sm:flex-auto mt-5">
                 <h1 class="text-2xl font-bold text-gray-900">Regjistrimi i Prezencës</h1>
                 <p class="mt-2 text-sm text-gray-600">Lista e nxënësve për klasën dhe lëndën e përzgjedhur.</p>
             </div>
         </div>
-
-        <?php if (isset($_GET['error']) && $_GET['error'] === 'locked'): ?>
-            <div id="alert-locked" class="mb-4 mt-4 p-4 rounded-xl bg-amber-50 border border-amber-200 flex items-center gap-3 text-amber-800 shadow-sm transition-opacity duration-500">
-                <svg class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"/>
-                </svg>
-                <span class="font-medium">Vërejtje: Prezenca për këtë nxënës është regjistruar para më pak se një ore.</span>
-            </div>
-
-            <script>
-                setTimeout(() => {
-                    const alertBox = document.getElementById('alert-locked');
-                    if (alertBox) {
-                        alertBox.style.opacity = '0';
-                        setTimeout(() => alertBox.remove(), 500); // remove after fade out
-                    }
-                }, 5000); // 5 seconds
-            </script>
-        <?php endif; ?>
-
 
         <div class="bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden mt-5">
             <div class="overflow-x-auto">

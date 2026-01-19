@@ -3,26 +3,21 @@ if (session_status() === PHP_SESSION_NONE) {
     session_start();
 }
 
-// Lidhja me bazën e të dhënave
 require_once __DIR__ . '/../../../../../db.php';
 
 $schoolId = (int) ($_SESSION['user']['school_id'] ?? 0);
 $userId   = (int) ($_SESSION['user']['id'] ?? 0);
 
-if (!$schoolId || !$userId) {
-    die('Sesion i pavlefshëm');
-}
+if (!$schoolId || !$userId) { die('Sesion i pavlefshëm'); }
 
 // Merr ID-në e mësuesit
 $stmt = $pdo->prepare("SELECT id FROM teachers WHERE user_id = ?");
 $stmt->execute([$userId]);
 $teacherId = (int) $stmt->fetchColumn();
 
-if (!$teacherId) {
-    die('Mësuesi nuk u gjet');
-}
+if (!$teacherId) { die('Mësuesi nuk u gjet'); }
 
-// Merr detyrat dhe statistikat
+// Merr detyrat dhe statistikat vetëm për këtë mësues
 $stmt = $pdo->prepare("
     SELECT * FROM assignments 
     WHERE school_id = ? AND teacher_id = ? 
@@ -46,117 +41,131 @@ $total     = (int) ($stats['total'] ?? 0);
 $active    = (int) ($stats['active'] ?? 0);
 $completed = (int) ($stats['completed'] ?? 0);
 
-// Fillojmë kapjen e përmbajtjes për ta injektuar në index.php (Sidebar/Layout)
 ob_start();
 ?>
 
 <div class="px-4 py-8 sm:px-6 lg:px-8">
-    <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-8">
+    <div class="flex flex-col md:flex-row md:items-center justify-between gap-4 mb-8">
         <div>
-            <h1 class="text-2xl font-bold text-gray-900 tracking-tight text-indigo-700">Detyrat e Shtëpisë</h1>
-            <p class="mt-1 text-sm text-gray-500 italic">Menaxhoni ngarkesën mësimore për klasat tuaja.</p>
+            <h1 class="text-2xl font-bold text-slate-900 tracking-tight">Detyrat e Shtëpisë</h1>
+            <p class="text-sm text-slate-500 font-medium">Menaxhoni ngarkesën mësimore për klasat tuaja.</p>
         </div>
-        <button id="addAssignmentBtn" class="inline-flex items-center justify-center gap-2 rounded-xl bg-indigo-600 px-6 py-3 text-sm font-bold text-white shadow-lg hover:bg-indigo-500 transition-all hover:-translate-y-0.5 active:scale-95">
-            <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"/></svg>
-            Krijo Detyrë
-        </button>
+        
+        <div class="flex flex-col sm:flex-row gap-3">
+            <div class="relative">
+                <input type="text" id="assignmentSearch" placeholder="Kërko detyrë..." 
+                       class="w-full sm:w-64 pl-4 pr-4 py-2 bg-white border border-slate-200 rounded-xl text-sm focus:ring-2 focus:ring-indigo-500 outline-none transition-all shadow-sm">
+            </div>
+            <button id="addAssignmentBtn" class="inline-flex items-center justify-center rounded-xl bg-indigo-600 px-5 py-2 text-sm font-bold text-white shadow-sm hover:bg-indigo-700 transition-all active:scale-95">
+                + Krijo Detyrë
+            </button>
+        </div>
     </div>
 
     <div class="grid grid-cols-1 md:grid-cols-3 gap-6 mb-10">
-        <div class="bg-white rounded-2xl p-6 shadow-sm border border-gray-100 flex items-center gap-4">
-            <div class="p-3 bg-gray-50 rounded-lg text-gray-400">#</div>
-            <div>
-                <p class="text-xs font-bold text-gray-400 uppercase tracking-widest">Totali</p>
-                <p class="text-2xl font-black text-gray-900"><?= $total ?></p>
-            </div>
+        <div class="bg-white rounded-2xl p-6 border border-slate-100 shadow-sm">
+            <p class="text-xs font-bold text-slate-400 uppercase tracking-widest">Totali</p>
+            <p class="text-2xl font-black text-slate-900 mt-1"><?= $total ?></p>
         </div>
-        <div class="bg-white rounded-2xl p-6 shadow-sm border border-indigo-100 border-l-4 border-l-indigo-500 flex items-center gap-4">
-            <div class="p-3 bg-indigo-50 rounded-lg text-indigo-500">●</div>
-            <div>
-                <p class="text-xs font-bold text-indigo-400 uppercase tracking-widest">Aktive</p>
-                <p class="text-2xl font-black text-indigo-600"><?= $active ?></p>
-            </div>
+        <div class="bg-white rounded-2xl p-6 border border-slate-100 shadow-sm border-l-4 border-l-indigo-500">
+            <p class="text-xs font-bold text-indigo-400 uppercase tracking-widest">Aktive</p>
+            <p class="text-2xl font-black text-indigo-600 mt-1"><?= $active ?></p>
         </div>
-        <div class="bg-white rounded-2xl p-6 shadow-sm border border-emerald-100 border-l-4 border-l-emerald-500 flex items-center gap-4">
-            <div class="p-3 bg-emerald-50 rounded-lg text-emerald-500">✓</div>
-            <div>
-                <p class="text-xs font-bold text-emerald-400 uppercase tracking-widest">Përfunduara</p>
-                <p class="text-2xl font-black text-emerald-600"><?= $completed ?></p>
-            </div>
+        <div class="bg-white rounded-2xl p-6 border border-slate-100 shadow-sm border-l-4 border-l-emerald-500">
+            <p class="text-xs font-bold text-emerald-400 uppercase tracking-widest">Përfunduara</p>
+            <p class="text-2xl font-black text-emerald-600 mt-1"><?= $completed ?></p>
         </div>
     </div>
 
-    <div class="bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden">
-        <div class="px-6 py-4 bg-gray-50 border-b border-gray-100 flex items-center justify-between">
-            <h2 class="text-sm font-bold text-gray-700">📋 LISTA E DETALJUAR</h2>
-            <span class="text-xs text-gray-400 font-medium">Renditja: Më të fundit</span>
-        </div>
-        
-        <div class="divide-y divide-gray-100">
-            <?php if (empty($assignments)): ?>
-                <div class="p-20 text-center">
-                    <div class="text-4xl mb-4">✍️</div>
-                    <p class="text-gray-400 italic">Nuk keni asnjë detyrë të regjistruar.</p>
-                </div>
-            <?php else: ?>
-                <?php foreach ($assignments as $row): ?>
-                    <div class="flex items-center justify-between p-6 hover:bg-gray-50/50 transition-colors group">
-                        <div class="flex-1">
-                            <div class="flex items-center gap-2 mb-1">
-                                <h3 class="font-bold text-gray-900 group-hover:text-indigo-600 transition-colors uppercase tracking-tight">
-                                    <?= htmlspecialchars($row['title']) ?>
-                                </h3>
-                                <?php if($row['completed_at']): ?>
-                                    <span class="bg-emerald-100 text-emerald-700 text-[10px] px-2 py-0.5 rounded-full font-bold">DONE</span>
-                                <?php endif; ?>
-                            </div>
-                            <p class="text-sm text-gray-500 line-clamp-2 max-w-3xl">
-                                <?= htmlspecialchars($row['description']) ?>
-                            </p>
-                            <div class="flex items-center gap-4 mt-3">
-                                <div class="flex items-center gap-1.5 text-xs font-semibold text-blue-600 bg-blue-50 px-3 py-1.5 rounded-lg border border-blue-100">
-                                    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z"/></svg>
-                                    Afati: <?= date('d/m/Y', strtotime($row['due_date'])) ?>
-                                </div>
-                            </div>
-                        </div>
-                        
-                        <button type="button" class="deleteAssignment p-3 text-gray-300 hover:text-rose-600 hover:bg-rose-50 rounded-2xl transition-all opacity-0 group-hover:opacity-100 active:scale-90" data-id="<?= (int)$row['id'] ?>">
-                            <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"/></svg>
-                        </button>
-                    </div>
-                <?php endforeach; ?>
-            <?php endif; ?>
+    <div class="bg-white rounded-2xl border border-slate-200 shadow-sm overflow-hidden">
+        <div class="overflow-x-auto">
+            <table class="w-full text-left border-collapse">
+                <thead>
+                    <tr class="bg-slate-50 border-b border-slate-200">
+                        <th class="px-6 py-4 text-xs font-bold uppercase tracking-wider text-slate-500">Detyra</th>
+                        <th class="px-6 py-4 text-xs font-bold uppercase tracking-wider text-slate-500">Përshkrimi</th>
+                        <th class="px-6 py-4 text-xs font-bold uppercase tracking-wider text-slate-500 text-center">Afati</th>
+                        <th class="px-6 py-4 text-xs font-bold uppercase tracking-wider text-slate-500 text-right pr-10">Veprimi</th>
+                    </tr>
+                </thead>
+                <tbody id="assignmentTableBody" class="divide-y divide-slate-100">
+                    <?php if (empty($assignments)): ?>
+                        <tr><td colspan="4" class="px-6 py-10 text-center text-slate-400 italic">Nuk keni asnjë detyrë të regjistruar.</td></tr>
+                    <?php else: ?>
+                        <?php foreach ($assignments as $row): ?>
+                        <tr class="group hover:bg-slate-50/50 transition-colors">
+                            <td class="px-6 py-4 whitespace-nowrap">
+                                <span class="assignment-title text-sm font-bold text-slate-900"><?= htmlspecialchars($row['title']) ?></span>
+                            </td>
+                            <td class="px-6 py-4">
+                                <p class="text-sm text-slate-500 truncate max-w-xs"><?= htmlspecialchars($row['description']) ?></p>
+                            </td>
+                            <td class="px-6 py-4 text-center">
+                                <span class="inline-block px-3 py-1 bg-blue-50 text-blue-600 text-[11px] font-bold rounded-lg border border-blue-100">
+                                    <?= date('d/m/Y', strtotime($row['due_date'])) ?>
+                                </span>
+                            </td>
+                            <td class="px-6 py-4 text-right pr-10">
+                                <button type="button" class="deleteAssignment p-2 text-slate-300 hover:text-rose-600 transition-colors" data-id="<?= (int)$row['id'] ?>">
+                                    <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"/></svg>
+                                </button>
+                            </td>
+                        </tr>
+                        <?php endforeach; ?>
+                    <?php endif; ?>
+                </tbody>
+            </table>
         </div>
     </div>
-    
+
     <?php require_once 'form.php'; ?>
 </div>
+
 <script>
-// Menaxhimi i Formës
-const btn = document.getElementById('addAssignmentBtn');
-const form = document.getElementById('addAssignmentForm');
-const cancel = document.getElementById('cancel');
+// Live Search & Highlight
+document.getElementById('assignmentSearch').addEventListener('input', function() {
+    let filter = this.value.toLowerCase();
+    let rows = document.querySelectorAll('#assignmentTableBody tr');
 
-btn?.addEventListener('click', () => {
-  form.classList.remove('hidden');
-  form.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    rows.forEach(row => {
+        let titleEl = row.querySelector('.assignment-title');
+        if(!titleEl) return;
+        
+        let text = titleEl.textContent;
+        if (text.toLowerCase().includes(filter)) {
+            row.style.display = "";
+            if(filter) {
+                let regex = new RegExp(`(${filter})`, "gi");
+                titleEl.innerHTML = text.replace(regex, `<mark class="bg-yellow-200 text-slate-900 rounded px-0.5">$1</mark>`);
+            } else {
+                titleEl.innerHTML = text;
+            }
+        } else {
+            row.style.display = "none";
+        }
+    });
 });
 
-cancel?.addEventListener('click', () => {
-  form.classList.add('hidden');
+// Modal Logic
+const addBtn = document.getElementById('addAssignmentBtn');
+const formSection = document.getElementById('addSchoolForm'); // Sigurohu që ID përputhet me form.php
+const cancelBtn = document.getElementById('cancel');
+
+addBtn?.addEventListener('click', () => {
+    formSection.classList.remove('hidden');
+    formSection.scrollIntoView({ behavior: 'smooth' });
 });
 
-// Fshirja me AJAX
+cancelBtn?.addEventListener('click', () => formSection.classList.add('hidden'));
+
+// AJAX Delete
 document.addEventListener('click', function (e) {
-    const deleteBtn = e.target.closest('.deleteAssignment');
-    if (!deleteBtn) return;
+    const dBtn = e.target.closest('.deleteAssignment');
+    if (!dBtn) return;
 
-    const id = deleteBtn.dataset.id;
-    if (!id) return;
+    if (!confirm('A jeni i sigurt?')) return;
 
-    if (!confirm('A jeni i sigurt që doni ta fshini këtë detyrë?')) return;
-
+    const id = dBtn.dataset.id;
     fetch('/E-Shkolla/dashboard/teacher-dashboard/partials/show-classes/assignments/delete_assignments.php', {
         method: 'POST',
         headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
@@ -165,25 +174,16 @@ document.addEventListener('click', function (e) {
     .then(res => res.json())
     .then(data => {
         if (data.success) {
-            // Animacion i thjeshtë gjatë largimit
-            const row = deleteBtn.closest('.flex');
-            row.style.opacity = '0';
-            setTimeout(() => {
-                row.remove();
-                // Opsionale: rifresko faqen për të përditësuar numrat e statistikave
-                // location.reload();
-            }, 300);
+            dBtn.closest('tr').remove();
         } else {
-            alert(data.message || 'Fshirja dështoi');
+            alert(data.message);
         }
     })
     .catch(() => alert('Gabim në server'));
 });
 </script>
+
 <?php
 $content = ob_get_clean();
-// Kjo siguron që kodi i mësipërm të shfaqet brenda strukturës tuaj kryesore
 require_once __DIR__ . '/../index.php'; 
 ?>
-</body>
-</html>
