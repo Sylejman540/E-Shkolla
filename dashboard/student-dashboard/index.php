@@ -1,107 +1,205 @@
+<?php
+if(session_status() === PHP_SESSION_NONE){
+    session_start();
+}
+
+$current = $_SERVER['REQUEST_URI'];
+
+function isActive($path) {
+    return str_contains($_SERVER['REQUEST_URI'], $path);
+}
+
+function isAnyActive(array $paths) {
+    foreach ($paths as $path) {
+        if (str_contains($_SERVER['REQUEST_URI'], $path)) {
+            return true;
+        }
+    }
+    return false;
+}
+?>
 <!DOCTYPE html>
-<html lang="en" class="h-full bg-white dark:bg-gray-900"> 
+<html lang="en" class="h-full bg-slate-50"> 
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>E-Shkolla </title>
+    <title>E-Shkolla | Nxënësi</title>
     <script src="https://cdn.tailwindcss.com"></script>
+    <script defer src="https://unpkg.com/alpinejs@3.x.x/dist/cdn.min.js"></script>
+    <link rel="icon" href="/E-Shkolla/images/icon.png" type="image/png">
+    <style>
+        [x-cloak] { display: none !important; }
+        .custom-transition { transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1); }
+        .active-indicator::before {
+            content: '';
+            position: absolute;
+            left: -12px;
+            top: 20%;
+            height: 60%;
+            width: 4px;
+            background-color: #2563eb;
+            border-radius: 0 4px 4px 0;
+        }
+    </style>
 </head>
-<body class="h-full">
+<body class="h-full font-sans antialiased"
+      x-data="{ sidebarCollapsed: false, mobileOpen: false }">
 
-<div class="hidden lg:fixed lg:inset-y-0 lg:z-50 lg:flex lg:w-72 lg:flex-col">
-  <div class="relative flex grow flex-col gap-y-5 overflow-y-auto border-r border-gray-200 bg-white px-6 dark:border-white/10 dark:bg-gray-900 dark:before:pointer-events-none dark:before:absolute dark:before:inset-0 dark:before:bg-black/10">
-    <a href="/E-Shkolla/student-dashboard" class="relative flex h-16 shrink-0 items-center">
-      <img src="/E-Shkolla/images/logo.png" alt="Your Company" class="w-48 h-48 dark:hidden" />
-    </a>
-    <nav class="relative flex flex-1 flex-col">
-      <ul role="list" class="flex flex-1 flex-col gap-y-7">
-        <li>
-          <ul role="list" class="-mx-2 space-y-1">
-            <li>
-            <a href="/E-Shkolla/student-dashboard" class="group flex gap-x-3 rounded-md bg-gray-50 p-2 text-sm/6 font-semibold text-indigo-600 dark:bg-white/5 dark:text-white">
-                📊 Paneli
-            </a>
-            </li>
+    <div
+        x-show="mobileOpen"
+        x-cloak
+        x-transition.opacity
+        @click="mobileOpen = false"
+        class="fixed inset-0 z-40 bg-slate-900/40 backdrop-blur-sm lg:hidden">
+    </div>
 
-            <li>
-            <a href="/E-Shkolla/student-schedule" class="group flex gap-x-3 rounded-md p-2 text-sm/6 font-semibold text-gray-700 hover:bg-gray-50 hover:text-indigo-600 dark:text-gray-400 dark:hover:text-white">
-                🕒 Orari
-            </a>
-            </li>
+    <aside
+        class="fixed inset-y-0 left-0 z-50 flex flex-col bg-white shadow-[4px_0_24px_rgba(0,0,0,0.02)] border-r border-slate-100 custom-transition"
+        :class="[
+            sidebarCollapsed ? 'w-20' : 'w-72',
+            mobileOpen ? 'translate-x-0' : '-translate-x-full lg:translate-x-0'
+        ]">
 
-            <li>
-            <a href="/E-Shkolla/student-assignments" class="group flex gap-x-3 rounded-md p-2 text-sm/6 font-semibold text-gray-700 hover:bg-gray-50 hover:text-indigo-600 dark:text-gray-400 dark:hover:text-white">
-                📝 Detyrat 
-            </a>
-            </li>
-
-            <li>
-            <a href="/E-Shkolla/student-grades" class="group flex gap-x-3 rounded-md p-2 text-sm/6 font-semibold text-gray-700 hover:bg-gray-50 hover:text-indigo-600 dark:text-gray-400 dark:hover:text-white">
-                🎓 Notat
-            </a>
-            </li>
-          </ul>
-        </li>
-        <li>
-        <div class="text-xs/6 font-semibold text-gray-400 dark:text-gray-500">Profili</div>
-          <ul role="list" class="-mx-2 mt-2 space-y-1">
-            <li>
-            <a href="/E-Shkolla/teacher-profile"
-                class="group flex gap-x-3 rounded-md p-2 text-sm/6 font-semibold text-gray-700 hover:bg-gray-50 hover:text-indigo-600 dark:text-gray-400 dark:hover:text-white">
-                👤
-                Profili
-            </a>
-            </li>
-            <li>
-            <a href="/E-Shkolla/logout" class="flex items-center gap-x-3 rounded-md p-2 text-sm font-semibold text-red-600 hover:bg-red-50">
-              🚪 Logout
-            </a>
-            </li>
-          </ul>
-        </li>
-        <li class="-mx-6 mt-auto">
-        <?php
-          require_once __DIR__  . '/../../db.php';
-
-          $user_id = $_SESSION['user']['id'];
-
-          $stmt = $pdo->prepare("SELECT * FROM users WHERE id = ?");
-          $stmt->execute([$user_id]);
-
-          $students = $stmt->fetchAll(PDO::FETCH_ASSOC);
-        ?>
-        <?php foreach ($students as $row): ?>
-        <div class="flex items-center gap-4 px-4 py-3 rounded-lg hover:bg-gray-50 dark:hover:bg-white/5 transition">
-            <div class="flex flex-col">
-            <span class="text-sm font-semibold text-gray-900 dark:text-white">
-                <?= htmlspecialchars($row['name']) ?>
-            </span>
-            <span class="text-xs text-gray-500 dark:text-gray-400">
-                Nxënës
-            </span>
+        <a href="/E-Shkolla/student-dashboard" class="flex h-20 shrink-0 items-center px-5 overflow-hidden border-b border-slate-50">
+            <img src="/E-Shkolla/images/icon.png" class="h-10 w-auto min-w-[40px]" alt="Logo">
+            <div x-show="!sidebarCollapsed" x-transition class="ml-3 whitespace-nowrap">
+              <h1 class="text-xl font-bold tracking-tight text-slate-800">E-Shkolla</h1>
+              <p class="text-[10px] font-bold uppercase tracking-widest text-blue-600">Nxënës</p>
             </div>
-        </div>
-        <?php endforeach; ?>
+        </a>
 
-        </li>
-      </ul>
-    </nav>
-  </div>
-</div>
+        <nav class="flex flex-1 flex-col overflow-y-auto px-4 py-6">
+            <ul role="list" class="flex flex-1 flex-col gap-y-2">
+                <li>
+                    <a href="/E-Shkolla/student-dashboard"
+                    class="relative group flex items-center gap-x-3 rounded-xl p-3 text-sm font-semibold transition-all
+                    <?= isActive('/student-dashboard') ? 'bg-blue-50 text-blue-600 active-indicator' : 'text-slate-500 hover:bg-slate-50 hover:text-blue-600' ?>">
+                        <svg class="h-6 w-6 shrink-0" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor">
+                            <path stroke-linecap="round" stroke-linejoin="round" d="M2.25 12l8.954-8.955c.44-.439 1.152-.439 1.591 0L21.75 12M4.5 9.75v10.125c0 .621.504 1.125 1.125 1.125H9.75v-4.875c0-.621.504-1.125 1.125-1.125h2.25c.621 0 1.125.504 1.125 1.125V21h4.125c.621 0 1.125-.504 1.125-1.125V9.75M8.25 21h8.25" />
+                        </svg>
+                        <span x-show="!sidebarCollapsed || mobileOpen" class="whitespace-nowrap">Paneli</span>
+                    </a>
+                </li>
 
-<div class="sticky top-0 z-40 flex items-center gap-x-6 bg-white px-4 py-4 shadow-xs sm:px-6 lg:hidden dark:bg-gray-900 dark:shadow-none dark:before:pointer-events-none dark:before:absolute dark:before:inset-0 dark:before:border-b dark:before:border-white/10 dark:before:bg-black/10">
-  <button type="button" command="show-modal" commandfor="sidebar" class="relative -m-2.5 p-2.5 text-gray-700 lg:hidden dark:text-gray-400">
-    <span class="sr-only">Open sidebar</span>
-    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" data-slot="icon" aria-hidden="true" class="size-6">
-      <path d="M3.75 6.75h16.5M3.75 12h16.5m-16.5 5.25h16.5" stroke-linecap="round" stroke-linejoin="round" />
-    </svg>
-  </button>
-  <div class="relative flex-1 text-sm/6 font-semibold text-gray-900 dark:text-white">Dashboard</div>
-  <a href="#" class="relative">
-    <span class="sr-only">Your profile</span>
-    <img src="https://images.unsplash.com/photo-1472099645785-5658abf4ff4e?ixlib=rb-1.2.1&ixid=eyJhcHBfaWQiOjEyMDd9&auto=format&fit=facearea&facepad=2&w=256&h=256&q=80" alt="" class="size-8 rounded-full bg-gray-50 outline -outline-offset-1 outline-black/5 dark:bg-gray-800 dark:outline-white/10" />
-  </a>
-</div>
+                <li>
+                    <a href="/E-Shkolla/student-grades"
+                    class="relative group flex items-center gap-x-3 rounded-xl p-3 text-sm font-semibold transition-all
+                    <?= isActive('/student-grades') ? 'bg-blue-50 text-blue-600 active-indicator' : 'text-slate-500 hover:bg-slate-50 hover:text-blue-600' ?>">
+                        <svg class="h-6 w-6 shrink-0" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor">
+                            <path stroke-linecap="round" stroke-linejoin="round" d="M12 6.042A8.967 8.967 0 0 0 6 3.75c-1.052 0-2.062.18-3 .512v14.25A8.987 8.987 0 0 1 6 18c2.305 0 4.408.867 6 2.292m0-14.25a8.966 8.966 0 0 1 6-2.292c1.052 0 2.062.18 3 .512v14.25A8.987 8.987 0 0 0 18 18a8.967 8.967 0 0 0-6 2.292m0-14.25v14.25" />
+                        </svg>
+                        <span x-show="!sidebarCollapsed || mobileOpen" class="whitespace-nowrap">Notat e Mia</span>
+                    </a>
+                </li>
 
+                <li>
+                    <a href="/E-Shkolla/student-schedule"
+                    class="relative group flex items-center gap-x-3 rounded-xl p-3 text-sm font-semibold transition-all
+                    <?= isActive('/student-schedule') ? 'bg-blue-50 text-blue-600 active-indicator' : 'text-slate-500 hover:bg-slate-50 hover:text-blue-600' ?>">
+                        <svg class="h-6 w-6 shrink-0" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor">
+                            <path stroke-linecap="round" stroke-linejoin="round" d="M6.75 3v2.25M17.25 3v2.25M3 18.75V7.5a2.25 2.25 0 0 1 2.25-2.25h13.5A2.25 2.25 0 0 1 21 7.5v11.25m-18 0A2.25 2.25 0 0 0 5.25 21h13.5A2.25 2.25 0 0 0 21 18.75m-18 0v-7.5A2.25 2.25 0 0 1 5.25 9h13.5A2.25 2.25 0 0 1 21 11.25v7.5m-9-6h.008v.008H12v-.008ZM12 15h.008v.008H12V15Zm0 2.25h.008v.008H12v-.008ZM9.75 15h.008v.008H9.75V15Zm0 2.25h.008v.008H9.75v-.008ZM7.5 15h.008v.008H7.5V15Zm0 2.25h.008v.008H7.5v-.008ZM6.75 12h.008v.008H6.75V12Zm0 0h.008v.008H6.75V12Z" />
+                        </svg>
+                        <span x-show="!sidebarCollapsed || mobileOpen" class="whitespace-nowrap">Orari Mësimor</span>
+                    </a>
+                </li>
+
+                <li>
+                    <a href="/E-Shkolla/student-settings"
+                    class="relative group flex items-center gap-x-3 rounded-xl p-3 text-sm font-semibold transition-all
+                    <?= isActive('/student-settings') ? 'bg-blue-50 text-blue-600 active-indicator' : 'text-slate-500 hover:bg-slate-50 hover:text-blue-600' ?>">
+                        <svg class="h-6 w-6 shrink-0" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor">
+                            <path stroke-linecap="round" stroke-linejoin="round" d="M10.343 3.94c.09-.542.56-.94 1.11-.94h1.093c.55 0 1.02.398 1.11.94l.149.894c.07.424.384.764.78.93.398.164.855.142 1.205-.108l.737-.527a1.125 1.125 0 0 1 1.45.12l.773.774a1.125 1.125 0 0 1 .12 1.45l-.527.737c-.25.35-.272.806-.107 1.204.165.397.505.71.93.78l.894.15c.542.09.94.56.94 1.109v1.094c0 .55-.398 1.02-.94 1.11l-.894.149c-.424.07-.764.383-.929.78-.165.398-.143.854.107 1.204l.527.738a1.125 1.125 0 0 1-.12 1.45l-.774.773a1.125 1.125 0 0 1-1.45.12l-.737-.527c-.35-.25-.806-.272-1.203-.107-.397.165-.71.505-.781.929l-.149.894c-.09.542-.56.94-1.11.94h-1.094c-.55 0-1.019-.398-1.11-.94l-.148-.894c-.071-.424-.384-.764-.781-.93-.398-.164-.854-.142-1.204.108l-.738.527a1.125 1.125 0 0 1-1.45-.12l-.773-.774a1.125 1.125 0 0 1-.12-1.45l.527-.737c.25-.35.273-.806.108-1.204-.165-.397-.505-.71-.93-.78l-.894-.15c-.542-.09-.94-.56-.94-1.109v-1.094c0-.55.398-1.02.94-1.11l.894-.149c.424-.07.765-.383.93-.78.165-.398.143-.854-.108-1.204l-.526-.738a1.125 1.125 0 0 1 .12-1.45l.773-.773a1.125 1.125 0 0 1 1.45-.12l.737.526c.351.25.807.272 1.204.108.397-.165.71-.505.78-.929l.15-.894Z" />
+                            <path stroke-linecap="round" stroke-linejoin="round" d="M15 12a3 3 0 1 1-6 0 3 3 0 0 1 6 0Z" />
+                        </svg>
+                        <span x-show="!sidebarCollapsed || mobileOpen" class="whitespace-nowrap">Cilësimet</span>
+                    </a>
+                </li>
+
+                <li class="mt-auto">
+                    <a href="/E-Shkolla/logout" class="group flex items-center gap-x-3 rounded-xl bg-red-50/50 p-3 text-sm font-semibold text-red-600 hover:bg-red-100 transition-all">
+                        <svg class="h-6 w-6 shrink-0 custom-transition group-hover:scale-110" fill="none" viewBox="0 0 24 24" stroke-width="1.8" stroke="currentColor">
+                            <path stroke-linecap="round" stroke-linejoin="round" d="M15.75 9V5.25A2.25 2.25 0 0013.5 3h-6a2.25 2.25 0 00-2.25 2.25v13.5A2.25 2.25 0 007.5 21h6a2.25 2.25 0 002.25-2.25V15m3 0l3-3m0 0l-3-3m3 3H9" />
+                        </svg>
+                        <span x-show="!sidebarCollapsed" x-transition.opacity class="whitespace-nowrap">Çkyçu</span>
+                    </a>
+                </li>
+            </ul>
+        </nav>
+
+        <button @click="sidebarCollapsed = !sidebarCollapsed" class="hidden lg:flex items-center justify-center h-12 border-t border-slate-100 text-slate-400 hover:text-slate-600">
+            <svg :class="sidebarCollapsed ? 'rotate-180' : ''" class="h-5 w-5 transition-transform" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path d="M11 19l-7-7 7-7m8 14l-7-7 7-7" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>
+        </button>
+    </aside>
+
+    <div :class="sidebarCollapsed ? 'lg:pl-20' : 'lg:pl-72'" class="min-h-screen custom-transition flex flex-col">
+        
+        <header class="sticky top-0 z-30 h-16 flex items-center justify-between bg-white/80 backdrop-blur-md border-b border-slate-100 px-4 lg:px-8">
+            <button @click="mobileOpen = true" class="p-2 lg:hidden text-slate-600 hover:bg-slate-50 rounded-lg transition-colors">
+                <svg class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path d="M4 6h16M4 12h16M4 18h16"/></svg>
+            </button>
+
+            <?php
+                $studentName = 'Nxënës';
+                // Logjika për marrjen e emrit të studentit nga tabela students
+                if (isset($_SESSION['user']['id']) && $_SESSION['user']['role'] === 'student') {
+                    require_once __DIR__ . '/../../db.php'; // Sigurohu që path është i saktë
+                    $stmt = $pdo->prepare("SELECT name FROM students WHERE user_id = ?");
+                    $stmt->execute([$_SESSION['user']['id']]);
+                    $studentName = $stmt->fetchColumn() ?: 'Nxënës';
+                }
+            ?>
+
+            <div class="hidden lg:block">
+                <p class="text-slate-500">Përshëndetje, <span class="font-semibold text-slate-800"><?= htmlspecialchars($studentName) ?></span></p>
+            </div>
+
+            <div class="flex items-center gap-2 lg:gap-4">
+                <div class="relative" x-data="{ open: false }">
+                    <button @click="open = !open" class="p-2 text-slate-400 hover:text-blue-600 relative transition-colors">
+                        <span class="absolute top-2 right-2 flex h-2 w-2">
+                            <span class="animate-ping absolute inline-flex h-full w-full rounded-full bg-red-400 opacity-75"></span>
+                            <span class="relative inline-flex rounded-full h-2 w-2 bg-red-500"></span>
+                        </span>
+                        <svg class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.5"><path d="M15 17h5l-1.405-1.405A2.032 2.032 0 0118 14.158V11a6.002 6.002 0 00-4-5.659V5a2 2 0 10-4 0v.341C7.67 6.165 6 8.388 6 11v3.159c0 .538-.214 1.055-.595 1.436L4 17h5m6 0v1a3 3 0 11-6 0v-1m6 0H9"/></svg>
+                    </button>
+                    <div x-show="open" @click.away="open = false" x-transition x-cloak
+                         class="absolute right-0 mt-3 w-72 md:w-80 bg-white rounded-2xl shadow-2xl border border-slate-100 p-4">
+                        <h3 class="font-bold text-slate-800 mb-4">Njoftimet</h3>
+                        <div class="text-xs text-slate-500 text-center py-4 italic">Nuk ka njoftime të reja</div>
+                    </div>
+                </div>
+
+                <div class="flex items-center gap-3 pl-2 lg:pl-4 border-l border-slate-100">
+                    <span class="hidden md:block text-sm font-semibold text-slate-700"><?= htmlspecialchars($studentName) ?></span>
+                    <div class="h-9 w-9 rounded-full bg-indigo-600 flex items-center justify-center text-white text-sm font-bold shadow-sm">
+                        <?= strtoupper(substr(htmlspecialchars($studentName), 0, 1)) ?>
+                    </div>
+                </div>
+            </div>
+        </header>
+
+        <main class="p-4 lg:p-8 flex-1">
+            <div class="max-w-7xl mx-auto">
+                <?= $content ?? '<div class="bg-white p-8 rounded-3xl border border-slate-100 shadow-sm text-center">Mirësevini në profilin tuaj, ' . htmlspecialchars($studentName) . '.</div>' ?>
+            </div>
+        </main>
+    </div>
+
+    <div class="fixed bottom-4 left-4 right-4 md:left-auto md:right-8 md:bottom-8 z-[100] flex flex-col gap-3 md:w-80" x-data="{ toasts: [] }">
+        <template x-for="toast in toasts" :key="toast.id">
+            <div x-show="toast.visible" 
+                 x-transition:enter="transition transform duration-300"
+                 x-transition:enter-start="translate-y-12 opacity-0"
+                 x-transition:leave="transition transform duration-200"
+                 x-transition:leave-end="opacity-0 scale-95"
+                 class="flex items-center p-4 bg-white rounded-2xl shadow-xl border border-slate-100 ring-1 ring-black/5">
+                <div :class="toast.type === 'success' ? 'bg-emerald-100 text-emerald-600' : 'bg-red-100 text-red-600'" class="p-2 rounded-xl mr-3">
+                    <svg x-show="toast.type === 'success'" class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.5"><path d="M5 13l4 4L19 7"/></svg>
+                    <svg x-show="toast.type === 'error'" class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.5"><path d="M6 18L18 6M6 6l12 12"/></svg>
+                </div>
+                <p class="text-sm font-bold text-slate-700" x-text="toast.message"></p>
+            </div>
+        </template>
+    </div>
 </body>
 </html>
