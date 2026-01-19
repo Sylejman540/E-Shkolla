@@ -49,10 +49,16 @@ ob_start();
             <h1 class="text-2xl font-bold text-slate-900 dark:text-white">Mësuesit e Shkollës</h1>
             <p class="mt-1 text-sm text-slate-500 dark:text-slate-400">Menaxhoni stafin akademik dhe të dhënat e tyre.</p>
         </div>
+        <div class="sm:flex sm:items-center gap-2 mb-8">
+        <button type="button" id="importCsvBtn"
+            class="inline-flex items-center gap-2 rounded-xl bg-emerald-600 px-5 py-2.5 text-sm font-semibold text-white shadow-sm hover:bg-emerald-500 transition-all active:scale-95">
+            📥 Importo CSV
+        </button>
         <button type="button" id="addTeacherBtn" class="inline-flex items-center gap-2 md:mt-0 mt-4 rounded-xl bg-indigo-600 px-5 py-2.5 text-sm font-semibold text-white shadow-sm hover:bg-indigo-500 transition-all active:scale-95">
             <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"/></svg>
             Shto mësues
         </button>
+        </div>
     </div>
 
     <div class="mb-6 bg-white dark:bg-gray-900 p-4 rounded-2xl border border-slate-200 dark:border-white/10 shadow-sm flex items-center justify-between">
@@ -163,7 +169,7 @@ ob_start();
 <div id="toast-container" class="fixed bottom-5 right-5 z-[110] flex flex-col gap-2"></div>
 
 <?php require_once 'form.php'; ?>
-
+<?php require_once 'import-csv.php'; ?>
 <script>
 const API_URL = '/E-Shkolla/dashboard/schooladmin-dashboard/partials/teacher/update-inline.php';
 let pendingStatusChange = null;
@@ -269,6 +275,18 @@ btn?.addEventListener('click', () => {
 cancel?.addEventListener('click', () => {
  form.classList.add('hidden');
 });
+
+const csvBtn = document.getElementById('importCsvBtn');
+const csvModal = document.getElementById('importCsvModal');
+
+csvBtn?.addEventListener('click', () => {
+  csvModal.classList.remove('hidden');
+});
+
+function closeCsv() {
+  csvModal.classList.add('hidden');
+}
+
 </script>
 
 <?php $content = ob_get_clean(); require_once __DIR__ . '/../../index.php'; ?>
