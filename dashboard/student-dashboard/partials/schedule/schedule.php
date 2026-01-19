@@ -1,37 +1,64 @@
 <?php 
-if(session_status() === PHP_SESSION_NONE){
+declare(strict_types=1);
+
+if (session_status() === PHP_SESSION_NONE) {
     session_start();
 }
 
 require_once __DIR__ . '/../../../../db.php';
 
-$userId = $_SESSION['user']['id'] ?? null;
+// 1. CSRF Token Initialization (Safe practice)
+if (empty($_SESSION['csrf_token'])) {
+    $_SESSION['csrf_token'] = bin2hex(random_bytes(32));
+}
 
-if (!$userId || $_SESSION['user']['role'] !== 'student') {
+// 2. Authentication & Session Context
+$userId   = $_SESSION['user']['id'] ?? null;
+$userRole = $_SESSION['user']['role'] ?? null;
+$schoolId = $_SESSION['user']['school_id'] ?? null; 
+
+if (!$userId || $userRole !== 'student' || !$schoolId) {
     header("Location: /E-Shkolla/login");
     exit();
 }
 
-/* 1. Merr ID-në e studentit */
-$stmt = $pdo->prepare("SELECT student_id FROM students WHERE user_id = ? LIMIT 1");
-$stmt->execute([$userId]);
-$student = $stmt->fetch(PDO::FETCH_ASSOC);
+try {
+    // 3. Fetch Student ID with School Enforcement
+    $stmt = $pdo->prepare("
+        SELECT student_id 
+        FROM students 
+        WHERE user_id = ? AND school_id = ? 
+        LIMIT 1
+    ");
+    $stmt->execute([$userId, $schoolId]);
+    $student = $stmt->fetch(PDO::FETCH_ASSOC);
 
-if (!$student) {
-    die('Të dhënat e nxënësit nuk u gjetën.');
+    if (!$student) {
+        error_log("Security Warning: User $userId tried to access school $schoolId context.");
+        die('Qasje e paautorizuar.');
+    }
+
+    $studentId = $student['student_id'];
+
+    // 4. Fetch Classes with School Enforcement
+    $stmt = $pdo->prepare("
+        SELECT DISTINCT c.*
+        FROM classes c
+        JOIN student_class sc ON sc.class_id = c.id
+        WHERE sc.student_id = ? 
+        AND c.school_id = ?
+    ");
+    $stmt->execute([$studentId, $schoolId]);
+    $classes = $stmt->fetchAll(PDO::FETCH_ASSOC);
+
+} catch (PDOException $e) {
+    error_log("Database Error: " . $e->getMessage());
+    die("Ndodhi një gabim teknik.");
 }
 
-$studentId = $student['student_id'];
-
-/* 2. Merr klasat */
-$stmt = $pdo->prepare("
-    SELECT c.*
-    FROM classes c
-    JOIN student_class sc ON sc.class_id = c.id
-    WHERE sc.student_id = ?
-");
-$stmt->execute([$studentId]);
-$classes = $stmt->fetchAll(PDO::FETCH_ASSOC);
+function e($value) {
+    return htmlspecialchars((string)$value, ENT_QUOTES, 'UTF-8');
+}
 
 ob_start();
 ?>
@@ -39,7 +66,7 @@ ob_start();
 <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6">
     <div class="mb-8">
         <h1 class="text-2xl md:text-3xl font-bold text-slate-800 tracking-tight">Orari Im Mësimor</h1>
-        <p class="text-slate-500 text-sm mt-1">Klikoni "Shiko orarin" për të parë detajet javor të klasës.</p>
+        <p class="text-slate-500 text-sm mt-1">Klikoni "Shiko orarin" për të parë detajet javor të klasës suaj.</p>
     </div>
 
     <div class="bg-white shadow-sm border border-slate-200 rounded-2xl overflow-hidden">
@@ -54,36 +81,43 @@ ob_start();
                 </thead>
                 <tbody class="divide-y divide-slate-200 bg-white">
                     <?php if (!empty($classes)): ?>
-                        <?php foreach ($classes as $row): ?>
+                        <?php foreach ($classes as $row): 
+                            $safeClassId = (int)$row['id'];
+                        ?>
                             <tr class="hover:bg-slate-50 transition-colors">
                                 <td class="px-4 py-4 whitespace-nowrap">
-                                    <div class="text-sm font-bold text-slate-900"><?= htmlspecialchars($row['grade']) ?></div>
-                                    <div class="text-xs text-slate-500 md:hidden"><?= htmlspecialchars($row['academic_year']) ?></div>
+                                    <div class="text-sm font-bold text-slate-900"><?= e($row['grade']) ?></div>
+                                    <div class="text-xs text-slate-500 md:hidden"><?= e($row['academic_year']) ?></div>
                                 </td>
                                 <td class="hidden md:table-cell px-6 py-4 whitespace-nowrap text-sm text-slate-600">
-                                    <?= htmlspecialchars($row['academic_year']) ?>
+                                    <?= e($row['academic_year']) ?>
                                 </td>
+                                <div class="mr-0">
                                 <td class="px-4 py-4 whitespace-nowrap text-right text-sm">
-                                    <button onclick="toggleSchedule(<?= (int)$row['id'] ?>)" 
+                                    <button onclick="toggleSchedule(<?= $safeClassId ?>)" 
                                             class="inline-flex items-center px-3 py-2 md:px-4 md:py-2 bg-blue-50 text-blue-600 hover:bg-blue-100 font-bold rounded-xl transition-all active:scale-95">
-                                        <span class="sm:inline">Shiko orarin</span>
-                                        <svg class="w-5 h-5 sm:ml-2" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="9 5l7 7-7 7"></path></svg>
+                                        <span>Shiko orarin</span>
+                                        <svg class="w-5 h-5 ml-2" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="9 5l7 7-7 7"></path></svg>
                                     </button>
                                 </td>
+                        </div>
                             </tr>
 
-                            <tr id="schedule-<?= (int)$row['id'] ?>" class="hidden bg-slate-50/50">
+                            <tr id="schedule-<?= $safeClassId ?>" class="hidden bg-slate-50/50">
                                 <td colspan="3" class="px-2 py-4 md:px-6 md:py-8">
                                     <?php
+                                        // 5. FETCH SCHEDULE WITH STRICT SCHOOL ISOLATION
                                         $stmt = $pdo->prepare("
                                             SELECT cs.day, cs.start_time, cs.end_time, s.subject_name, t.name AS teacher_name
                                             FROM class_schedule cs
                                             JOIN subjects s ON s.id = cs.subject_id
                                             JOIN teachers t ON t.id = cs.teacher_id
-                                            WHERE cs.class_id = ?
-                                            ORDER BY cs.start_time
+                                            JOIN classes c ON c.id = cs.class_id
+                                            WHERE cs.class_id = ? 
+                                            AND c.school_id = ?
+                                            ORDER BY cs.start_time ASC
                                         ");
-                                        $stmt->execute([(int)$row['id']]);
+                                        $stmt->execute([$safeClassId, $schoolId]);
                                         $scheduleData = $stmt->fetchAll(PDO::FETCH_ASSOC);
 
                                         $grid = [];
@@ -100,17 +134,15 @@ ob_start();
                                             $normalizedDay = $dayMap[$lesson['day']] ?? strtolower($lesson['day']);
                                             $grid[$timeKey][$normalizedDay] = $lesson;
                                         }
+                                        $daysSq = ['monday' => 'Hën', 'tuesday' => 'Mar', 'wednesday' => 'Mër', 'thursday' => 'Enj', 'friday' => 'Pre'];
                                     ?>
-
                                     <div class="overflow-x-auto rounded-2xl border border-slate-200 bg-white shadow-sm">
                                         <table class="min-w-full table-fixed md:table-auto divide-y divide-slate-200">
                                             <thead class="bg-slate-50">
                                                 <tr>
                                                     <th class="w-20 md:w-32 px-2 py-3 text-left text-[10px] font-bold text-slate-400 uppercase">Ora</th>
-                                                    <?php 
-                                                    $daysSq = ['monday' => 'Hën', 'tuesday' => 'Mar', 'wednesday' => 'Mër', 'thursday' => 'Enj', 'friday' => 'Pre'];
-                                                    foreach ($daysSq as $day): ?>
-                                                        <th class="px-2 py-3 text-center text-[10px] font-bold text-slate-400 uppercase"><?= $day ?></th>
+                                                    <?php foreach ($daysSq as $dayLabel): ?>
+                                                        <th class="px-2 py-3 text-center text-[10px] font-bold text-slate-400 uppercase"><?= e($dayLabel) ?></th>
                                                     <?php endforeach; ?>
                                                 </tr>
                                             </thead>
@@ -118,17 +150,13 @@ ob_start();
                                                 <?php if (!empty($grid)): ?>
                                                     <?php foreach ($grid as $time => $days): ?>
                                                         <tr>
-                                                            <td class="px-2 py-4 whitespace-nowrap text-[10px] md:text-xs font-bold text-slate-600 bg-slate-50/30"><?= $time ?></td>
+                                                            <td class="px-2 py-4 whitespace-nowrap text-[10px] md:text-xs font-bold text-slate-600 bg-slate-50/30"><?= e($time) ?></td>
                                                             <?php foreach (array_keys($daysSq) as $dayCode): ?>
                                                                 <td class="px-1 py-3 md:px-3 text-center">
                                                                     <?php if (isset($days[$dayCode])): ?>
                                                                         <div class="p-1 md:p-2 rounded-lg bg-blue-50/50">
-                                                                            <div class="text-[10px] md:text-sm font-black text-blue-700 leading-tight break-words">
-                                                                                <?= htmlspecialchars($days[$dayCode]['subject_name']) ?>
-                                                                            </div>
-                                                                            <div class="hidden md:block text-[9px] text-slate-500 mt-1">
-                                                                                <?= htmlspecialchars($days[$dayCode]['teacher_name']) ?>
-                                                                            </div>
+                                                                            <div class="text-[10px] md:text-sm font-black text-blue-700 leading-tight break-words"><?= e($days[$dayCode]['subject_name']) ?></div>
+                                                                            <div class="hidden md:block text-[9px] text-slate-500 mt-1"><?= e($days[$dayCode]['teacher_name']) ?></div>
                                                                         </div>
                                                                     <?php else: ?>
                                                                         <span class="text-slate-200">—</span>
@@ -138,9 +166,7 @@ ob_start();
                                                         </tr>
                                                     <?php endforeach; ?>
                                                 <?php else: ?>
-                                                    <tr>
-                                                        <td colspan="6" class="py-12 text-center text-slate-400 text-sm italic">Nuk ka orar të regjistruar.</td>
-                                                    </tr>
+                                                    <tr><td colspan="6" class="py-12 text-center text-slate-400 text-sm italic">Nuk ka orar.</td></tr>
                                                 <?php endif; ?>
                                             </tbody>
                                         </table>
@@ -149,9 +175,7 @@ ob_start();
                             </tr>
                         <?php endforeach; ?>
                     <?php else: ?>
-                        <tr>
-                            <td colspan="3" class="px-6 py-12 text-center text-slate-400">Nuk jeni regjistruar në asnjë klasë.</td>
-                        </tr>
+                        <tr><td colspan="3" class="px-6 py-12 text-center text-slate-400">Nuk jeni regjistruar në asnjë klasë.</td></tr>
                     <?php endif; ?>
                 </tbody>
             </table>
@@ -165,15 +189,14 @@ require_once __DIR__ . '/../../index.php';
 ?>
 
 <script>
+const CSRF_TOKEN = "<?= $_SESSION['csrf_token'] ?>";
+
 function toggleSchedule(classId) {
     const row = document.getElementById('schedule-' + classId);
-    const isHidden = row.classList.contains('hidden');
-    
-    // Close all other schedules first for a cleaner UI
-    document.querySelectorAll('[id^="schedule-"]').forEach(el => el.classList.add('hidden'));
-    
-    if (isHidden) {
-        row.classList.remove('hidden');
-    }
+    if (!row) return;
+    document.querySelectorAll('[id^="schedule-"]').forEach(el => {
+        if (el.id !== 'schedule-' + classId) el.classList.add('hidden');
+    });
+    row.classList.toggle('hidden');
 }
 </script>
