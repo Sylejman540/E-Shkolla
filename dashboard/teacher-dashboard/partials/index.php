@@ -1,4 +1,8 @@
 <?php
+if(session_status() === PHP_SESSION_NONE){
+    session_start();
+}
+
 $current = $_SERVER['REQUEST_URI'];
 function isActive($path) {
     return str_contains($_SERVER['REQUEST_URI'], $path);
@@ -132,9 +136,18 @@ function isAnyActive(array $paths) {
             <button @click="mobileOpen = true" class="p-2 lg:hidden text-slate-600 hover:bg-slate-50 rounded-lg transition-colors">
                 <svg class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path d="M4 6h16M4 12h16M4 18h16"/></svg>
             </button>
+            <?php
+                $teacherName = 'Profesor';
 
+                if ($_SESSION['user']['role'] === 'teacher') {
+                    $stmt = $pdo->prepare("SELECT name FROM teachers WHERE user_id = ?");
+                    $stmt->execute([$_SESSION['user']['id']]);
+                    $teacherName = $stmt->fetchColumn() ?: 'Profesor';
+                }
+            ?>
             <div class="hidden lg:block">
-                <h2 class="text-sm font-medium text-slate-500">Përshëndetje, <?= $_SESSION['user']['name'] ?? 'Mësimdhënës' ?>!</h2>
+                <p class="text-slate-500">Mirëseerdhe, Prof. <?= htmlspecialchars($teacherName) ?></p>
+
             </div>
 
             <div class="flex items-center gap-2 lg:gap-4">
@@ -154,9 +167,9 @@ function isAnyActive(array $paths) {
                 </div>
 
                 <div class="flex items-center gap-3 pl-2 lg:pl-4 border-l border-slate-100">
-                    <span class="hidden md:block text-sm font-semibold text-slate-700"><?= $_SESSION['user']['name'] ?? 'User' ?></span>
+                    <span class="hidden md:block text-sm font-semibold text-slate-700"><?= htmlspecialchars($teacherName) ?></span>
                     <div class="h-9 w-9 rounded-full bg-blue-600 flex items-center justify-center text-white text-sm font-bold shadow-sm">
-                        <?= strtoupper(substr($_SESSION['user']['name'] ?? 'M', 0, 1)) ?>
+                        <?= strtoupper(substr(htmlspecialchars($teacherName) ?? 'M', 0, 1)) ?>
                     </div>
                 </div>
             </div>
