@@ -14,7 +14,6 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     $userId    = (int) $_SESSION['user']['id'];
 
     try {
-        // Fetch the teacher primary ID
         $tStmt = $pdo->prepare("SELECT id FROM teachers WHERE user_id = ?");
         $tStmt->execute([$userId]);
         $realTeacherId = $tStmt->fetchColumn();
@@ -56,7 +55,7 @@ ob_start();
 <div class="px-4 sm:px-6 lg:px-8 py-8">
     <div class="sm:flex sm:items-center justify-between mb-8">
         <div>
-            <h1 class="text-2xl font-bold text-slate-900 dark:text-white">Regjistri Digjital</h1>
+            <h1 class="text-2xl font-bold text-slate-900 dark:text-white">Regjistrimi i Notave</h1>
             <p class="mt-1 text-sm text-slate-500 dark:text-slate-400">Vlerësoni nxënësit. Të dhënat ruhen automatikisht.</p>
         </div>
         <div class="flex items-center gap-2 text-xs font-medium text-slate-400 bg-slate-100 dark:bg-white/5 px-3 py-2 rounded-xl">
@@ -68,13 +67,22 @@ ob_start();
         </div>
     </div>
 
-    <div class="mb-6 bg-white dark:bg-gray-900 p-4 rounded-2xl border border-slate-200 dark:border-white/10 shadow-sm">
+    <div class="mb-6 flex flex-col sm:flex-row gap-4 justify-between items-center bg-white dark:bg-gray-900 p-4 rounded-2xl border border-slate-200 dark:border-white/10 shadow-sm">
         <div class="relative w-full max-w-xs">
             <input id="liveSearch" type="text" placeholder="Kërko nxënësin..." 
                 class="w-full pl-10 pr-4 py-2.5 rounded-xl border-none bg-slate-100 dark:bg-gray-800 text-sm focus:ring-2 focus:ring-indigo-500 outline-none transition dark:text-white">
             <div class="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
                 <svg class="h-4 w-4 text-slate-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>
             </div>
+        </div>
+        
+        <div class="flex items-center gap-2 text-sm text-slate-500">
+            <span>Rreshta për faqe:</span>
+            <select id="rowsPerPage" class="bg-slate-100 dark:bg-gray-800 border-none rounded-lg py-1 px-2 focus:ring-2 focus:ring-indigo-500 outline-none cursor-pointer">
+                <option value="5">5</option>
+                <option value="10" selected>10</option>
+                <option value="25">25</option>
+            </select>
         </div>
     </div>
 
@@ -83,15 +91,15 @@ ob_start();
             <table class="w-full text-left border-collapse table-fixed min-w-[900px]">
                 <thead>
                     <tr class="bg-slate-50 dark:bg-white/5 border-b border-slate-200 dark:border-white/10">
-                        <th class="w-[30%] px-6 py-4 text-xs font-bold uppercase tracking-wider text-slate-500 dark:text-slate-400">Nxënësi</th>
-                        <th class="w-[15%] px-6 py-4 text-xs font-bold uppercase tracking-wider text-slate-500 dark:text-slate-400 text-center">Nota (1-5)</th>
-                        <th class="w-[40%] px-6 py-4 text-xs font-bold uppercase tracking-wider text-slate-500 dark:text-slate-400">Koment/Vlerësimi</th>
-                        <th class="w-[15%] px-6 py-4 text-xs font-bold uppercase tracking-wider text-slate-500 dark:text-slate-400 text-right pr-10">Statusi</th>
+                        <th class="w-[30%] px-6 py-4 text-xs font-bold uppercase text-slate-500">Nxënësi</th>
+                        <th class="w-[15%] px-6 py-4 text-xs font-bold uppercase text-slate-500 text-center">Nota (1-5)</th>
+                        <th class="w-[40%] px-6 py-4 text-xs font-bold uppercase text-slate-500">Koment/Vlerësimi</th>
+                        <th class="w-[15%] px-6 py-4 text-xs font-bold uppercase text-slate-500 text-right pr-10">Statusi</th>
                     </tr>
                 </thead>
                 <tbody id="studentTableBody" class="divide-y divide-slate-200 dark:divide-white/5">
                     <?php foreach ($students as $row): ?>
-                    <tr class="group hover:bg-slate-50/50 dark:hover:bg-white/5 transition-colors">
+                    <tr class="student-row group hover:bg-slate-50/50 dark:hover:bg-white/5 transition-colors">
                         <td class="px-6 py-4 whitespace-nowrap overflow-hidden">
                             <div class="flex items-center gap-3">
                                 <div class="h-10 w-10 flex-shrink-0 rounded-full bg-indigo-50 dark:bg-indigo-500/10 flex items-center justify-center text-indigo-600 dark:text-indigo-400 font-bold text-xs ring-2 ring-white dark:ring-gray-800 shadow-sm">
@@ -106,26 +114,14 @@ ob_start();
                             </div>
                         </td>
                         <td class="px-6 py-4 text-center">
-                            <input type="number"
-                                class="auto-save-grade w-16 text-center bg-slate-100 dark:bg-gray-800 border-none rounded-xl py-2 font-bold text-indigo-600 dark:text-indigo-400 focus:ring-2 focus:ring-indigo-500 outline-none transition-all"
-                                data-student-id="<?= $row['student_id'] ?>"
-                                min="1"
-                                max="5"
-                                step="1"
-                                value="<?= $row['grade'] ?>">
+                            <input type="number" class="auto-save-grade w-16 text-center bg-slate-100 dark:bg-gray-800 border-none rounded-xl py-2 font-bold text-indigo-600 dark:text-indigo-400 focus:ring-2 focus:ring-indigo-500 outline-none transition-all" data-student-id="<?= $row['student_id'] ?>" min="1" max="5" value="<?= $row['grade'] ?>">
                         </td>
                         <td class="px-6 py-4">
-                            <input type="text" 
-                                   class="auto-save-comment w-full bg-transparent border-b border-transparent hover:border-slate-200 dark:hover:border-white/10 focus:border-indigo-500 outline-none text-sm py-2 transition-all text-slate-600 dark:text-slate-300 italic"
-                                   data-student-id="<?= $row['student_id'] ?>" 
-                                   placeholder="Shto një vlerësim..." 
-                                   value="<?= htmlspecialchars($row['comment'] ?? '') ?>">
+                            <input type="text" class="auto-save-comment w-full bg-transparent border-b border-transparent hover:border-slate-200 dark:hover:border-white/10 focus:border-indigo-500 outline-none text-sm py-2 transition-all text-slate-600 dark:text-slate-300 italic" data-student-id="<?= $row['student_id'] ?>" placeholder="Shto një vlerësim..." value="<?= htmlspecialchars($row['comment'] ?? '') ?>">
                         </td>
                         <td class="px-6 py-4 text-right pr-10">
                             <div class="save-indicator opacity-0 transition-all duration-300 transform translate-x-2" data-student-id="<?= $row['student_id'] ?>">
-                                <span class="text-[10px] font-bold text-emerald-600 dark:text-emerald-400 bg-emerald-100 dark:bg-emerald-500/20 px-2.5 py-1 rounded-full uppercase tracking-widest">
-                                    Rujtur
-                                </span>
+                                <span class="text-[10px] font-bold text-emerald-600 dark:text-emerald-400 bg-emerald-100 dark:bg-emerald-500/20 px-2.5 py-1 rounded-full uppercase tracking-widest">Rujtur</span>
                             </div>
                         </td>
                     </tr>
@@ -133,27 +129,75 @@ ob_start();
                 </tbody>
             </table>
         </div>
+        
+        <div class="px-6 py-4 bg-slate-50 dark:bg-white/5 border-t border-slate-200 dark:border-white/10 flex items-center justify-between">
+            <p class="text-xs text-slate-500" id="paginationInfo">Duke shfaqur 0 deri në 0 nga 0 nxënës</p>
+            <div class="flex gap-2">
+                <button id="prevPage" class="p-2 rounded-lg border border-slate-200 dark:border-white/10 hover:bg-white dark:hover:bg-gray-800 transition disabled:opacity-30 disabled:cursor-not-allowed">
+                    <svg class="w-4 h-4 dark:text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 19l-7-7 7-7"/></svg>
+                </button>
+                <button id="nextPage" class="p-2 rounded-lg border border-slate-200 dark:border-white/10 hover:bg-white dark:hover:bg-gray-800 transition disabled:opacity-30 disabled:cursor-not-allowed">
+                    <svg class="w-4 h-4 dark:text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"/></svg>
+                </button>
+            </div>
+        </div>
     </div>
 </div>
 
 <script>
-// Logic for auto-saving data
+let currentPage = 1;
+let rowsPerPage = 10;
+let filteredRows = [];
+
+const tableBody = document.getElementById('studentTableBody');
+const allRows = Array.from(tableBody.querySelectorAll('.student-row'));
+
+// --- PAGINATION & SEARCH LOGIC ---
+function updatePagination() {
+    const searchVal = document.getElementById('liveSearch').value.toLowerCase().trim();
+    
+    filteredRows = allRows.filter(row => {
+        const nameEl = row.querySelector('.student-name');
+        const nameText = nameEl.getAttribute('data-original');
+        const isMatch = nameText.toLowerCase().includes(searchVal);
+        
+        if (searchVal && isMatch) {
+            const regex = new RegExp(`(${searchVal.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')})`, "gi");
+            nameEl.innerHTML = nameText.replace(regex, `<mark class="bg-indigo-100 text-indigo-700 rounded px-0.5">$1</mark>`);
+        } else {
+            nameEl.innerHTML = nameText;
+        }
+        return isMatch;
+    });
+
+    const totalRows = filteredRows.length;
+    const totalPages = Math.ceil(totalRows / rowsPerPage);
+    if (currentPage > totalPages) currentPage = totalPages || 1;
+
+    const start = (currentPage - 1) * rowsPerPage;
+    const end = start + rowsPerPage;
+
+    allRows.forEach(row => row.style.display = 'none');
+    filteredRows.slice(start, end).forEach(row => row.style.display = '');
+
+    document.getElementById('prevPage').disabled = currentPage === 1;
+    document.getElementById('nextPage').disabled = currentPage === totalPages || totalPages === 0;
+    document.getElementById('paginationInfo').innerText = `Duke shfaqur ${totalRows > 0 ? start + 1 : 0} deri në ${Math.min(end, totalRows)} nga ${totalRows} nxënës`;
+}
+
+// --- AUTO SAVE LOGIC ---
 function saveData(studentId, field, value) {
     const indicator = document.querySelector(`.save-indicator[data-student-id="${studentId}"]`);
     const formData = new FormData();
     formData.append('student_id', studentId);
     formData.append(field, value);
 
-    fetch(window.location.href, {
-        method: 'POST',
-        body: formData
-    })
+    fetch(window.location.href, { method: 'POST', body: formData })
     .then(res => res.text())
     .then(data => {
         if(data.trim() === "success") {
             indicator.classList.remove('opacity-0', 'translate-x-2');
             indicator.classList.add('opacity-100', 'translate-x-0');
-            
             setTimeout(() => { 
                 indicator.classList.add('opacity-0', 'translate-x-2');
                 indicator.classList.remove('opacity-100', 'translate-x-0');
@@ -163,57 +207,35 @@ function saveData(studentId, field, value) {
 }
 
 // Event Listeners
-document.querySelectorAll('.auto-save-grade').forEach(input => {
-    input.addEventListener('change', function() {
-        saveData(this.dataset.studentId, 'grade', this.value);
-    });
-});
+document.getElementById('liveSearch').addEventListener('input', () => { currentPage = 1; updatePagination(); });
+document.getElementById('rowsPerPage').addEventListener('change', (e) => { rowsPerPage = parseInt(e.target.value); currentPage = 1; updatePagination(); });
+document.getElementById('prevPage').addEventListener('click', () => { if (currentPage > 1) { currentPage--; updatePagination(); } });
+document.getElementById('nextPage').addEventListener('click', () => { if (currentPage < Math.ceil(filteredRows.length / rowsPerPage)) { currentPage++; updatePagination(); } });
 
-document.querySelectorAll('.auto-save-comment').forEach(input => {
-    input.addEventListener('blur', function() {
-        saveData(this.dataset.studentId, 'comment', this.value);
-    });
-    input.addEventListener('keypress', function(e) {
-        if (e.key === 'Enter') this.blur();
-    });
-});
-
-// Live Search with Highlight matching your previous design
-document.getElementById('liveSearch').addEventListener('input', function() {
-    let filter = this.value.toLowerCase().trim();
-    let rows = document.querySelectorAll('#studentTableBody tr');
-
-    rows.forEach(row => {
-        let nameElement = row.querySelector('.student-name');
-        let nameText = nameElement.getAttribute('data-original');
-        
-        if (nameText.toLowerCase().includes(filter)) {
-            row.style.display = "";
-            if(filter !== "") {
-                let regex = new RegExp(`(${filter})`, "gi");
-                nameElement.innerHTML = nameText.replace(regex, `<mark class="bg-yellow-200 dark:bg-yellow-500/40 text-current rounded-sm px-0.5">$1</mark>`);
-            } else {
-                nameElement.innerHTML = nameText;
-            }
-        } else {
-            row.style.display = "none";
-        }
-    });
-});
-
-document.addEventListener('input', function (e) {
-    if (!e.target.classList.contains('auto-save-grade')) return;
-
-    let value = parseInt(e.target.value, 10);
-
-    if (isNaN(value)) {
-        e.target.value = '';
-        return;
+// Bind auto-save to inputs (delegated for stability)
+tableBody.addEventListener('change', function(e) {
+    if (e.target.classList.contains('auto-save-grade')) {
+        let val = parseInt(e.target.value);
+        if (val < 1) e.target.value = 1;
+        if (val > 5) e.target.value = 5;
+        saveData(e.target.dataset.studentId, 'grade', e.target.value);
     }
-
-    if (value < 1) e.target.value = 1;
-    if (value > 5) e.target.value = 5;
 });
+
+tableBody.addEventListener('blur', function(e) {
+    if (e.target.classList.contains('auto-save-comment')) {
+        saveData(e.target.dataset.studentId, 'comment', e.target.value);
+    }
+}, true);
+
+tableBody.addEventListener('keypress', function(e) {
+    if (e.key === 'Enter' && e.target.classList.contains('auto-save-comment')) {
+        e.target.blur();
+    }
+});
+
+// Initial Load
+updatePagination();
 </script>
 
 <?php
