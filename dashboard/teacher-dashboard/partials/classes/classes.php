@@ -106,8 +106,10 @@ ob_start();
                         </td>
                         <td class="hidden md:table-cell whitespace-nowrap px-3 py-5 text-sm text-slate-600">
                             <div class="flex items-center gap-2">
-                                <svg class="h-4 w-4 text-slate-400" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
-                                    <path d="M17 21v-2a4 4 0 00-4-4H5a4 4 0 00-4 4v2m16-10a4 4 0 11-8 0 4 4 0 018 0z" />
+                                <svg class="h-4 w-4 text-slate-400" fill="none"
+                                    viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+                                <path stroke-linecap="round" stroke-linejoin="round"
+                                        d="M5.121 17.804A9 9 0 1118.88 17.804M15 11a3 3 0 11-6 0 3 3 0 016 0z"/>
                                 </svg>
                                 <?= htmlspecialchars($row['max_students']) ?> Studentë
                             </div>
