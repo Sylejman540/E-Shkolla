@@ -1,126 +1,142 @@
+<?php
+// 1. Siguria dhe Menaxhimi i Sesionit
+if (session_status() === PHP_SESSION_NONE) {
+    session_start();
+}
+
+// Authorization Guard
+if (!isset($_SESSION['user']['id']) || $_SESSION['user']['role'] !== 'parent') {
+    header("Location: /E-Shkolla/login");
+    exit();
+}
+
+require_once __DIR__ . '/../../db.php';
+$userId = $_SESSION['user']['id'];
+$currentUri = $_SERVER['REQUEST_URI'];
+
+function isActive($path) {
+    global $currentUri;
+    return str_contains($currentUri, $path);
+}
+
+// Marrja e të dhënave të prindit
+$parentName = 'Prind';
+try {
+    $stmt = $pdo->prepare("SELECT name FROM users WHERE id = ? LIMIT 1");
+    $stmt->execute([$userId]);
+    $parentName = $stmt->fetchColumn() ?: 'Prind';
+} catch (PDOException $e) {
+    error_log("Database Error in Layout: " . $e->getMessage());
+}
+?>
 <!DOCTYPE html>
-<html lang="en" class="h-full bg-white dark:bg-gray-900"> 
+<html lang="en" class="h-full bg-slate-50"> 
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>E-Shkolla </title>
+    <title>E-Shkolla | Prindi</title>
     <script src="https://cdn.tailwindcss.com"></script>
+    <script defer src="https://unpkg.com/alpinejs@3.x.x/dist/cdn.min.js"></script>
+    <link rel="icon" href="/E-Shkolla/images/icon.png" type="image/png">
+    <style>
+        [x-cloak] { display: none !important; }
+        .custom-transition { transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1); }
+        .active-indicator::before {
+            content: '';
+            position: absolute;
+            left: -16px;
+            top: 20%;
+            height: 60%;
+            width: 4px;
+            background-color: #4f46e5;
+            border-radius: 0 4px 4px 0;
+        }
+    </style>
 </head>
-<body class="h-full">
+<body class="h-full font-sans antialiased text-slate-900" 
+      x-data="{ sidebarCollapsed: false, mobileOpen: false }">
 
-<div class="hidden lg:fixed lg:inset-y-0 lg:z-50 lg:flex lg:w-72 lg:flex-col">
-  <div class="relative flex grow flex-col gap-y-5 overflow-y-auto border-r border-gray-200 bg-white px-6 dark:border-white/10 dark:bg-gray-900 dark:before:pointer-events-none dark:before:absolute dark:before:inset-0 dark:before:bg-black/10">
-    <a href="/E-Shkolla/parent-dashboard" class="relative flex h-16 shrink-0 items-center">
-      <img src="/E-Shkolla/images/logo.png" alt="Your Company" class="w-48 h-48 dark:hidden" />
-    </a>
-    <nav class="relative flex flex-1 flex-col">
-      <ul role="list" class="flex flex-1 flex-col gap-y-7">
-        <li>
-          <ul role="list" class="-mx-2 space-y-1">
-           <li>
-                <a href="/E-Shkolla/parent-dashboard"
-                class="group flex gap-x-3 rounded-md bg-gray-50 p-2 text-sm/6 font-semibold text-indigo-600 dark:bg-white/5 dark:text-white">
-                    👨‍👩‍👧
-                    Paneli
-                </a>
-            </li>
+    <div x-show="mobileOpen" x-cloak x-transition.opacity @click="mobileOpen = false"
+         class="fixed inset-0 z-40 bg-slate-900/40 backdrop-blur-sm lg:hidden"></div>
 
-            <li>
-                <a href="/E-Shkolla/parent-children"
-                class="group flex gap-x-3 rounded-md p-2 text-sm/6 font-semibold text-gray-700 hover:bg-gray-50 hover:text-indigo-600 dark:text-gray-400 dark:hover:bg-white/5 dark:hover:text-white">
-                    👶
-                    Fëmijët e Mi
-                </a>
-            </li>
+    <aside class="fixed inset-y-0 left-0 z-50 flex flex-col bg-white shadow-[4px_0_24px_rgba(0,0,0,0.02)] border-r border-slate-100 custom-transition"
+           :class="[sidebarCollapsed ? 'w-20' : 'w-72', mobileOpen ? 'translate-x-0' : '-translate-x-full lg:translate-x-0']">
 
-            <li>
-                <a href="/E-Shkolla/parent-attendance"
-                class="group flex gap-x-3 rounded-md p-2 text-sm/6 font-semibold text-gray-700 hover:bg-gray-50 hover:text-indigo-600 dark:text-gray-400 dark:hover:text-white">
-                    📅
-                    Prezenca
-                </a>
-            </li>
-
-            <li>
-                <a href="/E-Shkolla/parent-grades"
-                class="group flex gap-x-3 rounded-md p-2 text-sm/6 font-semibold text-gray-700 hover:bg-gray-50 hover:text-indigo-600 dark:text-gray-400 dark:hover:text-white">
-                    📝
-                    Notat
-                </a>
-            </li>
-
-            <li>
-                <a href="/E-Shkolla/parent-assignments"
-                class="group flex gap-x-3 rounded-md p-2 text-sm/6 font-semibold text-gray-700 hover:bg-gray-50 hover:text-indigo-600 dark:text-gray-400 dark:hover:text-white">
-                    📚
-                    Detyrat
-                </a>
-            </li>
-          </ul>
-        </li>
-        <li>
-        <div class="text-xs/6 font-semibold text-gray-400 dark:text-gray-500">Profili</div>
-          <ul role="list" class="-mx-2 mt-2 space-y-1">
-            <li>
-            <a href="/E-Shkolla/teacher-profile"
-                class="group flex gap-x-3 rounded-md p-2 text-sm/6 font-semibold text-gray-700 hover:bg-gray-50 hover:text-indigo-600 dark:text-gray-400 dark:hover:text-white">
-                👤
-                Profili
-            </a>
-            </li>
-            <li>
-            <a href="/E-Shkolla/logout" class="flex items-center gap-x-3 rounded-md p-2 text-sm font-semibold text-red-600 hover:bg-red-50">
-              🚪 Logout
-            </a>
-            </li>
-          </ul>
-        </li>
-        <li class="-mx-6 mt-auto">
-        <?php
-          require_once __DIR__  . '/../../db.php';
-
-          $user_id = $_SESSION['user']['id'];
-
-          $stmt = $pdo->prepare("SELECT * FROM users WHERE id = ?");
-          $stmt->execute([$user_id]);
-
-          $teachers = $stmt->fetchAll(PDO::FETCH_ASSOC);
-        ?>
-        <?php foreach ($teachers as $row): ?>
-        <div class="flex items-center gap-4 px-4 py-3 rounded-lg hover:bg-gray-50 dark:hover:bg-white/5 transition">
-            
-            <!-- <img src="/E-Shkolla/<?= htmlspecialchars($row['profile_photo']) ?>" alt="<?= htmlspecialchars($row['name']) ?>" class="w-10 h-10 rounded-full object-cover border border-gray-200 dark:border-gray-600"/> -->
-
-            <div class="flex flex-col">
-            <span class="text-sm font-semibold text-gray-900 dark:text-white">
-                <?= htmlspecialchars($row['name']) ?>
-            </span>
-            <span class="text-xs text-gray-500 dark:text-gray-400">
-                Prindër
-            </span>
+        <a href="/E-Shkolla/parent-dashboard" class="flex h-20 shrink-0 items-center px-6 overflow-hidden border-b border-slate-50">
+            <img src="/E-Shkolla/images/icon.png" class="h-10 w-auto min-w-[40px] object-contain" alt="Logo">
+            <div x-show="!sidebarCollapsed" x-transition class="ml-3 whitespace-nowrap">
+                <h1 class="text-xl font-bold tracking-tight text-slate-800">E-Shkolla</h1>
+                <p class="text-[10px] font-bold uppercase tracking-widest text-indigo-600">Prindër</p>
             </div>
-        </div>
-        <?php endforeach; ?>
+        </a>
 
-        </li>
-      </ul>
-    </nav>
-  </div>
-</div>
+        <nav class="flex flex-1 flex-col overflow-y-auto px-4 py-6">
+            <ul role="list" class="flex flex-1 flex-col gap-y-2">
+                
+                <?php
+                $menuItems = [
+                    ['url' => '/parent-dashboard', 'label' => 'Paneli', 'icon' => 'M2.25 12l8.954-8.955c.44-.439 1.152-.439 1.591 0L21.75 12M4.5 9.75v10.125c0 .621.504 1.125 1.125 1.125H9.75v-4.875c0-.621.504-1.125 1.125-1.125h2.25c.621 0 1.125.504 1.125 1.125V21h4.125c.621 0 1.125-.504 1.125-1.125V9.75M8.25 21h8.25'],
+                    ['url' => '/parent-children', 'label' => 'Fëmijët e Mi', 'icon' => 'M15.75 6a3.75 3.75 0 1 1-7.5 0 3.75 3.75 0 0 1 7.5 0ZM4.501 20.118a7.5 7.5 0 0 1 14.998 0A17.933 17.933 0 0 1 12 21.75c-2.676 0-5.216-.584-7.499-1.632Z'],
+                    ['url' => '/parent-attendance', 'label' => 'Prezenca', 'icon' => 'M6.75 3v2.25M17.25 3v2.25M3 18.75V7.5a2.25 2.25 0 0 1 2.25-2.25h13.5A2.25 2.25 0 0 1 21 7.5v11.25m-18 0A2.25 2.25 0 0 0 5.25 21h13.5A2.25 2.25 0 0 0 21 18.75m-18 0v-7.5A2.25 2.25 0 0 1 5.25 9h13.5A2.25 2.25 0 0 1 21 11.25v7.5'],
+                    ['url' => '/parent-grades', 'label' => 'Notat', 'icon' => 'M12 6.042A8.967 8.967 0 0 0 6 3.75c-1.052 0-2.062.18-3 .512v14.25A8.987 8.987 0 0 1 6 18c2.305 0 4.408.867 6 2.292m0-14.25a8.966 8.966 0 0 1 6-2.292c1.052 0 2.062.18 3 .512v14.25A8.987 8.987 0 0 0 18 18a8.967 8.967 0 0 0-6 2.292m0-14.25v14.25'],
+                    ['url' => '/parent-assignments', 'label' => 'Detyrat', 'icon' => 'M12 6.042A8.967 8.967 0 0 0 6 3.75c-1.052 0-2.062.18-3 .512v14.25A8.987 8.987 0 0 1 6 18c2.305 0 4.408.867 6 2.292m0-14.25a8.966 8.966 0 0 1 6-2.292c1.052 0 2.062.18 3 .512v14.25A8.987 8.987 0 0 0 18 18a8.967 8.967 0 0 0-6 2.292m0-14.25v14.25']
+                ];
 
-<div class="sticky top-0 z-40 flex items-center gap-x-6 bg-white px-4 py-4 shadow-xs sm:px-6 lg:hidden dark:bg-gray-900 dark:shadow-none dark:before:pointer-events-none dark:before:absolute dark:before:inset-0 dark:before:border-b dark:before:border-white/10 dark:before:bg-black/10">
-  <button type="button" command="show-modal" commandfor="sidebar" class="relative -m-2.5 p-2.5 text-gray-700 lg:hidden dark:text-gray-400">
-    <span class="sr-only">Open sidebar</span>
-    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" data-slot="icon" aria-hidden="true" class="size-6">
-      <path d="M3.75 6.75h16.5M3.75 12h16.5m-16.5 5.25h16.5" stroke-linecap="round" stroke-linejoin="round" />
-    </svg>
-  </button>
-  <div class="relative flex-1 text-sm/6 font-semibold text-gray-900 dark:text-white">Dashboard</div>
-  <a href="#" class="relative">
-    <span class="sr-only">Your profile</span>
-    <img src="https://images.unsplash.com/photo-1472099645785-5658abf4ff4e?ixlib=rb-1.2.1&ixid=eyJhcHBfaWQiOjEyMDd9&auto=format&fit=facearea&facepad=2&w=256&h=256&q=80" alt="" class="size-8 rounded-full bg-gray-50 outline -outline-offset-1 outline-black/5 dark:bg-gray-800 dark:outline-white/10" />
-  </a>
-</div>
+                foreach ($menuItems as $item): ?>
+                <li>
+                    <a href="/E-Shkolla<?= $item['url'] ?>"
+                       class="relative group flex items-center gap-x-3 rounded-xl p-3 text-sm font-semibold transition-all
+                       <?= isActive($item['url']) ? 'bg-indigo-50 text-indigo-600 active-indicator' : 'text-slate-500 hover:bg-slate-50 hover:text-indigo-600' ?>">
+                        <svg class="h-6 w-6 shrink-0" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor">
+                            <path stroke-linecap="round" stroke-linejoin="round" d="<?= $item['icon'] ?>" />
+                        </svg>
+                        <span x-show="!sidebarCollapsed || mobileOpen" class="whitespace-nowrap"><?= $item['label'] ?></span>
+                    </a>
+                </li>
+                <?php endforeach; ?>
 
+                <li class="mt-auto pt-4 border-t border-slate-50">
+                    <a href="/E-Shkolla/logout" class="group flex items-center gap-x-3 rounded-xl bg-red-50/50 p-3 text-sm font-semibold text-red-600 hover:bg-red-100 transition-all">
+                        <svg class="h-6 w-6 shrink-0" fill="none" viewBox="0 0 24 24" stroke-width="1.8" stroke="currentColor">
+                            <path stroke-linecap="round" stroke-linejoin="round" d="M15.75 9V5.25A2.25 2.25 0 0013.5 3h-6a2.25 2.25 0 00-2.25 2.25v13.5A2.25 2.25 0 007.5 21h6a2.25 2.25 0 002.25-2.25V15m3 0l3-3m0 0l-3-3m3 3H9" />
+                        </svg>
+                        <span x-show="!sidebarCollapsed || mobileOpen" class="whitespace-nowrap">Çkyçu</span>
+                    </a>
+                </li>
+            </ul>
+        </nav>
+
+        <button @click="sidebarCollapsed = !sidebarCollapsed" class="hidden lg:flex items-center justify-center h-12 border-t border-slate-100 text-slate-400 hover:text-slate-600">
+            <svg :class="sidebarCollapsed ? 'rotate-180' : ''" class="h-5 w-5 transition-transform" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path d="M11 19l-7-7 7-7m8 14l-7-7 7-7" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>
+        </button>
+    </aside>
+
+    <div :class="sidebarCollapsed ? 'lg:pl-20' : 'lg:pl-72'" class="min-h-screen custom-transition flex flex-col">
+        
+        <header class="sticky top-0 z-30 h-16 flex items-center justify-between bg-white/80 backdrop-blur-md border-b border-slate-100 px-4 lg:px-8">
+            <button @click="mobileOpen = true" class="p-2 lg:hidden text-slate-600 hover:bg-slate-50 rounded-lg transition-colors">
+                <svg class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path d="M4 6h16M4 12h16M4 18h16"/></svg>
+            </button>
+
+            <div class="hidden lg:block">
+                <p class="text-slate-500">Mirëseerdhët, Prind: <span class="font-semibold text-slate-800"><?= htmlspecialchars($parentName) ?></span></p>
+            </div>
+
+            <div class="flex items-center gap-4">
+                <div class="flex items-center gap-3 pl-4 border-l border-slate-100">
+                    <span class="hidden md:block text-sm font-semibold text-slate-700"><?= htmlspecialchars($parentName) ?></span>
+                    <div class="h-9 w-9 rounded-full bg-indigo-600 flex items-center justify-center text-white text-sm font-bold shadow-sm">
+                        <?= strtoupper(substr(htmlspecialchars($parentName), 0, 1)) ?>
+                    </div>
+                </div>
+            </div>
+        </header>
+
+        <main class="p-4 lg:p-8 flex-1">
+            <div class="max-w-7xl mx-auto">
+                <?= $content ?? '<div class="bg-white p-8 rounded-3xl border border-slate-100 shadow-sm">Përmbajtja nuk u gjet.</div>' ?>
+            </div>
+        </main>
+    </div>
 </body>
 </html>
