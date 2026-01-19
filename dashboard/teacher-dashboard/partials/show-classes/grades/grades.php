@@ -5,31 +5,44 @@ require_once __DIR__ . '/../../../../../db.php';
 $schoolId  = (int) ($_SESSION['user']['school_id'] ?? 0);
 $classId   = (int) ($_GET['class_id'] ?? 0);
 $subjectId = (int) ($_GET['subject_id'] ?? 0);
+$userId    = (int) ($_SESSION['user']['id'] ?? 0);
 
 // --- 1. SAVE LOGIC (POST) ---
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     $studentId = (int) $_POST['student_id'];
-    $grade     = isset($_POST['grade']) ? (int)$_POST['grade'] : null;
-    $comment   = isset($_POST['comment']) ? trim($_POST['comment']) : null;
-    $userId    = (int) $_SESSION['user']['id'];
 
     try {
         $tStmt = $pdo->prepare("SELECT id FROM teachers WHERE user_id = ?");
         $tStmt->execute([$userId]);
         $realTeacherId = $tStmt->fetchColumn();
 
-        $stmt = $pdo->prepare("
-            INSERT INTO grades (school_id, teacher_id, student_id, class_id, subject_id, grade, comment)
-            VALUES (?, ?, ?, ?, ?, ?, ?)
-            ON DUPLICATE KEY UPDATE 
-                grade = COALESCE(?, grade), 
-                comment = COALESCE(?, comment),
-                updated_at = NOW()
-        ");
-        $stmt->execute([
-            $schoolId, $realTeacherId, $studentId, $classId, $subjectId, 
-            $grade, $comment, $grade, $comment
-        ]);
+        if (isset($_POST['grade'])) {
+            $grade = (int)$_POST['grade'];
+            // Përdorim VALUES(column) për të marrë vlerën e re në rast dublikimi
+            $stmt = $pdo->prepare("
+                INSERT INTO grades (school_id, teacher_id, student_id, class_id, subject_id, grade)
+                VALUES (?, ?, ?, ?, ?, ?)
+                ON DUPLICATE KEY UPDATE 
+                    grade = VALUES(grade), 
+                    teacher_id = VALUES(teacher_id), 
+                    updated_at = NOW()
+            ");
+            $stmt->execute([$schoolId, $realTeacherId, $studentId, $classId, $subjectId, $grade]);
+        } 
+        
+        if (isset($_POST['comment'])) {
+            $comment = trim($_POST['comment']);
+            $stmt = $pdo->prepare("
+                INSERT INTO grades (school_id, teacher_id, student_id, class_id, subject_id, comment)
+                VALUES (?, ?, ?, ?, ?, ?)
+                ON DUPLICATE KEY UPDATE 
+                    comment = VALUES(comment), 
+                    teacher_id = VALUES(teacher_id), 
+                    updated_at = NOW()
+            ");
+            $stmt->execute([$schoolId, $realTeacherId, $studentId, $classId, $subjectId, $comment]);
+        }
+
         echo "success";
     } catch (Exception $e) {
         http_response_code(500);
@@ -38,15 +51,17 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     exit;
 }
 
-// --- 2. DATA FETCHING ---
+// --- 2. DATA FETCHING (Shtuar class_id në JOIN për saktësi) ---
 $stmt = $pdo->prepare("
     SELECT s.student_id, s.name, s.email, g.grade, g.comment 
     FROM student_class sc 
     JOIN students s ON s.student_id = sc.student_id 
-    LEFT JOIN grades g ON g.student_id = s.student_id AND g.subject_id = ?
+    LEFT JOIN grades g ON g.student_id = s.student_id 
+        AND g.subject_id = ? 
+        AND g.class_id = ?
     WHERE sc.class_id = ? 
     ORDER BY s.name ASC");
-$stmt->execute([$subjectId, $classId]);
+$stmt->execute([$subjectId, $classId, $classId]);
 $students = $stmt->fetchAll(PDO::FETCH_ASSOC);
 
 ob_start();
@@ -77,7 +92,7 @@ ob_start();
         </div>
         
         <div class="flex items-center gap-2 text-sm text-slate-500">
-            <span>Rreshta për faqe:</span>
+            <span>Rreshta:</span>
             <select id="rowsPerPage" class="bg-slate-100 dark:bg-gray-800 border-none rounded-lg py-1 px-2 focus:ring-2 focus:ring-indigo-500 outline-none cursor-pointer">
                 <option value="5">5</option>
                 <option value="10" selected>10</option>
@@ -102,8 +117,8 @@ ob_start();
                     <tr class="student-row group hover:bg-slate-50/50 dark:hover:bg-white/5 transition-colors">
                         <td class="px-6 py-4 whitespace-nowrap overflow-hidden">
                             <div class="flex items-center gap-3">
-                                <div class="h-10 w-10 flex-shrink-0 rounded-full bg-indigo-50 dark:bg-indigo-500/10 flex items-center justify-center text-indigo-600 dark:text-indigo-400 font-bold text-xs ring-2 ring-white dark:ring-gray-800 shadow-sm">
-                                    <?= strtoupper(substr($row['name'], 0, 2)) ?>
+                                <div class="h-10 w-10 flex-shrink-0 rounded-full bg-indigo-50 dark:bg-indigo-500/10 flex items-center justify-center text-indigo-600 dark:text-indigo-400 font-bold text-xs">
+                                    <?= strtoupper(substr($row['name'] ?? 'N', 0, 2)) ?>
                                 </div>
                                 <div class="flex flex-col truncate">
                                     <span class="student-name text-sm font-semibold text-slate-900 dark:text-white truncate" data-original="<?= htmlspecialchars($row['name']) ?>">
@@ -131,12 +146,12 @@ ob_start();
         </div>
         
         <div class="px-6 py-4 bg-slate-50 dark:bg-white/5 border-t border-slate-200 dark:border-white/10 flex items-center justify-between">
-            <p class="text-xs text-slate-500" id="paginationInfo">Duke shfaqur 0 deri në 0 nga 0 nxënës</p>
+            <p class="text-xs text-slate-500" id="paginationInfo"></p>
             <div class="flex gap-2">
-                <button id="prevPage" class="p-2 rounded-lg border border-slate-200 dark:border-white/10 hover:bg-white dark:hover:bg-gray-800 transition disabled:opacity-30 disabled:cursor-not-allowed">
+                <button id="prevPage" class="p-2 rounded-lg border border-slate-200 dark:border-white/10 hover:bg-white dark:hover:bg-gray-800 transition disabled:opacity-30">
                     <svg class="w-4 h-4 dark:text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 19l-7-7 7-7"/></svg>
                 </button>
-                <button id="nextPage" class="p-2 rounded-lg border border-slate-200 dark:border-white/10 hover:bg-white dark:hover:bg-gray-800 transition disabled:opacity-30 disabled:cursor-not-allowed">
+                <button id="nextPage" class="p-2 rounded-lg border border-slate-200 dark:border-white/10 hover:bg-white dark:hover:bg-gray-800 transition disabled:opacity-30">
                     <svg class="w-4 h-4 dark:text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"/></svg>
                 </button>
             </div>
@@ -152,7 +167,6 @@ let filteredRows = [];
 const tableBody = document.getElementById('studentTableBody');
 const allRows = Array.from(tableBody.querySelectorAll('.student-row'));
 
-// --- PAGINATION & SEARCH LOGIC ---
 function updatePagination() {
     const searchVal = document.getElementById('liveSearch').value.toLowerCase().trim();
     
@@ -182,10 +196,9 @@ function updatePagination() {
 
     document.getElementById('prevPage').disabled = currentPage === 1;
     document.getElementById('nextPage').disabled = currentPage === totalPages || totalPages === 0;
-    document.getElementById('paginationInfo').innerText = `Duke shfaqur ${totalRows > 0 ? start + 1 : 0} deri në ${Math.min(end, totalRows)} nga ${totalRows} nxënës`;
+    document.getElementById('paginationInfo').innerText = `Shfaqur ${totalRows > 0 ? start + 1 : 0} - ${Math.min(end, totalRows)} nga ${totalRows}`;
 }
 
-// --- AUTO SAVE LOGIC ---
 function saveData(studentId, field, value) {
     const indicator = document.querySelector(`.save-indicator[data-student-id="${studentId}"]`);
     const formData = new FormData();
@@ -201,18 +214,16 @@ function saveData(studentId, field, value) {
             setTimeout(() => { 
                 indicator.classList.add('opacity-0', 'translate-x-2');
                 indicator.classList.remove('opacity-100', 'translate-x-0');
-            }, 2000);
+            }, 1500);
         }
     });
 }
 
-// Event Listeners
 document.getElementById('liveSearch').addEventListener('input', () => { currentPage = 1; updatePagination(); });
 document.getElementById('rowsPerPage').addEventListener('change', (e) => { rowsPerPage = parseInt(e.target.value); currentPage = 1; updatePagination(); });
 document.getElementById('prevPage').addEventListener('click', () => { if (currentPage > 1) { currentPage--; updatePagination(); } });
 document.getElementById('nextPage').addEventListener('click', () => { if (currentPage < Math.ceil(filteredRows.length / rowsPerPage)) { currentPage++; updatePagination(); } });
 
-// Bind auto-save to inputs (delegated for stability)
 tableBody.addEventListener('change', function(e) {
     if (e.target.classList.contains('auto-save-grade')) {
         let val = parseInt(e.target.value);
@@ -228,13 +239,6 @@ tableBody.addEventListener('blur', function(e) {
     }
 }, true);
 
-tableBody.addEventListener('keypress', function(e) {
-    if (e.key === 'Enter' && e.target.classList.contains('auto-save-comment')) {
-        e.target.blur();
-    }
-});
-
-// Initial Load
 updatePagination();
 </script>
 

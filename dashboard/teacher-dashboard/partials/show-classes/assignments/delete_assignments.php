@@ -13,20 +13,29 @@ if ($_SERVER['REQUEST_METHOD'] !== 'POST') {
 }
 
 $assignmentId = (int) ($_POST['id'] ?? 0);
-$teacherId    = (int) ($_SESSION['user']['id'] ?? 0);
 $schoolId     = (int) ($_SESSION['user']['school_id'] ?? 0);
+$userId       = (int) ($_SESSION['user']['id'] ?? 0);
 
-if (!$assignmentId || !$teacherId || !$schoolId) {
+if (!$assignmentId || !$schoolId || !$userId) {
     echo json_encode(['success' => false, 'message' => 'Invalid context']);
     exit;
 }
 
-/**
- * SECURITY:
- * Delete ONLY if:
- *  - assignment belongs to this teacher
- *  - assignment belongs to this school
- */
+/* ✅ GET REAL TEACHER ID */
+$stmt = $pdo->prepare("
+    SELECT id
+    FROM teachers
+    WHERE user_id = ? AND school_id = ?
+");
+$stmt->execute([$userId, $schoolId]);
+$teacherId = (int) $stmt->fetchColumn();
+
+if (!$teacherId) {
+    echo json_encode(['success' => false, 'message' => 'Teacher not found']);
+    exit;
+}
+
+/* ✅ DELETE WITH CORRECT IDs */
 $stmt = $pdo->prepare("
     DELETE FROM assignments
     WHERE id = ?
