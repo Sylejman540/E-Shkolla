@@ -1,22 +1,48 @@
 <?php
-if(session_status() === PHP_SESSION_NONE){
+// 1. Core Security & Session Management
+if (session_status() === PHP_SESSION_NONE) {
     session_start();
 }
 
-$current = $_SERVER['REQUEST_URI'];
+// Security Hardening Headers
+header("X-Frame-Options: DENY");
+header("X-Content-Type-Options: nosniff");
+header("X-XSS-Protection: 1; mode=block");
+header("Referrer-Policy: strict-origin-when-cross-origin");
+
+// 2. Authorization Guard
+// Redirect immediately if not logged in or not a student
+if (!isset($_SESSION['user']['id']) || $_SESSION['user']['role'] !== 'student') {
+    header("Location: /E-Shkolla/login");
+    exit();
+}
+
+// 3. Application State & Helper Functions
+$userId = $_SESSION['user']['id'];
+$currentUri = $_SERVER['REQUEST_URI'];
 
 function isActive($path) {
-    return str_contains($_SERVER['REQUEST_URI'], $path);
+    global $currentUri;
+    return str_contains($currentUri, $path);
 }
 
-function isAnyActive(array $paths) {
-    foreach ($paths as $path) {
-        if (str_contains($_SERVER['REQUEST_URI'], $path)) {
-            return true;
-        }
+// 4. Data Fetching (Scoped for the Layout)
+$studentName = 'Nxënës';
+try {
+    require_once __DIR__ . '/../../db.php'; 
+    $stmt = $pdo->prepare("SELECT name FROM students WHERE user_id = ? LIMIT 1");
+    $stmt->execute([$userId]);
+    $fetchedName = $stmt->fetchColumn();
+    if ($fetchedName) {
+        $studentName = $fetchedName;
     }
-    return false;
+} catch (PDOException $e) {
+    // Log error internally, don't echo $e to user
+    error_log("Database Error in Layout: " . $e->getMessage());
 }
+
+// Prepare the content variable (this will be populated by your route files)
+// $content is expected to be defined by the file including this layout.
 ?>
 <!DOCTYPE html>
 <html lang="en" class="h-full bg-slate-50"> 
