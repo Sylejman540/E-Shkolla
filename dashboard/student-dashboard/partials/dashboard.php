@@ -277,7 +277,7 @@ ob_start();
             </div>
             <div class="flex items-center gap-4">
                 <div class="text-right">
-                    <div class="text-sm text-slate-500 mb-1">Today's Status</div>
+                    <div class="text-sm text-slate-500 mb-2">Today's Status</div>
                     <span class="px-3 py-1 rounded-full text-sm font-bold <?= $attendanceColor ?>">
                         <?= $attendanceStatus ?>
                     </span>
