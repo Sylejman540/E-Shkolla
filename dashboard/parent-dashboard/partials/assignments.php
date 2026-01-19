@@ -92,51 +92,50 @@ ob_start();
         </div>
     </div>
 
-    <div class="grid grid-cols-1 gap-4">
-        <?php if (!empty($assignments)): ?>
-            <?php foreach ($assignments as $task): 
-                $isLate = $task['status'] === 'late';
-                $dueDate = strtotime($task['due_date']);
-            ?>
-                <div class="group bg-white p-6 rounded-[24px] border border-slate-100 shadow-sm hover:shadow-md transition-all flex flex-col md:flex-row md:items-center justify-between gap-4">
-                    <div class="flex items-start gap-4">
-                        <div class="h-12 w-12 shrink-0 rounded-2xl flex items-center justify-center text-xl <?= $isLate ? 'bg-red-50 text-red-500' : 'bg-emerald-50 text-emerald-500' ?>">
-                            <?= $isLate ? '⚠️' : '📖' ?>
-                        </div>
-                        <div>
-                            <h4 class="font-bold text-slate-800 text-lg leading-tight"><?= htmlspecialchars($task['title']) ?></h4>
-                            <p class="text-slate-500 text-sm mt-1 line-clamp-1 italic"><?= htmlspecialchars($task['description']) ?></p>
-                            
-                            <div class="flex items-center gap-3 mt-3">
-                                <span class="flex items-center gap-1 text-xs font-bold text-slate-400">
-                                    <svg class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z"/></svg>
-                                    Afati: <?= date('d M, Y', $dueDate) ?>
-                                </span>
-                            </div>
-                        </div>
+    <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+    <?php if (!empty($assignments)): ?>
+        <?php foreach ($assignments as $task): 
+            $isLate = $task['status'] === 'late';
+            $dueDate = strtotime($task['due_date']);
+        ?>
+            <div class="bg-white rounded-[24px] border border-slate-100 p-5 shadow-sm hover:shadow-md transition-all flex flex-col justify-between h-[200px]">
+                
+                <div class="space-y-3">
+                    <div class="flex justify-between items-center">
+                        <span class="px-2 py-1 bg-slate-50 text-slate-500 text-[10px] font-black uppercase tracking-wider rounded-md border border-slate-100">
+                            <?= htmlspecialchars($task['subject_name'] ?? 'DETYRË') ?>
+                        </span>
+                        <div class="h-2 w-2 rounded-full <?= $isLate ? 'bg-red-500' : 'bg-emerald-500' ?>"></div>
                     </div>
 
-                    <div class="flex items-center justify-between md:justify-end gap-4 border-t md:border-t-0 pt-4 md:pt-0">
-                        <?php if ($isLate): ?>
-                            <span class="px-4 py-1.5 bg-red-50 text-red-600 text-[10px] font-black uppercase rounded-full border border-red-100">
-                                Afati ka kaluar
-                            </span>
-                        <?php else: ?>
-                            <span class="px-4 py-1.5 bg-emerald-50 text-emerald-600 text-[10px] font-black uppercase rounded-full border border-emerald-100">
-                                Aktive
-                            </span>
-                        <?php endif; ?>
+                    <div class="pt-1">
+                        <h4 class="font-bold text-slate-900 text-sm leading-tight line-clamp-2">
+                            <?= htmlspecialchars($task['title']) ?>
+                        </h4>
+                        <p class="text-slate-400 text-[11px] mt-1.5 line-clamp-2 leading-relaxed">
+                            <?= htmlspecialchars($task['description']) ?>
+                        </p>
                     </div>
                 </div>
-            <?php endforeach; ?>
-        <?php else: ?>
-            <div class="bg-white rounded-[32px] p-20 border border-slate-100 shadow-sm text-center">
-                <div class="text-5xl mb-4">🎉</div>
-                <h3 class="text-xl font-bold text-slate-800">Nuk ka detyra!</h3>
-                <p class="text-slate-500">Për momentin nuk ka asnjë detyrë të regjistruar për këtë klasë.</p>
+
+                <div class="pt-3 border-t border-slate-50 flex items-center justify-between">
+                    <span class="text-[11px] font-bold text-slate-400">
+                        <?= date('d M, Y', $dueDate) ?>
+                    </span>
+                    <?php if ($isLate): ?>
+                        <span class="text-[9px] font-black text-red-500 uppercase tracking-tighter">I kaluar</span>
+                    <?php else: ?>
+                        <span class="text-[9px] font-black text-emerald-500 uppercase tracking-tighter">Aktiv</span>
+                    <?php endif; ?>
+                </div>
             </div>
-        <?php endif; ?>
-    </div>
+        <?php endforeach; ?>
+    <?php else: ?>
+        <div class="col-span-full p-10 bg-slate-50 rounded-3xl border-2 border-dashed border-slate-200 text-center text-slate-400 text-sm">
+            Nuk ka detyra për momentin.
+        </div>
+    <?php endif; ?>
+</div>
 </div>
 
 <?php
