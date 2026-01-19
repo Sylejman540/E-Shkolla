@@ -8,8 +8,8 @@ if (session_status() === PHP_SESSION_NONE) {
 }
 
 /* =========================
-   AUTH GUARD
-   ========================= */
+   1. AUTH GUARD
+========================= */
 if (!isset($_SESSION['user']['id'], $_SESSION['user']['school_id'])) {
     header("Location: /E-Shkolla/login");
     exit();
@@ -19,137 +19,161 @@ $userId   = (int) $_SESSION['user']['id'];
 $schoolId = (int) $_SESSION['user']['school_id'];
 
 /* =========================
-   RESOLVE parent_id
-   ========================= */
+   2. IDENTIFIKIMI I PRINDIT DHE FËMIJËVE
+========================= */
 $stmt = $pdo->prepare("SELECT id FROM parents WHERE user_id = ? AND school_id = ?");
 $stmt->execute([$userId, $schoolId]);
 $parentId = (int) $stmt->fetchColumn();
 
-if (!$parentId) die('Parent profile not found');
+if (!$parentId) die('Profili i prindit nuk u gjet');
 
-/* =========================
-   RESOLVE student_id
-   ========================= */
-$studentId = (int) ($_GET['student_id'] ?? 0);
-
-if (!$studentId) {
-    $stmt = $pdo->prepare("SELECT student_id FROM parent_student WHERE parent_id = ? LIMIT 1");
-    $stmt->execute([$parentId]);
-    $studentId = (int) $stmt->fetchColumn();
-}
-
-if (!$studentId) die('No children linked');
-
-/* =========================
-   OWNERSHIP CHECK
-   ========================= */
+// Marrja e listës së fëmijëve për switcher-in
 $stmt = $pdo->prepare("
-    SELECT s.student_id, s.name AS student_name, s.class_name
+    SELECT s.student_id, s.name 
     FROM parent_student ps
     JOIN students s ON s.student_id = ps.student_id
-    WHERE ps.parent_id = ? AND s.student_id = ? AND s.school_id = ?
+    WHERE ps.parent_id = ? AND s.school_id = ?
 ");
-$stmt->execute([$parentId, $studentId, $schoolId]);
-$student = $stmt->fetch(PDO::FETCH_ASSOC);
+$stmt->execute([$parentId, $schoolId]);
+$children = $stmt->fetchAll(PDO::FETCH_ASSOC);
 
-if (!$student) die('Unauthorized access');
+if (!$children) die('Nuk keni fëmijë të lidhur me këtë llogari');
+
+// Përcaktimi i studentit që po shikohet
+$studentId = (int) ($_GET['student_id'] ?? $children[0]['student_id']);
+
+// Ownership Check (Siguria)
+$currentStudent = null;
+foreach ($children as $c) {
+    if ($c['student_id'] === $studentId) {
+        $currentStudent = $c;
+        break;
+    }
+}
+if (!$currentStudent) die('Akses i paautorizuar');
 
 /* =========================
-   FETCH GRADES
-   ========================= */
+   3. MARRJA E NOTAVE DHE MESATARJA
+========================= */
+// 3.1 Lista e notave të fundit
 $stmt = $pdo->prepare("
-    SELECT g.grade, g.created_at, sub.subject_name
+    SELECT g.grade, g.created_at, sub.name AS subject_name, u.name AS teacher_name
     FROM grades g
     JOIN subjects sub ON sub.id = g.subject_id
+    JOIN teachers t ON t.id = g.teacher_id
+    JOIN users u ON u.id = t.user_id
     WHERE g.student_id = ? AND g.school_id = ?
     ORDER BY g.created_at DESC
 ");
 $stmt->execute([$studentId, $schoolId]);
 $grades = $stmt->fetchAll(PDO::FETCH_ASSOC);
 
-/* =========================
-   AVERAGE GRADE
-   ========================= */
+// 3.2 Llogaritja e mesatares
 $stmt = $pdo->prepare("SELECT ROUND(AVG(grade), 2) FROM grades WHERE student_id = ?");
 $stmt->execute([$studentId]);
 $averageGrade = (float) ($stmt->fetchColumn() ?: 0);
 
-/* =========================
-   FRONTEND - CONTENT
-   ========================= */
 ob_start();
 ?>
 
-<div class="space-y-6">
-    <div class="bg-white rounded-[32px] border border-slate-100 shadow-sm p-8 flex flex-col md:flex-row justify-between items-center gap-4">
-        <div>
-            <h2 class="text-2xl font-black text-slate-900 tracking-tight">Notat e Nxënësit 📝</h2>
+<div class="max-w-7xl mx-auto space-y-8 pb-12">
+    
+    <div class="bg-white rounded-[40px] border border-slate-100 shadow-sm p-8 flex flex-col md:flex-row justify-between items-center gap-6 relative overflow-hidden">
+        <div class="absolute top-0 left-0 w-2 h-full bg-indigo-600"></div>
+        
+        <div class="relative">
+            <h2 class="text-3xl font-black text-slate-900 tracking-tight">Notat & Rezultatet 📝</h2>
             <p class="text-slate-500 font-medium mt-1">
-                Po shikoni progresin akademik për: <span class="text-indigo-600 font-bold"><?= htmlspecialchars($student['student_name']) ?></span>
+                Po shikoni progresin akademik për: <span class="text-indigo-600 font-bold"><?= htmlspecialchars($currentStudent['name']) ?></span>
             </p>
-        </div>
-        <div class="flex items-center gap-4 bg-slate-50 px-6 py-3 rounded-2xl border border-slate-100">
-            <div class="text-right">
-                <p class="text-[10px] font-bold text-slate-400 uppercase tracking-widest">Mesatarja e Përgjithshme</p>
-                <p class="text-2xl font-black text-indigo-600 leading-none"><?= $averageGrade ?></p>
+            
+            <?php if (count($children) > 1): ?>
+            <div class="mt-4 flex gap-2">
+                <?php foreach ($children as $child): ?>
+                    <a href="?student_id=<?= $child['student_id'] ?>" 
+                       class="px-4 py-1.5 rounded-xl text-[11px] font-black uppercase tracking-wider transition-all <?= $child['student_id'] === $studentId ? 'bg-indigo-600 text-white shadow-md' : 'bg-slate-100 text-slate-500 hover:bg-slate-200' ?>">
+                        <?= htmlspecialchars($child['name']) ?>
+                    </a>
+                <?php endforeach; ?>
             </div>
-            <div class="h-10 w-10 bg-indigo-100 rounded-xl flex items-center justify-center text-xl">📈</div>
+            <?php endif; ?>
+        </div>
+
+        <div class="flex items-center gap-5 bg-indigo-50/50 px-8 py-5 rounded-[32px] border border-indigo-100 min-w-[240px]">
+            <div class="text-right">
+                <p class="text-[10px] font-black text-indigo-400 uppercase tracking-[0.2em]">Mesatarja</p>
+                <p class="text-4xl font-black text-indigo-700 leading-none"><?= number_format($averageGrade, 2) ?></p>
+            </div>
+            <div class="h-14 w-14 bg-white rounded-2xl flex items-center justify-center text-2xl shadow-sm border border-indigo-100">🏆</div>
         </div>
     </div>
 
-    <div class="bg-white rounded-[32px] border border-slate-100 shadow-sm overflow-hidden">
-        <div class="p-8 border-b border-slate-50">
-            <h3 class="text-lg font-bold text-slate-800 tracking-tight">Pasqyra e Notave</h3>
+    <div class="bg-white rounded-[40px] border border-slate-100 shadow-sm overflow-hidden">
+        <div class="p-8 border-b border-slate-50 flex items-center justify-between">
+            <h3 class="text-lg font-bold text-slate-800 tracking-tight">Historiku i Vlerësimeve</h3>
+            <span class="text-xs font-bold text-slate-400 bg-slate-50 px-3 py-1 rounded-lg border border-slate-100">
+                Totali: <?= count($grades) ?> Nota
+            </span>
         </div>
         
         <div class="overflow-x-auto">
             <table class="w-full text-left border-collapse">
                 <thead>
-                    <tr class="bg-slate-50/50">
-                        <th class="px-8 py-4 text-xs font-bold uppercase tracking-widest text-slate-400 border-b border-slate-50">Lënda</th>
-                        <th class="px-8 py-4 text-xs font-bold uppercase tracking-widest text-slate-400 border-b border-slate-50">Nota</th>
-                        <th class="px-8 py-4 text-xs font-bold uppercase tracking-widest text-slate-400 border-b border-slate-50">Data e Vendosjes</th>
-                        <th class="px-8 py-4 text-xs font-bold uppercase tracking-widest text-slate-400 border-b border-slate-50 text-right">Statusi</th>
+                    <tr class="bg-slate-50/30">
+                        <th class="px-8 py-5 text-xs font-bold uppercase tracking-widest text-slate-400">Lënda</th>
+                        <th class="px-8 py-5 text-xs font-bold uppercase tracking-widest text-slate-400">Vlerësimi</th>
+                        <th class="px-8 py-5 text-xs font-bold uppercase tracking-widest text-slate-400">Mësuesi</th>
+                        <th class="px-8 py-5 text-xs font-bold uppercase tracking-widest text-slate-400">Data</th>
+                        <th class="px-8 py-5 text-right text-xs font-bold uppercase tracking-widest text-slate-400">Statusi</th>
                     </tr>
                 </thead>
                 <tbody class="divide-y divide-slate-50">
                     <?php if (!empty($grades)): ?>
                         <?php foreach ($grades as $row): ?>
-                            <tr class="hover:bg-slate-50/30 transition-colors">
-                                <td class="px-8 py-5">
-                                    <span class="font-bold text-slate-700"><?= htmlspecialchars($row['subject_name']) ?></span>
+                            <tr class="group hover:bg-slate-50/50 transition-all">
+                                <td class="px-8 py-6">
+                                    <div class="flex flex-col">
+                                        <span class="font-bold text-slate-800 text-base"><?= htmlspecialchars($row['subject_name']) ?></span>
+                                        <span class="text-[10px] text-slate-400 uppercase font-bold tracking-tighter">Vlerësim Akademik</span>
+                                    </div>
                                 </td>
-                                <td class="px-8 py-5">
-                                    <div class="flex items-center gap-3">
-                                        <span class="text-xl font-black <?= $row['grade'] >= 4 ? 'text-emerald-600' : 'text-red-500' ?>">
-                                            <?= htmlspecialchars((string)$row['grade']) ?>
+                                <td class="px-8 py-6">
+                                    <div class="flex items-center gap-4">
+                                        <span class="text-2xl font-black <?= $row['grade'] >= 4 ? 'text-emerald-600' : ($row['grade'] >= 2 ? 'text-amber-500' : 'text-rose-500') ?>">
+                                            <?= $row['grade'] ?>
                                         </span>
-                                        <div class="hidden sm:block w-16 h-1.5 bg-slate-100 rounded-full overflow-hidden">
-                                            <div class="h-full <?= $row['grade'] >= 4 ? 'bg-emerald-400' : 'bg-red-400' ?>" 
+                                        <div class="hidden sm:block w-20 h-2 bg-slate-100 rounded-full overflow-hidden">
+                                            <div class="h-full <?= $row['grade'] >= 4 ? 'bg-emerald-400' : ($row['grade'] >= 2 ? 'bg-amber-400' : 'bg-rose-400') ?>" 
                                                  style="width: <?= ($row['grade'] / 5) * 100 ?>%"></div>
                                         </div>
                                     </div>
                                 </td>
-                                <td class="px-8 py-5 text-slate-500 text-sm font-medium">
+                                <td class="px-8 py-6">
+                                    <span class="text-sm font-bold text-slate-600"><?= htmlspecialchars($row['teacher_name']) ?></span>
+                                </td>
+                                <td class="px-8 py-6 text-slate-500 text-sm font-medium">
                                     <?= date('d M, Y', strtotime($row['created_at'])) ?>
                                 </td>
-                                <td class="px-8 py-5 text-right">
-                                    <?php if ($row['grade'] == 5): ?>
-                                        <span class="px-2 py-1 bg-amber-50 text-amber-600 text-[10px] font-black uppercase rounded-lg border border-amber-100">Shkëlqyeshëm</span>
-                                    <?php elseif ($row['grade'] >= 4): ?>
-                                        <span class="px-2 py-1 bg-emerald-50 text-emerald-600 text-[10px] font-black uppercase rounded-lg border border-emerald-100">Kalues</span>
-                                    <?php else: ?>
-                                        <span class="px-2 py-1 bg-red-50 text-red-600 text-[10px] font-black uppercase rounded-lg border border-red-100">Dobët</span>
-                                    <?php endif; ?>
+                                <td class="px-8 py-6 text-right">
+                                    <?php 
+                                        $label = $row['grade'] == 5 ? 'Shkëlqyeshëm' : ($row['grade'] >= 4 ? 'Shumë mirë' : ($row['grade'] >= 2 ? 'Kalues' : 'Mbetës'));
+                                        $color = $row['grade'] == 5 ? 'bg-indigo-50 text-indigo-600 border-indigo-100' : ($row['grade'] >= 4 ? 'bg-emerald-50 text-emerald-600 border-emerald-100' : ($row['grade'] >= 2 ? 'bg-amber-50 text-amber-600 border-amber-100' : 'bg-rose-50 text-rose-600 border-rose-100'));
+                                    ?>
+                                    <span class="inline-flex items-center px-3 py-1.5 rounded-xl text-[10px] font-black uppercase border <?= $color ?>">
+                                        <?= $label ?>
+                                    </span>
                                 </td>
                             </tr>
                         <?php endforeach; ?>
                     <?php else: ?>
                         <tr>
-                            <td colspan="4" class="px-8 py-20 text-center">
-                                <div class="flex flex-col items-center gap-3">
-                                    <span class="text-5xl">📄</span>
-                                    <p class="text-slate-400 font-bold italic">Nuk ka asnjë notë të regjistruar për këtë periudhë.</p>
+                            <td colspan="5" class="px-8 py-24 text-center">
+                                <div class="flex flex-col items-center gap-4">
+                                    <div class="w-20 h-20 bg-slate-50 rounded-full flex items-center justify-center text-4xl">📄</div>
+                                    <div class="space-y-1">
+                                        <p class="text-slate-900 font-bold text-lg">Nuk ka nota për momentin</p>
+                                        <p class="text-slate-400 text-sm">Vlerësimet e mësuesve do të shfaqen këtu menjëherë pas publikimit.</p>
+                                    </div>
                                 </div>
                             </td>
                         </tr>
@@ -159,13 +183,21 @@ ob_start();
         </div>
     </div>
 
-    <div class="bg-indigo-600 rounded-[32px] p-8 text-white flex flex-col md:flex-row items-center justify-between shadow-lg shadow-indigo-100">
-        <div class="space-y-2 text-center md:text-left">
-            <h4 class="text-xl font-bold italic">"Edukimi është arma më e fuqishme!"</h4>
-            <p class="text-indigo-100 text-sm opacity-80 font-medium">Inkurajoni fëmijën tuaj të përmirësojë rezultatet në lëndët ku ka sfida.</p>
+    <div class="bg-gradient-to-r from-indigo-600 to-violet-700 rounded-[40px] p-10 text-white shadow-xl shadow-indigo-100 flex flex-col md:flex-row items-center justify-between gap-8">
+        <div class="max-w-xl text-center md:text-left">
+            <h4 class="text-2xl font-black tracking-tight mb-2 italic">"Rruga drejt suksesit fillon me punë!"</h4>
+            <p class="text-indigo-100 font-medium opacity-90 leading-relaxed">
+                Monitorimi i rregullt i notave ndihmon në identifikimin e hershëm të vështirësive. 
+                Mesatarja aktuale është <?= number_format($averageGrade, 2) ?>. Synoni gjithmonë më lart!
+            </p>
         </div>
-        <div class="mt-6 md:mt-0 px-6 py-3 bg-white/10 backdrop-blur-md rounded-2xl border border-white/20 font-bold text-sm">
-            Mesatarja: <?= $averageGrade ?> / 5.0
+        <div class="shrink-0">
+            <div class="bg-white/10 backdrop-blur-xl rounded-[32px] p-6 border border-white/20 text-center">
+                <p class="text-[10px] font-black uppercase tracking-widest text-indigo-200 mb-1">Statusi Aktual</p>
+                <span class="text-xl font-black">
+                    <?= $averageGrade >= 4.5 ? '🎖️ Student Ekselent' : ($averageGrade >= 3 ? '✅ Sukses' : '📈 Nevojitet Punë') ?>
+                </span>
+            </div>
         </div>
     </div>
 </div>
@@ -173,3 +205,4 @@ ob_start();
 <?php
 $content = ob_get_clean();
 require_once __DIR__ . '/../index.php';
+?>
