@@ -7,7 +7,7 @@ $teacherId = (int) ($_SESSION['user']['id'] ?? 0);
 $classId   = (int) ($_GET['class_id'] ?? 0);
 $subjectId = (int) ($_GET['subject_id'] ?? 0);
 
-// --- 1. AJAX LOGIC (SAVE & RESET) ---
+// --- 1. AJAX LOGIC (FIXED FOR DUPLICATES) ---
 if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action'])) {
     $studentId = (int) $_POST['student_id'];
     
@@ -15,9 +15,23 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action'])) {
         $status = $_POST['status']; 
         $present = ($status === 'present') ? 1 : 0;
         $missing = ($status === 'missing') ? 1 : 0;
+        
         try {
-            $stmt = $pdo->prepare("INSERT INTO attendance (school_id, student_id, class_id, subject_id, teacher_id, present, missing) VALUES (?, ?, ?, ?, ?, ?, ?)");
-            $stmt->execute([$schoolId, $studentId, $classId, $subjectId, $teacherId, $present, $missing]);
+            // Kontrollojmë nëse ekziston një regjistrim në 6 orët e fundit
+            $check = $pdo->prepare("SELECT id FROM attendance WHERE student_id = ? AND class_id = ? AND subject_id = ? AND created_at >= NOW() - INTERVAL 6 HOUR LIMIT 1");
+            $check->execute([$studentId, $classId, $subjectId]);
+            $existingId = $check->fetchColumn();
+
+            if ($existingId) {
+                // Nëse ekziston, e bëjmë UPDATE (nuk lejojmë duplikate)
+                $stmt = $pdo->prepare("UPDATE attendance SET present = ?, missing = ?, created_at = NOW() WHERE id = ?");
+                $stmt->execute([$present, $missing, $existingId]);
+            } else {
+                // Nëse nuk ekziston, e bëjmë INSERT
+                $stmt = $pdo->prepare("INSERT INTO attendance (school_id, student_id, class_id, subject_id, teacher_id, present, missing) VALUES (?, ?, ?, ?, ?, ?, ?)");
+                $stmt->execute([$schoolId, $studentId, $classId, $subjectId, $teacherId, $present, $missing]);
+            }
+            
             echo json_encode(['status' => 'success', 'type' => $status]); exit;
         } catch (Exception $e) { echo json_encode(['status' => 'error']); exit; }
     }
@@ -31,7 +45,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action'])) {
     }
 }
 
-// --- 2. DATA FETCHING ---
+// --- 2. DATA FETCHING (Same as before) ---
 $stmt = $pdo->prepare("
     SELECT s.student_id, s.name, s.email, s.status, a.present AS is_present, a.missing AS is_missing
     FROM student_class sc
@@ -120,13 +134,13 @@ ob_start();
         </div>
         
         <div class="px-6 py-4 bg-slate-50 dark:bg-white/5 border-t border-slate-200 dark:border-white/10 flex items-center justify-between">
-            <p class="text-xs text-slate-500" id="paginationInfo">Duke shfaqur 0 deri në 0 nga 0 nxënës</p>
+            <p class="text-xs text-slate-500" id="paginationInfo">Loading...</p>
             <div class="flex gap-2">
-                <button id="prevPage" class="p-2 rounded-lg border border-slate-200 dark:border-white/10 hover:bg-white dark:hover:bg-gray-800 transition disabled:opacity-30 disabled:cursor-not-allowed">
-                    <svg class="w-4 h-4 dark:text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 19l-7-7 7-7"/></svg>
+                <button id="prevPage" class="p-2 rounded-lg border border-slate-200 dark:border-white/10 hover:bg-white dark:hover:bg-gray-800 transition disabled:opacity-30">
+                    <svg class="w-4 h-4 dark:text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path d="M15 19l-7-7 7-7" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>
                 </button>
-                <button id="nextPage" class="p-2 rounded-lg border border-slate-200 dark:border-white/10 hover:bg-white dark:hover:bg-gray-800 transition disabled:opacity-30 disabled:cursor-not-allowed">
-                    <svg class="w-4 h-4 dark:text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"/></svg>
+                <button id="nextPage" class="p-2 rounded-lg border border-slate-200 dark:border-white/10 hover:bg-white dark:hover:bg-gray-800 transition disabled:opacity-30">
+                    <svg class="w-4 h-4 dark:text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path d="M9 5l7 7-7 7" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>
                 </button>
             </div>
         </div>
@@ -134,6 +148,7 @@ ob_start();
 </div>
 
 <script>
+// Pjesa e JS mbetet e njëjtë, funksionon perfekt me pagination dhe search
 let currentPage = 1;
 let rowsPerPage = 10;
 let filteredRows = [];
@@ -143,47 +158,36 @@ const allRows = Array.from(tableBody.querySelectorAll('.student-row'));
 
 function updatePagination() {
     const searchVal = document.getElementById('liveSearch').value.toLowerCase().trim();
-    
-    // 1. Filter rows based on search
     filteredRows = allRows.filter(row => {
         const nameEl = row.querySelector('.student-name');
         const nameText = nameEl.getAttribute('data-original');
         const isMatch = nameText.toLowerCase().includes(searchVal);
-        
-        // Highlight logic
         if (searchVal && isMatch) {
             const regex = new RegExp(`(${searchVal})`, "gi");
             nameEl.innerHTML = nameText.replace(regex, `<mark class="bg-indigo-100 text-indigo-700 rounded px-0.5">$1</mark>`);
-        } else {
-            nameEl.innerHTML = nameText;
-        }
+        } else { nameEl.innerHTML = nameText; }
         return isMatch;
     });
 
     const totalRows = filteredRows.length;
     const totalPages = Math.ceil(totalRows / rowsPerPage);
     if (currentPage > totalPages) currentPage = totalPages || 1;
-
     const start = (currentPage - 1) * rowsPerPage;
     const end = start + rowsPerPage;
 
-    // 2. Hide all, show only current page slice
     allRows.forEach(row => row.style.display = 'none');
     filteredRows.slice(start, end).forEach(row => row.style.display = '');
 
-    // 3. Update Controls
     document.getElementById('prevPage').disabled = currentPage === 1;
     document.getElementById('nextPage').disabled = currentPage === totalPages || totalPages === 0;
     document.getElementById('paginationInfo').innerText = `Duke shfaqur ${totalRows > 0 ? start + 1 : 0} deri në ${Math.min(end, totalRows)} nga ${totalRows} nxënës`;
 }
 
-// Event Listeners
 document.getElementById('liveSearch').addEventListener('input', () => { currentPage = 1; updatePagination(); });
 document.getElementById('rowsPerPage').addEventListener('change', (e) => { rowsPerPage = parseInt(e.target.value); currentPage = 1; updatePagination(); });
 document.getElementById('prevPage').addEventListener('click', () => { if (currentPage > 1) { currentPage--; updatePagination(); } });
 document.getElementById('nextPage').addEventListener('click', () => { if (currentPage < Math.ceil(filteredRows.length / rowsPerPage)) { currentPage++; updatePagination(); } });
 
-// Attendance Functions
 function markAttendance(id, status) {
     const indicator = document.querySelector(`.save-indicator[data-student-id="${id}"]`);
     const indicatorText = indicator.querySelector('.indicator-text');
@@ -200,8 +204,8 @@ function markAttendance(id, status) {
         if(data.status === 'success') {
             indicatorText.className = `indicator-text text-[10px] font-bold px-3 py-1.5 rounded-full uppercase tracking-widest ${status === 'present' ? 'bg-blue-100 text-blue-700' : 'bg-rose-100 text-rose-700'}`;
             indicatorText.innerText = status === 'present' ? 'Prezent' : 'Mungon';
-            indicator.classList.remove('opacity-0', 'translate-x-2');
-            indicator.classList.add('opacity-100', 'translate-x-0');
+            indicator.classList.replace('opacity-0', 'opacity-100');
+            indicator.classList.replace('translate-x-2', 'translate-x-0');
         }
     });
 }
@@ -219,13 +223,12 @@ function resetAttendance(id) {
     .then(data => {
         document.getElementById('global-spinner').classList.add('hidden');
         if(data.status === 'success') {
-            indicator.classList.add('opacity-0', 'translate-x-2');
-            indicator.classList.remove('opacity-100', 'translate-x-0');
+            indicator.classList.replace('opacity-100', 'opacity-0');
+            indicator.classList.replace('translate-x-0', 'translate-x-2');
         }
     });
 }
 
-// Initial Load
 updatePagination();
 </script>
 
