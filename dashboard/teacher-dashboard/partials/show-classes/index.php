@@ -134,9 +134,9 @@ function isAnyActive(array $paths) {
 
                 <li class="mt-auto">
                     <a href="/E-Shkolla/teacher-dashboard" class="group flex items-center gap-x-3 rounded-xl bg-blue-50/50 p-3 text-sm font-semibold text-blue-600 hover:bg-blue-100 transition-all">
-                        <svg class="h-6 w-6 shrink-0 custom-transition group-hover:scale-110" fill="none" viewBox="0 0 24 24" stroke-width="1.8" stroke="currentColor">
-                            <path stroke-linecap="round" stroke-linejoin="round" d="M15.75 9V5.25A2.25 2.25 0 0013.5 3h-6a2.25 2.25 0 00-2.25 2.25v13.5A2.25 2.25 0 007.5 21h6a2.25 2.25 0 002.25-2.25V15m3 0l3-3m0 0l-3-3m3 3H9" />
-                        </svg>
+<svg class="h-6 w-6 shrink-0 custom-transition group-hover:scale-110" fill="none" viewBox="0 0 24 24" stroke-width="1.8" stroke="currentColor">
+  <path stroke-linecap="round" stroke-linejoin="round" d="M11.25 9l-3 3m0 0l3 3m-3-3h7.5M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+</svg>
                         <span x-show="!sidebarCollapsed" x-transition.opacity class="whitespace-nowrap">Kthehu te ballina</span>
                     </a>
                 </li>
