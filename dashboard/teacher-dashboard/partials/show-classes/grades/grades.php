@@ -6,17 +6,17 @@ $schoolId  = (int) ($_SESSION['user']['school_id'] ?? 0);
 $classId   = (int) ($_GET['class_id'] ?? 0);
 $subjectId = (int) ($_GET['subject_id'] ?? 0);
 
-// 1. Logjika e Ruajtjes (POST)
+// --- 1. SAVE LOGIC (POST) ---
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     $studentId = (int) $_POST['student_id'];
     $grade     = isset($_POST['grade']) ? (int)$_POST['grade'] : null;
     $comment   = isset($_POST['comment']) ? trim($_POST['comment']) : null;
-    $teacherId = (int) $_SESSION['user']['id'];
+    $userId    = (int) $_SESSION['user']['id'];
 
     try {
-        // Marrim ID-në e mësuesit nga tabela teachers
+        // Fetch the teacher primary ID
         $tStmt = $pdo->prepare("SELECT id FROM teachers WHERE user_id = ?");
-        $tStmt->execute([$teacherId]);
+        $tStmt->execute([$userId]);
         $realTeacherId = $tStmt->fetchColumn();
 
         $stmt = $pdo->prepare("
@@ -39,7 +39,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     exit;
 }
 
-// 2. Marrja e të dhënave
+// --- 2. DATA FETCHING ---
 $stmt = $pdo->prepare("
     SELECT s.student_id, s.name, s.email, g.grade, g.comment 
     FROM student_class sc 
@@ -53,19 +53,28 @@ $students = $stmt->fetchAll(PDO::FETCH_ASSOC);
 ob_start();
 ?>
 
-<div class="relative min-h-screen p-4">
-    <div class="flex flex-col md:flex-row md:items-center justify-between gap-4 mb-6">
+<div class="px-4 sm:px-6 lg:px-8 py-8">
+    <div class="sm:flex sm:items-center justify-between mb-8">
         <div>
-            <h1 class="text-2xl font-bold text-slate-900 dark:text-white tracking-tight text-indigo-600">Regjistri Digjital</h1>
-            <p class="text-sm text-slate-500">Të dhënat ruhen automatikisht pas çdo ndryshimi.</p>
+            <h1 class="text-2xl font-bold text-slate-900 dark:text-white">Regjistri Digjital</h1>
+            <p class="mt-1 text-sm text-slate-500 dark:text-slate-400">Vlerësoni nxënësit. Të dhënat ruhen automatikisht.</p>
         </div>
-
-        <div class="relative w-full md:w-80">
-            <input type="text" id="liveSearch" placeholder="Kërko nxënësin..." 
-                   class="w-full pl-10 pr-4 py-2.5 bg-white dark:bg-gray-900 border border-slate-200 dark:border-white/10 rounded-2xl text-sm focus:ring-2 focus:ring-indigo-500 outline-none transition-all dark:text-white shadow-sm">
-            <span class="absolute inset-y-0 left-0 pl-3 flex items-center text-slate-400">
-                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"/></svg>
+        <div class="flex items-center gap-2 text-xs font-medium text-slate-400 bg-slate-100 dark:bg-white/5 px-3 py-2 rounded-xl">
+            <span class="relative flex h-2 w-2">
+                <span class="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75"></span>
+                <span class="relative inline-flex rounded-full h-2 w-2 bg-emerald-500"></span>
             </span>
+            Live Save Aktiv
+        </div>
+    </div>
+
+    <div class="mb-6 bg-white dark:bg-gray-900 p-4 rounded-2xl border border-slate-200 dark:border-white/10 shadow-sm">
+        <div class="relative w-full max-w-xs">
+            <input id="liveSearch" type="text" placeholder="Kërko nxënësin..." 
+                class="w-full pl-10 pr-4 py-2.5 rounded-xl border-none bg-slate-100 dark:bg-gray-800 text-sm focus:ring-2 focus:ring-indigo-500 outline-none transition dark:text-white">
+            <div class="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+                <svg class="h-4 w-4 text-slate-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>
+            </div>
         </div>
     </div>
 
@@ -76,43 +85,47 @@ ob_start();
                     <tr class="bg-slate-50 dark:bg-white/5 border-b border-slate-200 dark:border-white/10">
                         <th class="w-[30%] px-6 py-4 text-xs font-bold uppercase tracking-wider text-slate-500 dark:text-slate-400">Nxënësi</th>
                         <th class="w-[15%] px-6 py-4 text-xs font-bold uppercase tracking-wider text-slate-500 dark:text-slate-400 text-center">Nota (1-5)</th>
-                        <th class="w-[45%] px-6 py-4 text-xs font-bold uppercase tracking-wider text-slate-500 dark:text-slate-400">Koment/Vlerësimi</th>
-                        <th class="w-[10%] px-6 py-4 text-xs font-bold uppercase tracking-wider text-slate-500 dark:text-slate-400 text-right pr-6">Statusi</th>
+                        <th class="w-[40%] px-6 py-4 text-xs font-bold uppercase tracking-wider text-slate-500 dark:text-slate-400">Koment/Vlerësimi</th>
+                        <th class="w-[15%] px-6 py-4 text-xs font-bold uppercase tracking-wider text-slate-500 dark:text-slate-400 text-right pr-10">Statusi</th>
                     </tr>
                 </thead>
                 <tbody id="studentTableBody" class="divide-y divide-slate-200 dark:divide-white/5">
                     <?php foreach ($students as $row): ?>
                     <tr class="group hover:bg-slate-50/50 dark:hover:bg-white/5 transition-colors">
-                        <td class="px-6 py-4 whitespace-nowrap">
+                        <td class="px-6 py-4 whitespace-nowrap overflow-hidden">
                             <div class="flex items-center gap-3">
-                                <div class="h-10 w-10 rounded-full bg-indigo-50 dark:bg-indigo-500/10 flex items-center justify-center text-indigo-600 dark:text-indigo-400 font-bold text-xs ring-1 ring-indigo-100 dark:ring-indigo-500/20">
+                                <div class="h-10 w-10 flex-shrink-0 rounded-full bg-indigo-50 dark:bg-indigo-500/10 flex items-center justify-center text-indigo-600 dark:text-indigo-400 font-bold text-xs ring-2 ring-white dark:ring-gray-800 shadow-sm">
                                     <?= strtoupper(substr($row['name'], 0, 2)) ?>
                                 </div>
                                 <div class="flex flex-col truncate">
-                                    <span class="student-name text-sm font-semibold text-slate-900 dark:text-white truncate"><?= htmlspecialchars($row['name']) ?></span>
-                                    <span class="text-[11px] text-slate-400 truncate"><?= htmlspecialchars($row['email']) ?></span>
+                                    <span class="student-name text-sm font-semibold text-slate-900 dark:text-white truncate" data-original="<?= htmlspecialchars($row['name']) ?>">
+                                        <?= htmlspecialchars($row['name']) ?>
+                                    </span>
+                                    <span class="text-xs text-slate-400 truncate"><?= htmlspecialchars($row['email']) ?></span>
                                 </div>
                             </div>
                         </td>
                         <td class="px-6 py-4 text-center">
-                            <input type="number" 
-                                   class="auto-save-grade w-16 text-center bg-slate-100 dark:bg-gray-800 border-none rounded-lg py-1.5 font-bold text-indigo-600 dark:text-indigo-400 focus:ring-2 focus:ring-indigo-500 outline-none transition-all"
-                                   data-student-id="<?= $row['student_id'] ?>" 
-                                   min="1" max="5" 
-                                   value="<?= $row['grade'] ?>">
+                            <input type="number"
+                                class="auto-save-grade w-16 text-center bg-slate-100 dark:bg-gray-800 border-none rounded-xl py-2 font-bold text-indigo-600 dark:text-indigo-400 focus:ring-2 focus:ring-indigo-500 outline-none transition-all"
+                                data-student-id="<?= $row['student_id'] ?>"
+                                min="1"
+                                max="5"
+                                step="1"
+                                value="<?= $row['grade'] ?>">
                         </td>
                         <td class="px-6 py-4">
-                            <div class="relative">
-                                <input type="text" 
-                                       class="auto-save-comment w-full bg-transparent border-b border-transparent hover:border-slate-200 dark:hover:border-white/10 focus:border-indigo-500 outline-none text-sm py-1.5 transition-all text-slate-600 dark:text-slate-300 italic"
-                                       data-student-id="<?= $row['student_id'] ?>" 
-                                       placeholder="Shkruaj vlerësimin këtu..." 
-                                       value="<?= htmlspecialchars($row['comment'] ?? '') ?>">
-                            </div>
+                            <input type="text" 
+                                   class="auto-save-comment w-full bg-transparent border-b border-transparent hover:border-slate-200 dark:hover:border-white/10 focus:border-indigo-500 outline-none text-sm py-2 transition-all text-slate-600 dark:text-slate-300 italic"
+                                   data-student-id="<?= $row['student_id'] ?>" 
+                                   placeholder="Shto një vlerësim..." 
+                                   value="<?= htmlspecialchars($row['comment'] ?? '') ?>">
                         </td>
-                        <td class="px-6 py-4 text-right pr-6">
-                            <div class="save-indicator opacity-0 transition-opacity duration-300" data-student-id="<?= $row['student_id'] ?>">
-                                <span class="text-[10px] font-bold text-emerald-500 dark:text-emerald-400 bg-emerald-50 dark:bg-emerald-500/10 px-2 py-1 rounded-md">RUJTUR</span>
+                        <td class="px-6 py-4 text-right pr-10">
+                            <div class="save-indicator opacity-0 transition-all duration-300 transform translate-x-2" data-student-id="<?= $row['student_id'] ?>">
+                                <span class="text-[10px] font-bold text-emerald-600 dark:text-emerald-400 bg-emerald-100 dark:bg-emerald-500/20 px-2.5 py-1 rounded-full uppercase tracking-widest">
+                                    Rujtur
+                                </span>
                             </div>
                         </td>
                     </tr>
@@ -124,7 +137,7 @@ ob_start();
 </div>
 
 <script>
-// Funksioni kryesor për Ruajtjen (Auto-Save)
+// Logic for auto-saving data
 function saveData(studentId, field, value) {
     const indicator = document.querySelector(`.save-indicator[data-student-id="${studentId}"]`);
     const formData = new FormData();
@@ -138,46 +151,47 @@ function saveData(studentId, field, value) {
     .then(res => res.text())
     .then(data => {
         if(data.trim() === "success") {
-            indicator.style.opacity = "1";
-            setTimeout(() => { indicator.style.opacity = "0"; }, 1500);
+            indicator.classList.remove('opacity-0', 'translate-x-2');
+            indicator.classList.add('opacity-100', 'translate-x-0');
+            
+            setTimeout(() => { 
+                indicator.classList.add('opacity-0', 'translate-x-2');
+                indicator.classList.remove('opacity-100', 'translate-x-0');
+            }, 2000);
         }
     });
 }
 
-// Eventet për Notën (Ruaj kur ndryshon)
+// Event Listeners
 document.querySelectorAll('.auto-save-grade').forEach(input => {
     input.addEventListener('change', function() {
         saveData(this.dataset.studentId, 'grade', this.value);
     });
 });
 
-// Eventet për Komentin (Ruaj kur mbaron së shkruari - blur)
 document.querySelectorAll('.auto-save-comment').forEach(input => {
     input.addEventListener('blur', function() {
         saveData(this.dataset.studentId, 'comment', this.value);
     });
-    // Ose ruaj kur shtyp Enter
     input.addEventListener('keypress', function(e) {
-        if (e.key === 'Enter') {
-            this.blur();
-        }
+        if (e.key === 'Enter') this.blur();
     });
 });
 
-// Live Search me Highlight
+// Live Search with Highlight matching your previous design
 document.getElementById('liveSearch').addEventListener('input', function() {
-    let filter = this.value.toLowerCase();
+    let filter = this.value.toLowerCase().trim();
     let rows = document.querySelectorAll('#studentTableBody tr');
 
     rows.forEach(row => {
         let nameElement = row.querySelector('.student-name');
-        let nameText = nameElement.textContent;
+        let nameText = nameElement.getAttribute('data-original');
         
         if (nameText.toLowerCase().includes(filter)) {
             row.style.display = "";
-            if(filter) {
+            if(filter !== "") {
                 let regex = new RegExp(`(${filter})`, "gi");
-                nameElement.innerHTML = nameText.replace(regex, `<mark class="bg-indigo-100 text-indigo-700 dark:bg-indigo-500/30 dark:text-white rounded px-0.5">$1</mark>`);
+                nameElement.innerHTML = nameText.replace(regex, `<mark class="bg-yellow-200 dark:bg-yellow-500/40 text-current rounded-sm px-0.5">$1</mark>`);
             } else {
                 nameElement.innerHTML = nameText;
             }
@@ -185,6 +199,20 @@ document.getElementById('liveSearch').addEventListener('input', function() {
             row.style.display = "none";
         }
     });
+});
+
+document.addEventListener('input', function (e) {
+    if (!e.target.classList.contains('auto-save-grade')) return;
+
+    let value = parseInt(e.target.value, 10);
+
+    if (isNaN(value)) {
+        e.target.value = '';
+        return;
+    }
+
+    if (value < 1) e.target.value = 1;
+    if (value > 5) e.target.value = 5;
 });
 </script>
 
