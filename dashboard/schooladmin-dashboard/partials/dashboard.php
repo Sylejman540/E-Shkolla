@@ -152,11 +152,11 @@ $classAttendanceData = $stmt->fetchAll(PDO::FETCH_ASSOC);
 $stmt = $pdo->prepare("
     SELECT 
         CASE
-            WHEN g.grade >= 9 THEN 'A'
-            WHEN g.grade >= 8 THEN 'B'
-            WHEN g.grade >= 7 THEN 'C'
-            WHEN g.grade >= 6 THEN 'D'
-            ELSE 'F'
+            WHEN g.grade >= 5 THEN '5'
+            WHEN g.grade >= 4 THEN '4'
+            WHEN g.grade >= 3 THEN '3'
+            WHEN g.grade >= 2 THEN '2'
+            ELSE '1'
         END AS grade_range,
         COUNT(*) AS total
     FROM grades g
