@@ -60,7 +60,7 @@ ob_start();
             </button>
 
             <!-- IMPORT CSV -->
-            <a href="/E-Shkolla/dashboard/schooladmin-dashboard/partials/teacher/import-teachers.php"
+            <a href="/E-Shkolla/csv"
             class="inline-flex items-center gap-2 rounded-xl bg-slate-900 dark:bg-gray-800 px-5 py-2.5 text-sm font-semibold text-white shadow-sm hover:bg-slate-700 transition-all active:scale-95">
                 <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
