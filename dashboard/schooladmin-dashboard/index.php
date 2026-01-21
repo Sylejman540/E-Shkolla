@@ -22,6 +22,8 @@ function isAnyActive(array $paths) {
     <script src="https://cdn.tailwindcss.com"></script>
     <script defer src="https://unpkg.com/alpinejs@3.x.x/dist/cdn.min.js"></script>
     <link rel="icon" href="/E-Shkolla/images/icon.png" type="image/png">
+    <link href="https://cdn.jsdelivr.net/npm/tom-select@2.2.2/dist/css/tom-select.css" rel="stylesheet">
+    <script src="https://cdn.jsdelivr.net/npm/tom-select@2.2.2/dist/js/tom-select.complete.min.js"></script>
     <style>
         [x-cloak] { display: none !important; }
         .custom-transition { transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1); }

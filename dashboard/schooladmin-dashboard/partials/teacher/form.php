@@ -27,11 +27,13 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         $password      = $_POST['password'] ?? '';
         $subject_name  = trim($_POST['subject_name'] ?? '');
         $description   = trim($_POST['description'] ?? '');
-        $class_id      = (int) ($_POST['class'] ?? 0);
+        
+        // IMPORTANT: This is now an array
+        $class_ids     = $_POST['class'] ?? []; 
 
         // 2. Validation Logic
-        if (empty($name) || empty($email) || empty($password) || empty($class_id)) {
-            throw new Exception("Ju lutem plotësoni fushat e kërkuara (Emri, Email, Password, dhe Klasa).");
+        if (empty($name) || empty($email) || empty($password) || empty($class_ids)) {
+            throw new Exception("Ju lutem plotësoni fushat e kërkuara (Emri, Email, Password, dhe të paktën një Klasë).");
         }
         if (!filter_var($email, FILTER_VALIDATE_EMAIL)) throw new Exception("Email adresa është e pavlefshme.");
         if (strlen($password) < 8) throw new Exception("Fjalëkalimi duhet të ketë së paku 8 karaktere.");
@@ -81,9 +83,11 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         $stmtSubject->execute([$schoolId, $user_id, $name, $subject_name, $description, $status]);
         $subject_id = $pdo->lastInsertId();
 
-        // D. Link Teacher to Class and Subject
+        // D. Link Teacher to MULTIPLE Classes
         $stmtLink = $pdo->prepare("INSERT INTO teacher_class (school_id, teacher_id, class_id, subject_id) VALUES (?, ?, ?, ?)");
-        $stmtLink->execute([$schoolId, $teacher_id, $class_id, $subject_id]);
+        foreach ($class_ids as $cid) {
+            $stmtLink->execute([$schoolId, $teacher_id, (int)$cid, $subject_id]);
+        }
 
         $pdo->commit();
         $_SESSION['success'] = "Mësuesi u shtua me sukses!";
@@ -100,6 +104,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     }
 }
 ?>
+
+<link href="https://cdn.jsdelivr.net/npm/tom-select@2.2.2/dist/css/tom-select.css" rel="stylesheet">
 
 <div id="addTeacherForm" class="<?= (isset($_GET['show_modal']) || isset($_SESSION['error'])) ? '' : 'hidden' ?> fixed inset-0 z-50 flex items-start justify-center bg-black/30 overflow-y-auto pt-10 pb-10">
     <div class="w-full max-w-3xl px-4">
@@ -146,19 +152,24 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                     </div>
 
                     <div class="sm:col-span-3">
-                        <label class="block text-sm font-medium text-gray-900 dark:text-white">Klasa</label>
-                        <select name="class" required class="mt-2 border block w-full rounded-md bg-white p-[7px] text-sm dark:bg-gray-800 dark:text-white">
-                            <option value="">Zgjidhni klasën</option>
-                            <?php
-                            $s_id = $_SESSION['user']['school_id'] ?? 0;
-                            $classes = $pdo->prepare("SELECT id, grade FROM classes WHERE school_id = ?");
-                            $classes->execute([$s_id]);
-                            foreach ($classes as $c): ?>
-                                <option value="<?= $c['id'] ?>" <?= (isset($_SESSION['old']['class']) && $_SESSION['old']['class'] == $c['id']) ? 'selected' : '' ?>>
-                                    <?= htmlspecialchars($c['grade']) ?>
-                                </option>
-                            <?php endforeach; ?>
-                        </select>
+                        <label class="block text-sm font-medium text-gray-900 dark:text-white">Klasat</label>
+                        <div class="mt-2">
+                            <select id="class-select" name="class[]" multiple autocomplete="off" placeholder="Zgjidhni klasat..." class="block w-full rounded-md border text-sm">
+                                <?php
+                                $s_id = $_SESSION['user']['school_id'] ?? 0;
+                                $classes = $pdo->prepare("SELECT id, grade FROM classes WHERE school_id = ?");
+                                $classes->execute([$s_id]);
+                                
+                                $selectedClasses = $_SESSION['old']['class'] ?? [];
+                                
+                                foreach ($classes as $c): ?>
+                                    <option value="<?= $c['id'] ?>" 
+                                        <?= (is_array($selectedClasses) && in_array($c['id'], $selectedClasses)) ? 'selected' : '' ?>>
+                                        <?= htmlspecialchars($c['grade']) ?>
+                                    </option>
+                                <?php endforeach; ?>
+                            </select>
+                        </div>
                     </div>
 
                     <div class="sm:col-span-3">
@@ -202,3 +213,21 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         </div>
     </div>
 </div>
+
+<script src="https://cdn.jsdelivr.net/npm/tom-select@2.2.2/dist/js/tom-select.complete.min.js"></script>
+<script>
+    document.addEventListener("DOMContentLoaded", function() {
+        new TomSelect("#class-select", {
+            plugins: ['remove_button'],
+            create: false,
+            persist: false,
+            placeholder: 'Zgjidhni klasat...',
+            onDropdownOpen: function() {
+                this.wrapper.classList.add('ring-2', 'ring-indigo-600');
+            },
+            onDropdownClose: function() {
+                this.wrapper.classList.remove('ring-2', 'ring-indigo-600');
+            }
+        });
+    });
+</script>
