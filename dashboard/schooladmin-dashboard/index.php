@@ -37,6 +37,7 @@ function isAnyActive(array $paths) {
             background-color: #2563eb;
             border-radius: 0 4px 4px 0;
         }
+        
     </style>
 </head>
 <body class="h-full font-sans antialiased"
