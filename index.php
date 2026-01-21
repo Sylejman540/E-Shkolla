@@ -46,7 +46,8 @@ $routes = [
     '/parent-children' => 'dashboard/parent-dashboard/partials/parent-children.php',
     '/csv' => 'dashboard/schooladmin-dashboard/partials/teacher/import-teachers.php',
     '/csv-students' => 'dashboard/schooladmin-dashboard/partials/students/csv-students.php',
-    '/classes-csv' => 'dashboard/schooladmin-dashboard/partials/classes/import-classes.php'
+    '/classes-csv' => 'dashboard/schooladmin-dashboard/partials/classes/import-classes.php',
+    '/parents-csv' => 'dashboard/schooladmin-dashboard/partials/parent/import-parents.php',
 ];
 
 if (array_key_exists($uri, $routes)) {

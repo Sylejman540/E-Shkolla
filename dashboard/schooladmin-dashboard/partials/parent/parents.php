@@ -46,6 +46,13 @@ ob_start();
         </div>
     </div>
 
+    <a href="/E-Shkolla/parents-csv" class="mb-4 inline-flex items-center gap-2 rounded-xl bg-slate-900 dark:bg-gray-800 px-5 py-2.5 text-sm font-semibold text-white shadow-sm hover:bg-slate-700 transition-all active:scale-95">
+        <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a2 2 0 002 2h12a2 2 0 002-2v-1M12 12v7m0 0l-3-3m3 3l3-3M12 3v9"/>
+        </svg>
+        Import CSV
+    </a>
+
     <div class="mb-6 bg-white dark:bg-gray-900 p-4 rounded-2xl border border-slate-200 dark:border-white/10 shadow-sm flex items-center justify-between">
         <div class="relative w-full max-w-xs">
             <input id="liveSearch" type="text" placeholder="Kërko me emër, email ose telefon..." 
