@@ -30,8 +30,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 
         // 2. Validation Logic
         if (!$email) throw new Exception("Email është i pavlefshëm.");
-        if (strlen($password) < 8) {
-            throw new Exception("Fjalëkalimi duhet të ketë së paku 8 karaktere.");
+        if (strlen($password) <= 7) {
+            throw new Exception("Fjalëkalimi duhet të ketë të paktën 8 karaktere.");
         }
         if (!$name) throw new Exception("Emri dhe mbiemri kërkohen.");
         if (!$class_id) throw new Exception("Ju lutem zgjidhni një klasë.");
@@ -133,9 +133,9 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                     </div>
 
                     <div class="sm:col-span-3">
-                        <label for="password" class="block text-sm font-medium text-gray-900 dark:text-white">Fjalëkalimi (mbi 8 karaktere)</label>
+                        <label for="password" class="block text-sm font-medium text-gray-900 dark:text-white">Fjalëkalimi (duhet të ketë të paktën 8 karaktere.)</label>
                         <div class="mt-2">
-                            <input id="password" type="password" name="password" value="<?= htmlspecialchars($_SESSION['old']['password '] ?? '') ?>" required minlength="9" class="border block w-full rounded-md bg-white px-3 py-1.5 text-gray-900 focus:outline-indigo-600 dark:bg-white/5 dark:text-white dark:outline-white/10" />
+                            <input id="password" type="password" name="password" value="<?= htmlspecialchars($_SESSION['old']['password '] ?? '') ?>" required minlength="7" class="border block w-full rounded-md bg-white px-3 py-1.5 text-gray-900 focus:outline-indigo-600 dark:bg-white/5 dark:text-white dark:outline-white/10" />
                         </div>
                     </div>
 
