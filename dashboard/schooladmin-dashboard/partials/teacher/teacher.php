@@ -108,7 +108,7 @@ ob_start();
                     <tr class="group hover:bg-slate-50 dark:hover:bg-white/5 transition-colors">
                         <td class="px-6 py-4 whitespace-nowrap overflow-hidden">
                             <div class="flex items-center gap-3">
-                                <img src="/E-Shkolla/<?= htmlspecialchars($row['profile_photo'] ?: 'assets/img/default-avatar.png') ?>" class="w-10 h-10 flex-shrink-0 rounded-full object-cover ring-2 ring-white dark:ring-gray-800 shadow-sm"/>
+                                <img src="/E-Shkolla/<?= htmlspecialchars($row['profile_photo'] ?: '/E-Shkolla/images/default-avatar.png') ?>" class="w-10 h-10 flex-shrink-0 rounded-full object-cover ring-2 ring-white dark:ring-gray-800 shadow-sm"/>
                                 <span contenteditable class="editable block text-sm font-semibold text-slate-900 dark:text-white outline-none truncate" data-id="<?= $row['user_id'] ?>" data-field="name" data-original="<?= htmlspecialchars($row['name']) ?>"><?= htmlspecialchars($row['name']) ?></span>
                             </div>
                         </td>

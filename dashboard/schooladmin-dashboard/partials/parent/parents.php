@@ -272,6 +272,21 @@ function filterParents() {
         row.style.display = match ? "" : "none";
     });
 }
+
+function closeAddParentForm() {
+    // 1. Hide the modal
+    const modal = document.getElementById('addParentForm');
+    if (modal) {
+        modal.classList.add('hidden');
+    }
+
+    // 2. Remove query params from URL (no reload)
+    const url = new URL(window.location.href);
+    url.searchParams.delete('student_id');
+    url.searchParams.delete('open_form');
+
+    window.history.replaceState({}, document.title, url.pathname + url.search);
+}
 </script>
 
 <?php 

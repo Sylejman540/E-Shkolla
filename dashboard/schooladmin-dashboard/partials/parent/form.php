@@ -93,7 +93,7 @@ $studentId = $_GET['student_id'] ?? null;
                     <h2 class="text-xl font-bold text-gray-900 dark:text-white">Shto Prind të Ri</h2>
                     <p class="text-sm text-gray-500">Lidhni një prind me nxënësin.</p>
                 </div>
-                <button type="button" onclick="document.getElementById('addParentForm').classList.add('hidden')" class="text-gray-400 hover:text-gray-600 text-2xl">&times;</button>
+                <button type="button" onclick="closeAddParentForm()" class="text-gray-400 hover:text-gray-600 text-2xl">&times;</button>
             </div>
 
             <?php if (isset($_SESSION['error'])): ?>
@@ -148,7 +148,7 @@ $studentId = $_GET['student_id'] ?? null;
                 </div>
 
                 <div class="sm:col-span-6 flex justify-end gap-x-4 mt-4">
-                    <button type="button" onclick="document.getElementById('addParentForm').classList.add('hidden')" class="px-4 py-2 text-sm font-semibold text-gray-600 dark:text-gray-400">Anulo</button>
+                    <button type="button" onclick="closeAddParentForm()" class="px-4 py-2 text-sm font-semibold text-gray-600 dark:text-gray-400">Anulo</button>
                     <button type="submit" class="rounded-lg bg-indigo-600 px-6 py-2 text-sm font-semibold text-white shadow hover:bg-indigo-500 transition">Ruaj Prindin</button>
                 </div>
             </form>
