@@ -36,7 +36,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             throw new Exception("Ju lutem plotësoni fushat e kërkuara (Emri, Email, Password, dhe të paktën një Klasë).");
         }
         if (!filter_var($email, FILTER_VALIDATE_EMAIL)) throw new Exception("Email adresa është e pavlefshme.");
-        if (strlen($password) < 8) throw new Exception("Fjalëkalimi duhet të ketë së paku 8 karaktere.");
+        if (strlen($password) < 8) throw new Exception("Fjalëkalimi duhet të ketë të paktën 8 karaktere.");
         if (!preg_match("/^[a-zA-ZÇçËë\s]+$/u", $name)) throw new Exception("Emri duhet të përmbajë vetëm shkronja.");
 
         // 3. Unique Check: Email
@@ -142,7 +142,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                     </div>
 
                     <div class="sm:col-span-3">
-                        <label class="block text-sm font-medium text-gray-900 dark:text-white">Fjalëkalimi</label>
+                        <label class="block text-sm font-medium text-gray-900 dark:text-white">Fjalëkalimi (duhet të ketë të paktën 8 karaktere.)</label>
                         <input type="password" name="password" required minlength="8" class="mt-2 border block w-full rounded-md bg-white px-3 py-1.5 text-gray-900 focus:outline-indigo-600 dark:bg-white/5 dark:text-white" />
                     </div>
 
