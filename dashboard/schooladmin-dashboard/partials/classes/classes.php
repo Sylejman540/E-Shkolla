@@ -49,19 +49,22 @@ ob_start();
             <h1 class="text-2xl font-bold tracking-tight text-slate-900 dark:text-white">Klasat e Shkollës</h1>
             <p class="mt-1 text-sm text-slate-500 dark:text-slate-400">Menaxhoni vitet akademike, klasat dhe kapacitetin e nxënësve.</p>
         </div>
+        <div class="flex gap-3 md:mt-0 mt-4">
         <div class="mt-4 sm:mt-0">
             <button type="button" id="addClassBtn" class="inline-flex items-center gap-2 rounded-xl bg-indigo-600 px-6 py-2.5 text-sm font-semibold text-white shadow-md hover:bg-indigo-500 transition-all active:scale-95">
                 <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"/></svg>
                 Shto Klasë
             </button>
         </div>
-        <a href="/E-Shkolla/dashboard/schooladmin-dashboard/partials/classes/import-classes.php" 
-   class="inline-flex items-center gap-2 px-4 py-2 text-sm font-semibold text-emerald-700 bg-emerald-50 border border-emerald-200 rounded-xl hover:bg-emerald-100 transition-all shadow-sm">
-    <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4"></path>
-    </svg>
-    Importo me CSV
-</a>
+        <a href="/E-Shkolla/classes-csv" 
+            class="inline-flex items-center gap-2 rounded-xl bg-slate-900 dark:bg-gray-800 px-5 py-2.5 text-sm font-semibold text-white shadow-sm hover:bg-slate-700 transition-all active:scale-95">
+                <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                        d="M4 16v1a2 2 0 002 2h12a2 2 0 002-2v-1M12 12v7m0 0l-3-3m3 3l3-3M12 3v9"/>
+                </svg>
+                Import CSV
+            </a>
+        </div>
     </div>
 
     <div class="mb-6 bg-white dark:bg-gray-900 p-4 rounded-2xl border border-slate-200 dark:border-white/10 shadow-sm flex items-center justify-between">
