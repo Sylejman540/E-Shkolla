@@ -27,6 +27,44 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 
         if (!$name || !$email) throw new Exception('Emri dhe email janë të detyrueshme.');
 
+        /* |--------------------------------------------------------------------------
+        | SERVER-SIDE VALIDATION LOGIC
+        |--------------------------------------------------------------------------
+        */
+
+        // 1. Basic Empty Checks
+        if (empty($name)) throw new Exception('Emri dhe mbiemri duhet të plotësohen.');
+        if (empty($email)) throw new Exception('Email-i duhet të plotësohet.');
+
+        // 2. Email Format Validation
+        if (!filter_var($email, FILTER_VALIDATE_EMAIL)) {
+            throw new Exception('Format i pasaktë i email-it.');
+        }
+
+        // 3. Phone Number Validation (Regex for common formats)
+        if (!empty($phone) && !preg_match('/^[0-9+ ]{8,15}$/', $phone)) {
+            throw new Exception('Numri i telefonit duhet të jetë vetëm me numra (8-15 shifra).');
+        }
+
+        // 4. Password Strength (Only for new users)
+        // Check if user doesn't exist yet
+        $stmtCheck = $pdo->prepare("SELECT id FROM users WHERE email = ?");
+        $stmtCheck->execute([$email]);
+        if (!$stmtCheck->fetch()) {
+            if (strlen($password) < 8) {
+                throw new Exception('Fjalëkalimi duhet të jetë së paku 8 karaktere.');
+            }
+            if (!preg_match('/[A-Z]/', $password) || !preg_match('/[0-9]/', $password)) {
+                throw new Exception('Fjalëkalimi duhet të përmbajë të paktën një shkronjë të madhe dhe një numër.');
+            }
+        }
+
+        // 5. Relation Validation
+        $allowedRelations = ['father', 'mother', 'guardian', 'other'];
+        if (!in_array($relation, $allowedRelations)) {
+            $relation = 'other'; // Fallback
+        }
+
         $pdo->beginTransaction();
 
         // Check if user exists
