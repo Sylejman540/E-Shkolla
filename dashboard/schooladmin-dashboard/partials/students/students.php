@@ -39,11 +39,21 @@ ob_start();
             <h1 class="text-2xl font-bold tracking-tight text-slate-900 dark:text-white">Nxënësit e Shkollës</h1>
             <p class="mt-1 text-sm text-slate-500 dark:text-slate-400">Menaxhoni të dhënat e nxënësve në kohë reale.</p>
         </div>
+    <div class="flex gap-3 md:mt-0 mt-4">
         <div class="mt-4 sm:mt-0">
             <button type="button" id="addStudentBtn" class="inline-flex items-center gap-2 rounded-xl bg-indigo-600 px-6 py-2.5 text-sm font-semibold text-white shadow-md hover:bg-indigo-500 transition-all active:scale-95">
                 <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"/></svg>
                 Shto nxënës
             </button>
+        </div>
+        <a href="/E-Shkolla/csv-students"
+            class="inline-flex items-center gap-2 rounded-xl bg-slate-900 dark:bg-gray-800 px-5 py-2.5 text-sm font-semibold text-white shadow-sm hover:bg-slate-700 transition-all active:scale-95">
+                <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                        d="M4 16v1a2 2 0 002 2h12a2 2 0 002-2v-1M12 12v7m0 0l-3-3m3 3l3-3M12 3v9"/>
+                </svg>
+                Import CSV
+        </a>
         </div>
     </div>
 
@@ -284,6 +294,15 @@ addBtn?.addEventListener('click', () => {
 cancelBtn?.addEventListener('click', () => {
     addForm.classList.add('hidden');
 });
+
+function filterStudents() {
+    const filter = document.getElementById("liveSearch").value.toLowerCase().trim();
+    const rows = document.querySelectorAll("tbody tr");
+    rows.forEach(row => {
+        const text = row.innerText.toLowerCase();
+        row.style.display = text.includes(filter) ? '' : 'none';
+    });
+}
 </script>
 
 <?php $content = ob_get_clean(); require_once __DIR__ . '/../../index.php'; ?>
