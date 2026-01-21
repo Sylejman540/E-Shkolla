@@ -5,71 +5,83 @@ if (session_status() === PHP_SESSION_NONE) {
 
 require_once __DIR__ . '/../../../../db.php';
 
-// Handle Post Request
+/*
+|--------------------------------------------------------------------------
+| HANDLE POST (CREATE OR LINK PARENT)
+|--------------------------------------------------------------------------
+*/
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
-    $schoolId = $_SESSION['user']['school_id'] ?? null;
-    $studentId = isset($_POST['student_id']) ? (int) $_POST['student_id'] : null;
+    $schoolId  = $_SESSION['user']['school_id'] ?? null;
+    $studentId = isset($_POST['student_id']) ? (int)$_POST['student_id'] : null;
 
     try {
-        if (!$schoolId) throw new Exception('Sesioni ka skaduar. Ju lutem hyni përsëri.');
+        if (!$schoolId)  throw new Exception('Sesioni ka skaduar.');
         if (!$studentId) throw new Exception('ID e nxënësit mungon.');
 
         $name     = trim($_POST['name'] ?? '');
         $phone    = trim($_POST['phone'] ?? '');
-        $email    = filter_var($_POST['email'] ?? '', FILTER_VALIDATE_EMAIL);
+        $email    = strtolower(trim($_POST['email'] ?? ''));
         $password = $_POST['password'] ?? '';
         $relation = $_POST['relation'] ?? 'other';
         $status   = $_POST['status'] ?? 'active';
 
-        // Basic Validation
-        if (!$name || !$email || strlen($password) < 8) {
-            throw new Exception("Ju lutem plotësoni të gjitha fushat. Fjalëkalimi duhet të jetë së paku 8 karaktere.");
-        }
-
-        // Check if Email exists
-        $checkEmail = $pdo->prepare("SELECT id FROM users WHERE email = ?");
-        $checkEmail->execute([$email]);
-        if ($checkEmail->fetch()) {
-            throw new Exception("Ky email është i regjistruar në sistem.");
-        }
+        if (!$name || !$email) throw new Exception('Emri dhe email janë të detyrueshme.');
 
         $pdo->beginTransaction();
 
-        // 1. Insert into Users Table (With Hashed Password)
-        $hashedPassword = password_hash($password, PASSWORD_DEFAULT);
-        $stmtUser = $pdo->prepare("INSERT INTO users (school_id, name, password, email, role, status) VALUES (?, ?, ?, ?, 'parent', ?)");
-        $stmtUser->execute([$schoolId, $name, $hashedPassword, $email, $status]);
-        $parentUserId = $pdo->lastInsertId();
+        // Check if user exists
+        $stmt = $pdo->prepare("SELECT id FROM users WHERE email = ?");
+        $stmt->execute([$email]);
+        $existingUser = $stmt->fetch();
 
-        // 2. Insert into Parents Table
-        $stmtParent = $pdo->prepare("INSERT INTO parents (school_id, user_id, name, phone, email, relation, status) VALUES (?, ?, ?, ?, ?, ?, ?)");
-        $stmtParent->execute([$schoolId, $parentUserId, $name, $phone, $email, $relation, $status]);
-        $parentId = $pdo->lastInsertId();
+        if ($existingUser) {
+            $userId = $existingUser['id'];
+            $stmtP = $pdo->prepare("SELECT id FROM parents WHERE user_id = ? AND school_id = ?");
+            $stmtP->execute([$userId, $schoolId]);
+            $parentProfile = $stmtP->fetch();
 
-        // 3. Link Parent to Student
-        $stmtLink = $pdo->prepare("INSERT INTO parent_student (school_id, parent_id, student_id) VALUES (?, ?, ?)");
-        $stmtLink->execute([$schoolId, $parentId, $studentId]);
+            if (!$parentProfile) {
+                $stmtParent = $pdo->prepare("INSERT INTO parents (school_id, user_id, name, phone, email, relation, status) VALUES (?, ?, ?, ?, ?, ?, ?)");
+                $stmtParent->execute([$schoolId, $userId, $name, $phone, $email, $relation, $status]);
+                $parentId = $pdo->lastInsertId();
+            } else {
+                $parentId = $parentProfile['id'];
+            }
+
+            $stmtLink = $pdo->prepare("INSERT IGNORE INTO parent_student (school_id, parent_id, student_id) VALUES (?, ?, ?)");
+            $stmtLink->execute([$schoolId, $parentId, $studentId]);
+        } else {
+            if (empty($password)) throw new Exception('Fjalëkalimi është i detyrueshëm për llogari të reja.');
+            
+            $hashedPassword = password_hash($password, PASSWORD_DEFAULT);
+            $stmtUser = $pdo->prepare("INSERT INTO users (school_id, name, email, password, role, status) VALUES (?, ?, ?, ?, 'parent', ?)");
+            $stmtUser->execute([$schoolId, $name, $email, $hashedPassword, $status]);
+            $userId = $pdo->lastInsertId();
+
+            $stmtParent = $pdo->prepare("INSERT INTO parents (school_id, user_id, name, phone, email, relation, status) VALUES (?, ?, ?, ?, ?, ?, ?)");
+            $stmtParent->execute([$schoolId, $userId, $name, $phone, $email, $relation, $status]);
+            $parentId = $pdo->lastInsertId();
+
+            $stmtLink = $pdo->prepare("INSERT INTO parent_student (school_id, parent_id, student_id) VALUES (?, ?, ?)");
+            $stmtLink->execute([$schoolId, $parentId, $studentId]);
+        }
 
         $pdo->commit();
-
-        $_SESSION['success'] = "Prindi u regjistrua me sukses!";
         unset($_SESSION['old_parent']); // Clear old data on success
+        $_SESSION['success'] = "Veprimi u krye me sukses.";
         header("Location: /E-Shkolla/parents");
         exit;
 
     } catch (Exception $e) {
         if ($pdo->inTransaction()) $pdo->rollBack();
         $_SESSION['error'] = $e->getMessage();
-        $_SESSION['old_parent'] = $_POST; // Keep data for "sticky" effect
-        header("Location: /E-Shkolla/parents?open_form=1&student_id=" . ($studentId ?? ''));
+        header("Location: /E-Shkolla/parents?open_form=1&student_id=$studentId");
         exit;
     }
 }
 
-// Logic to show form if error occurred or button clicked
 $shouldOpen = isset($_GET['open_form']) || isset($_SESSION['error']);
-$old = $_SESSION['old_parent'] ?? [];
-$studentId = $_GET['student_id'] ?? ($old['student_id'] ?? null);
+$studentId = $_GET['student_id'] ?? null;
 ?>
 
 <div id="addParentForm" class="<?= $shouldOpen ? '' : 'hidden' ?> fixed inset-0 z-50 flex items-start justify-center bg-black/40 overflow-y-auto pt-10">
