@@ -51,12 +51,15 @@ ob_start();
         </div>
         <div class="flex gap-3 md:mt-0 mt-4">
         <div class="mt-4 sm:mt-0">
-            <button type="button" id="addClassBtn" class="inline-flex items-center gap-2 rounded-xl bg-indigo-600 px-6 py-2.5 text-sm font-semibold text-white shadow-md hover:bg-indigo-500 transition-all active:scale-95">
-                <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"/></svg>
+            <button type="button" id="addClassBtn" class="inline-flex items-center gap-2 rounded-xl bg-indigo-600 px-5 py-2.5 text-sm font-semibold text-white shadow-sm hover:bg-indigo-500 transition-all active:scale-95">
+                <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"/>
+                </svg>
                 Shto Klasë
             </button>
         </div>
-        <a href="/E-Shkolla/classes-csv" 
+        <div class="flex gap-3 md:mt-0 mt-4">
+            <a href="/E-Shkolla/classes-csv"
             class="inline-flex items-center gap-2 rounded-xl bg-slate-900 dark:bg-gray-800 px-5 py-2.5 text-sm font-semibold text-white shadow-sm hover:bg-slate-700 transition-all active:scale-95">
                 <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
@@ -64,6 +67,7 @@ ob_start();
                 </svg>
                 Import CSV
             </a>
+        </div>
         </div>
     </div>
 
