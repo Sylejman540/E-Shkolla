@@ -142,7 +142,7 @@ ob_start();
                                 <?= $row['status'] ?>
                             </button>
                         </td>
-                        <td class="px-6 py-4 text-right whitespace-nowrap">
+                        <td class="px-1 py-4 text-right whitespace-nowrap">
                             <a href="/E-Shkolla/schedule?class_id=<?= $row['id'] ?>" 
                                class="inline-flex items-center gap-1 text-xs text-indigo-600 hover:text-indigo-900 dark:text-indigo-400 font-bold transition">
                                 <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>
