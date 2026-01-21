@@ -49,6 +49,7 @@ ob_start();
             <?php endforeach; ?>
         </div>
         <p class="mt-4 text-xs text-slate-400">Viti akademik aktual: <b><?= $autoYear ?></b>. Statusi mund të jetë 'active' ose 'inactive'.</p>
+        <p class="mt-2 text-xs text-slate-500 italic">* Përdorni vetëm ID-të e listuara më sipër.</p>
     </div>
 
     <div id="uploadContainer" class="bg-white dark:bg-gray-900 rounded-3xl border-2 border-dashed border-slate-200 dark:border-white/10 p-12 text-center shadow-sm transition-all hover:border-indigo-400">
