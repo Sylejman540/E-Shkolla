@@ -153,8 +153,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 
                     <div class="sm:col-span-3">
                         <label class="block text-sm font-medium text-gray-900 dark:text-white">Klasat</label>
-                        <div class="mt-2">
-                            <select id="class-select" name="class[]" multiple autocomplete="off" placeholder="Zgjidhni klasat..." class="block w-full rounded-md border text-sm">
+                            <select id="class-select" name="class[]" multiple autocomplete="off" placeholder="Zgjidhni klasat..." class="mt-2 border block w-full rounded-md bg-white p-[7px] text-sm dark:bg-gray-800 dark:text-white">
                                 <?php
                                 $s_id = $_SESSION['user']['school_id'] ?? 0;
                                 $classes = $pdo->prepare("SELECT id, grade FROM classes WHERE school_id = ?");
@@ -169,7 +168,6 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                                     </option>
                                 <?php endforeach; ?>
                             </select>
-                        </div>
                     </div>
 
                     <div class="sm:col-span-3">
@@ -213,21 +211,36 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         </div>
     </div>
 </div>
+<style>
+    /* Remove border from Tom Select control */
+.ts-control {
+    border: none !important;
+    box-shadow: none !important;
+    background-color: transparent;
+}
 
+/* Remove border from dropdown */
+.ts-dropdown {
+    border: none !important;
+    box-shadow: 0 10px 25px rgba(0,0,0,0.08); /* optional soft shadow */
+}
+
+/* Remove focus ring */
+.ts-control:focus,
+.ts-control.focus {
+    box-shadow: none !important;
+    outline: none !important;
+}
+</style>
 <script src="https://cdn.jsdelivr.net/npm/tom-select@2.2.2/dist/js/tom-select.complete.min.js"></script>
 <script>
-    document.addEventListener("DOMContentLoaded", function() {
-        new TomSelect("#class-select", {
-            plugins: ['remove_button'],
-            create: false,
-            persist: false,
-            placeholder: 'Zgjidhni klasat...',
-            onDropdownOpen: function() {
-                this.wrapper.classList.add('ring-2', 'ring-indigo-600');
-            },
-            onDropdownClose: function() {
-                this.wrapper.classList.remove('ring-2', 'ring-indigo-600');
-            }
-        });
+document.addEventListener("DOMContentLoaded", function () {
+    new TomSelect("#class-select", {
+        plugins: ['remove_button'],
+        create: false,
+        persist: false,
+        placeholder: 'Zgjidhni klasat...'
     });
+});
+
 </script>
