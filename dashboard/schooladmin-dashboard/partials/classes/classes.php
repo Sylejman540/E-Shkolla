@@ -4,24 +4,28 @@ require_once __DIR__ . '/../../../../db.php';
 
 $schoolId = $_SESSION['user']['school_id'] ?? null;
 
-// --- PAGINATION LOGIC ---
 $limit = 10;
 $page  = isset($_GET['page']) && is_numeric($_GET['page']) ? (int)$_GET['page'] : 1;
 $offset = ($page - 1) * $limit;
 
-// Fetch Classes with Teacher Name
 $stmt = $pdo->prepare("
-    SELECT c.*, u.name as teacher_name 
-    FROM classes c 
-    LEFT JOIN users u ON c.user_id = u.id 
-    WHERE c.school_id = :school_id 
-    ORDER BY c.grade ASC, c.created_at DESC 
-    LIMIT :limit OFFSET :offset
+    SELECT
+        c.id,
+        c.academic_year,
+        c.grade,
+        c.max_students,
+        c.status,
+        u.name AS class_header_name
+    FROM classes c
+    LEFT JOIN users u ON u.id = c.class_header
+    WHERE c.school_id = ?
+    ORDER BY c.created_at DESC
 ");
+
 $stmt->bindValue(':school_id', $schoolId, PDO::PARAM_INT);
 $stmt->bindValue(':limit', (int)$limit, PDO::PARAM_INT);
 $stmt->bindValue(':offset', (int)$offset, PDO::PARAM_INT);
-$stmt->execute();
+$stmt->execute([$schoolId]);
 $classes = $stmt->fetchAll(PDO::FETCH_ASSOC);
 
 // Total for pagination
@@ -124,11 +128,14 @@ ob_start();
                                 <?= htmlspecialchars($row['max_students']) ?>
                             </span>
                         </td>
-                        <td class="px-6 py-4 whitespace-nowrap overflow-hidden">
-                            <span class="text-sm font-medium text-slate-600 dark:text-slate-400" data-original="<?= $row['teacher_name'] ?? 'I pacaktuar' ?>">
-                                <?= $row['teacher_name'] ? htmlspecialchars($row['teacher_name']) : '<span class="italic text-slate-400 text-xs">I pacaktuar</span>' ?>
-                            </span>
-                        </td>
+<td class="px-4 py-3 text-sm text-gray-700">
+    <?php if (!empty($row['class_header_name'])): ?>
+        <?= htmlspecialchars($row['class_header_name'], ENT_QUOTES, 'UTF-8') ?>
+    <?php else: ?>
+        <span class="italic text-gray-400">I pacaktuar</span>
+    <?php endif; ?>
+</td>
+
                         <td class="px-6 py-4 text-center">
                             <button class="status-toggle px-3 py-1 rounded-full text-[10px] font-bold uppercase tracking-wider transition-all <?= $row['status'] === 'active' ? 'bg-green-100 text-green-700 dark:bg-green-500/20 dark:text-green-400' : 'bg-red-100 text-red-600 dark:bg-red-500/20 dark:text-red-400' ?>" 
                                     data-id="<?= $row['id'] ?>" data-field="status" data-value="<?= $row['status'] ?>" data-original="<?= $row['status'] ?>">
@@ -293,6 +300,7 @@ btn?.addEventListener('click', () => {
 cancel?.addEventListener('click', () => {
  form.classList.add('hidden');
 });
+
 </script>
 
 <?php 

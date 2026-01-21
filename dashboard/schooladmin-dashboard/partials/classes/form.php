@@ -6,13 +6,12 @@ if (session_status() === PHP_SESSION_NONE) {
 require_once __DIR__ . '/../../../../db.php';
 
 $schoolId = $_SESSION['user']['school_id'] ?? null;
+$userId = $_SESSION['user']['id'] ?? null;
 
-// 1. AUTO-GENERATE ACADEMIC YEAR
 $currentMonth = date('n');
 $currentYear = date('Y');
 $autoYear = ($currentMonth >= 9) ? $currentYear . '/' . ($currentYear + 1) : ($currentYear - 1) . '/' . $currentYear;
 
-// Marrja e mësuesve aktivë
 $teachers = [];
 if ($schoolId) {
     $tStmt = $pdo->prepare("SELECT user_id, name FROM teachers WHERE school_id = ? AND status = 'active' ORDER BY name ASC");
@@ -20,38 +19,45 @@ if ($schoolId) {
     $teachers = $tStmt->fetchAll(PDO::FETCH_ASSOC);
 }
 
-// Mesazhet nga sesioni
 $error = $_SESSION['error'] ?? null;
 $success = $_SESSION['success'] ?? null;
 unset($_SESSION['error'], $_SESSION['success']);
 
-// Trajtimi i POST
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     try {
         $academic_year = $_POST['academic_year'];
-        $base_grade    = $_POST['base_grade']; // Numri 1-12
-        $parallel      = trim($_POST['parallel']); // p.sh. 1, 2, A, B
-        $max_students  = (int)$_POST['max_students'];
+        $base_grade    = $_POST['base_grade'];
+        $parallel      = trim($_POST['parallel']);
+        $max_students  = (int) $_POST['max_students'];
         $status        = $_POST['status'];
-        $teacherId     = !empty($_POST['teacher_id']) ? $_POST['teacher_id'] : null;
+        $classHeader   = !empty($_POST['class_header']) ? (int) $_POST['class_header'] : null;
 
-        // Bashkimi i klasës (p.sh. 12/1)
         $full_grade = $base_grade . ($parallel !== '' ? '/' . $parallel : '');
 
-        $stmt = $pdo->prepare("INSERT INTO classes (school_id, user_id, academic_year, grade, max_students, status) VALUES (?, ?, ?, ?, ?, ?)");
-        $stmt->execute([$schoolId, $teacherId, $academic_year, $full_grade, $max_students, $status]);
+        if ($classHeader) {
+            $checkStmt = $pdo->prepare("SELECT COUNT(*) FROM classes WHERE school_id = ? AND class_header = ?");
+            $checkStmt->execute([$schoolId, $classHeader]);
+
+            if ($checkStmt->fetchColumn() > 0) {
+                throw new Exception(
+                    'Ky mësues tashmë është kujdestar i një klase tjetër.'
+                );
+            }
+        }
+
+        $stmt = $pdo->prepare("INSERT INTO classes(school_id, user_id, class_header, academic_year, grade, max_students, status)VALUES (?, ?, ?, ?, ?, ?, ?)");
+        $stmt->execute([$schoolId, $userId, $classHeader, $academic_year, $full_grade, $max_students, $status]);
 
         $_SESSION['success'] = "Klasa $full_grade u shtua me sukses!";
         header("Location: /E-Shkolla/classes");
         exit;
+
     } catch (Exception $e) {
         $_SESSION['error'] = "Gabim: " . $e->getMessage();
         header("Location: /E-Shkolla/classes?open_form=1");
         exit;
     }
 }
-
-$shouldOpen = isset($_GET['open_form']) || $error;
 ?>
 
 <div id="addClassForm" class="<?= $shouldOpen ? '' : 'hidden' ?> fixed inset-0 z-50 flex items-start justify-center bg-black/40 overflow-y-auto pt-10">
@@ -60,7 +66,7 @@ $shouldOpen = isset($_GET['open_form']) || $error;
             
             <div class="mb-6 flex justify-between items-center">
                 <h2 class="text-xl font-bold text-gray-900 dark:text-white">Shto Klasë të Re</h2>
-                <button type="button" onclick="window.location.href='/E-Shkolla/classes'" class="text-gray-400 hover:text-gray-600 text-2xl">&times;</button>
+                <button type="button" onclick="document.getElementById('addClassForm').classList.add('hidden')" class="text-gray-400 hover:text-gray-600 text-2xl">&times;</button>
             </div>
 
             <?php if ($error): ?>
@@ -98,11 +104,17 @@ $shouldOpen = isset($_GET['open_form']) || $error;
                 </div>
 
                 <div class="sm:col-span-3">
-                    <label class="block text-sm font-medium dark:text-gray-300">Mësuesi Kujdestar</label>
-                    <select name="teacher_id" class="mt-1 block w-full rounded-lg border border-gray-300 px-3 py-2 dark:bg-gray-800 dark:text-white focus:ring-2 focus:ring-indigo-500 outline-none">
+                    <label class="block text-sm font-medium dark:text-gray-300">
+                        Mësuesi Kujdestar
+                    </label>
+
+                    <select name="class_header" class="mt-1 block w-full rounded-lg border border-gray-300 px-3 py-2 dark:bg-gray-800 dark:text-white focus:ring-2 focus:ring-indigo-500 outline-none">
                         <option value="">Pa kujdestar</option>
-                        <?php foreach($teachers as $t): ?>
-                            <option value="<?= $t['user_id'] ?>"><?= htmlspecialchars($t['name']) ?></option>
+
+                        <?php foreach ($teachers as $t): ?>
+                            <option value="<?= (int) $t['user_id'] ?>">
+                                <?= htmlspecialchars($t['name'], ENT_QUOTES, 'UTF-8') ?>
+                            </option>
                         <?php endforeach; ?>
                     </select>
                 </div>
@@ -122,7 +134,7 @@ $shouldOpen = isset($_GET['open_form']) || $error;
                 </div>
 
                 <div class="sm:col-span-6 flex justify-end gap-x-4 mt-4">
-                    <button type="button" onclick="window.location.href='/E-Shkolla/classes'" class="px-4 py-2 text-sm font-semibold text-gray-600 dark:text-gray-400 hover:text-gray-800 transition">Anulo</button>
+                    <button type="button" onclick="document.getElementById('addClassForm').classList.add('hidden')" class="px-4 py-2 text-sm font-semibold text-gray-600 dark:text-gray-400 hover:text-gray-800 transition">Anulo</button>
                     <button type="submit" class="rounded-lg bg-indigo-600 px-6 py-2 text-sm font-semibold text-white shadow hover:bg-indigo-500 transition focus:ring-2 focus:ring-offset-2 focus:ring-indigo-600">
                         Ruaj Klasën
                     </button>

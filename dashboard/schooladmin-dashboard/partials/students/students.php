@@ -40,12 +40,12 @@ ob_start();
             <p class="mt-1 text-sm text-slate-500 dark:text-slate-400">Menaxhoni të dhënat e nxënësve në kohë reale.</p>
         </div>
         <div class="flex gap-3 md:mt-0 mt-4">
-            <button type="button" id="addTeacherBtn"
+            <button type="button" id="addStudentBtn"
                 class="inline-flex items-center gap-2 rounded-xl bg-indigo-600 px-5 py-2.5 text-sm font-semibold text-white shadow-sm hover:bg-indigo-500 transition-all active:scale-95">
                 <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"/>
                 </svg>
-                Shto mësues
+                Shto nxënës
             </button>
 
             <a href="/E-Shkolla/csv-students"
