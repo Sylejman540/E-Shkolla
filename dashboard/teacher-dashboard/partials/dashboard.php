@@ -5,91 +5,74 @@ if (session_status() === PHP_SESSION_NONE) {
     session_start();
 }
 
-// Ensure the user is a teacher
-$schoolId = $_SESSION['user']['school_id'] ?? null;
-$teacherId = $_SESSION['user']['teacher_id'] ?? null; // Assumes teacher_id is stored in session
+/* =====================================================
+   SESSION & TEACHER CONTEXT
+===================================================== */
+$schoolId  = $_SESSION['user']['school_id'] ?? null;
+$teacherId = $_SESSION['user']['teacher_id'] ?? null;
 
 if (!$schoolId || !$teacherId) {
     die('Aksesi i mohuar: Të dhënat e mësuesit mungojnë.');
 }
 
-$teacherId = $_SESSION['user']['teacher_id'] ?? null;
-
-// IF MISSING: Try to fetch the first available teacher ID for this school (Only for testing!)
-if (!$teacherId && $schoolId) {
-    $stmt = $pdo->prepare("SELECT id FROM teachers WHERE school_id = ? LIMIT 1");
-    $stmt->execute([$schoolId]);
-    $teacherId = $stmt->fetchColumn();
-    
-    // Optional: Save it to session so it works on next refresh
-    if($teacherId) { $_SESSION['user']['teacher_id'] = $teacherId; }
-}
-
-if (!$teacherId) {
-    die('Aksesi i mohuar: Nuk u gjet asnjë llogari mësuesi për këtë shkollë.');
-}
 /* =====================================================
-   TEACHER SPECIFIC KPIs
+   TEACHER INFO
 ===================================================== */
-
-// Get Teacher Name
 $stmt = $pdo->prepare("SELECT name FROM teachers WHERE id = ?");
 $stmt->execute([$teacherId]);
 $teacherName = $stmt->fetchColumn() ?: 'Mësues';
 
-// Total Students taught by this teacher (distinct students across all their classes)
+/* =====================================================
+   KPIs
+===================================================== */
+// Total students
 $stmt = $pdo->prepare("
     SELECT COUNT(DISTINCT sc.student_id)
     FROM teacher_class tc
     JOIN student_class sc ON sc.class_id = tc.class_id
     JOIN students s ON s.student_id = sc.student_id
-    WHERE tc.teacher_id = ?
-      AND s.school_id = ?
+    WHERE tc.teacher_id = ? AND s.school_id = ?
 ");
 $stmt->execute([$teacherId, $schoolId]);
-$myTotalStudents = (int) $stmt->fetchColumn();
+$myTotalStudents = (int)$stmt->fetchColumn();
 
-// Total Classes assigned to this teacher
+// Total classes
 $stmt = $pdo->prepare("SELECT COUNT(DISTINCT class_id) FROM class_schedule WHERE teacher_id = ?");
 $stmt->execute([$teacherId]);
-$myTotalClasses = (int) $stmt->fetchColumn();
+$myTotalClasses = (int)$stmt->fetchColumn();
 
-// Total Subjects taught
+// Total subjects
 $stmt = $pdo->prepare("SELECT COUNT(DISTINCT subject_id) FROM class_schedule WHERE teacher_id = ?");
 $stmt->execute([$teacherId]);
-$myTotalSubjects = (int) $stmt->fetchColumn();
+$myTotalSubjects = (int)$stmt->fetchColumn();
 
 /* =====================================================
-   TODAY'S ATTENDANCE (Only for this teacher's classes)
+   TODAY ATTENDANCE
 ===================================================== */
 $today = date('Y-m-d');
 $stmt = $pdo->prepare("
-    SELECT
-        SUM(a.present) AS present,
-        SUM(a.missing) AS missing
+    SELECT SUM(a.present) AS present, SUM(a.missing) AS missing
     FROM attendance a
     JOIN class_schedule cs ON cs.class_id = a.class_id
-    WHERE cs.teacher_id = ? 
-    AND DATE(a.created_at) = ?
+    WHERE cs.teacher_id = ? AND DATE(a.created_at) = ?
 ");
 $stmt->execute([$teacherId, $today]);
 $attendanceToday = $stmt->fetch(PDO::FETCH_ASSOC);
 
-$presentToday = (int) ($attendanceToday['present'] ?? 0);
-$missingToday = (int) ($attendanceToday['missing'] ?? 0);
+$presentToday = (int)($attendanceToday['present'] ?? 0);
+$missingToday = (int)($attendanceToday['missing'] ?? 0);
 
 /* =====================================================
-   ATTENDANCE TREND (Last 7 Days for Teacher's Classes)
+   ATTENDANCE TREND (7 DAYS)
 ===================================================== */
 $stmt = $pdo->prepare("
-    SELECT 
-        DATE(a.created_at) AS day,
-        SUM(a.present) AS present,
-        COUNT(a.student_id) AS total_logs
+    SELECT DATE(a.created_at) AS day,
+           SUM(a.present) AS present,
+           COUNT(a.student_id) AS total_logs
     FROM attendance a
     JOIN class_schedule cs ON cs.class_id = a.class_id
     WHERE cs.teacher_id = ?
-    AND a.created_at >= DATE_SUB(CURDATE(), INTERVAL 7 DAY)
+      AND a.created_at >= DATE_SUB(CURDATE(), INTERVAL 7 DAY)
     GROUP BY DATE(a.created_at)
     ORDER BY DATE(a.created_at)
 ");
@@ -107,18 +90,16 @@ foreach ($trendRows as $row) {
 }
 
 /* =====================================================
-   MY CLASSES PERFORMANCE (Today)
+   PER CLASS ATTENDANCE (TODAY)
 ===================================================== */
 $stmt = $pdo->prepare("
-    SELECT 
-        c.grade AS class_name,
-        SUM(a.present) AS present,
-        COUNT(a.student_id) AS total
+    SELECT c.grade AS class_name,
+           SUM(a.present) AS present,
+           COUNT(a.student_id) AS total
     FROM attendance a
     JOIN classes c ON c.id = a.class_id
     JOIN class_schedule cs ON cs.class_id = c.id
-    WHERE cs.teacher_id = ?
-    AND DATE(a.created_at) = CURDATE()
+    WHERE cs.teacher_id = ? AND DATE(a.created_at) = CURDATE()
     GROUP BY c.id
 ");
 $stmt->execute([$teacherId]);
@@ -126,138 +107,110 @@ $myClassesAttendance = $stmt->fetchAll(PDO::FETCH_ASSOC);
 
 ob_start();
 ?>
-<style>
-@media print {
-    /* Hide everything that isn't the report */
-    .no-print, 
-    nav, 
-    aside, 
-    button, 
-    .sidebar-class, 
-    footer {
-        display: none !important;
-    }
 
-    /* Adjust the main content to take full width */
-    main, .lg\:pl-72 {
-        padding-left: 0 !important;
-        margin: 0 !important;
-    }
-
-    /* Ensure background colors and charts show up in print */
-    body {
-        -webkit-print-color-adjust: exact;
-        print-color-adjust: exact;
-    }
-
-    /* Add a "Report Generated On" footer only for print */
-    body::after {
-        content: "Raporti u gjenerua më: " attr(data-date);
-        display: block;
-        text-align: center;
-        font-size: 10px;
-        color: #666;
-        margin-top: 20px;
-    }
-    
-    .bg-white {
-        border: 1px solid #e2e8f0 !important;
-        box-shadow: none !important;
-    }
-}
-</style>
+<!-- ================= DASHBOARD ================= -->
 <div class="px-4 sm:px-6 lg:px-8">
-    <div class="mb-8 flex flex-col md:flex-row md:items-center md:justify-between gap-4">
+
+    <!-- HEADER -->
+    <div class="mb-6 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
         <div>
-            <h1 class="text-3xl font-bold text-slate-900">Mirëseerdhe, Prof. <?= htmlspecialchars($teacherName) ?></h1>
-            <p class="text-slate-500">Përmbledhja e angazhimit tuaj mësimor për sot.</p>
+            <h1 class="text-2xl sm:text-3xl font-bold text-slate-900">
+                Mirëseerdhe, Prof. <?= htmlspecialchars($teacherName) ?>
+            </h1>
+            <p class="text-sm text-slate-500">
+                Përmbledhja e angazhimit tuaj mësimor për sot.
+            </p>
         </div>
-        
-        <button onclick="window.print()" class="no-print inline-flex items-center gap-2 bg-white border border-slate-200 px-4 py-2 rounded-xl text-sm font-semibold text-slate-700 hover:bg-slate-50 transition-all shadow-sm">
-            <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 17h2a2 2 0 002-2v-4a2 2 0 00-2-2H5a2 2 0 00-2 2v4a2 2 0 002 2h2m2 4h6a2 2 0 002-2v-4a2 2 0 00-2-2H9a2 2 0 00-2 2v4a2 2 0 002 2zm8-12V5a2 2 0 00-2-2H9a2 2 0 00-2 2v4h10z"/>
-            </svg>
-            Printo Raportin
+
+        <button onclick="window.print()"
+            class="no-print inline-flex items-center gap-2 bg-white border border-slate-200 px-4 py-2 rounded-xl text-sm font-semibold text-slate-700 hover:bg-slate-50 transition-all shadow-sm">
+            🖨️ Printo Raportin
         </button>
     </div>
 
-    <div class="grid grid-cols-1 sm:grid-cols-3 gap-6 mb-10">
-        <div class="bg-white p-6 rounded-[24px] border shadow-sm border-blue-100">
-            <h3 class="text-xs font-bold text-slate-500 uppercase">Nxënësit e mi</h3>
-            <p class="text-3xl font-black mt-1 text-blue-600"><?= $myTotalStudents ?></p>
+    <!-- KPI CARDS -->
+    <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 mb-10">
+
+        <div class="relative overflow-hidden bg-white p-6 rounded-2xl border border-slate-200 shadow-sm hover:shadow-md transition-all">
+            <div class="absolute right-4 top-4 text-blue-500/20 text-4xl">👨‍🎓</div>
+            <p class="text-[11px] font-bold text-slate-400 uppercase tracking-widest">Nxënësit e mi</p>
+            <span class="block mt-2 text-3xl font-black text-blue-600"><?= $myTotalStudents ?></span>
         </div>
-        <div class="bg-white p-6 rounded-[24px] border shadow-sm border-purple-100">
-            <h3 class="text-xs font-bold text-slate-500 uppercase">Klasat e caktuara</h3>
-            <p class="text-3xl font-black mt-1 text-purple-600"><?= $myTotalClasses ?></p>
+
+        <div class="relative overflow-hidden bg-white p-6 rounded-2xl border border-slate-200 shadow-sm hover:shadow-md transition-all">
+            <div class="absolute right-4 top-4 text-purple-500/20 text-4xl">🏫</div>
+            <p class="text-[11px] font-bold text-slate-400 uppercase tracking-widest">Klasat</p>
+            <span class="block mt-2 text-3xl font-black text-purple-600"><?= $myTotalClasses ?></span>
         </div>
-        <div class="bg-white p-6 rounded-[24px] border shadow-sm border-emerald-100">
-            <h3 class="text-xs font-bold text-slate-500 uppercase">Lëndët që jap</h3>
-            <p class="text-3xl font-black mt-1 text-emerald-600"><?= $myTotalSubjects ?></p>
+
+        <div class="relative overflow-hidden bg-gradient-to-br from-emerald-500 to-emerald-600 p-6 rounded-2xl shadow-lg text-white sm:col-span-2 lg:col-span-1">
+            <div class="absolute right-4 top-4 text-white/30 text-4xl">📘</div>
+            <p class="text-[11px] font-bold uppercase tracking-widest opacity-80">Lëndët</p>
+            <span class="block mt-2 text-3xl font-black"><?= $myTotalSubjects ?></span>
         </div>
+
     </div>
 
-    <div class="grid grid-cols-1 lg:grid-cols-2 gap-8 mb-8">
-        <div class="bg-white p-8 rounded-[32px] border">
-            <h2 class="font-bold mb-4 text-slate-800">Pjesëmarrja e Nxënësve të mi (Sot)</h2>
-            <div class="h-[260px]">
-                <?php if ($presentToday + $missingToday > 0): ?>
-                    <canvas id="teacherAttendanceChart"></canvas>
-                <?php else: ?>
-                    <div class="h-full flex items-center justify-center text-slate-400 italic">Nuk ka të dhëna për sot</div>
-                <?php endif; ?>
-            </div>
+    <!-- CHARTS -->
+    <div class="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-10">
+
+        <div class="bg-white p-6 sm:p-8 rounded-2xl border border-slate-200 shadow-sm">
+            <h2 class="font-bold text-slate-800 mb-1">Pjesëmarrja Sot</h2>
+            <p class="text-xs text-slate-500 mb-4">Gjendja aktuale</p>
+
+            <?php if ($presentToday + $missingToday > 0): ?>
+                <canvas id="teacherAttendanceChart" height="260"></canvas>
+            <?php else: ?>
+                <div class="h-[260px] flex items-center justify-center text-slate-400 italic">
+                    Nuk ka të dhëna për sot
+                </div>
+            <?php endif; ?>
         </div>
 
-        <div class="bg-white p-8 rounded-[32px] border">
-            <h2 class="font-bold mb-4 text-slate-800">Trendi i Pjesëmarrjes (7 Ditë)</h2>
-            <div class="h-[260px]">
-                <canvas id="teacherTrendChart"></canvas>
-            </div>
+        <div class="bg-white p-6 sm:p-8 rounded-2xl border border-slate-200 shadow-sm">
+            <h2 class="font-bold text-slate-800 mb-1">Trendi (7 Ditë)</h2>
+            <p class="text-xs text-slate-500 mb-4">Përqindja e pjesëmarrjes</p>
+            <canvas id="teacherTrendChart" height="260"></canvas>
         </div>
+
     </div>
 
-    <div class="bg-white p-6 rounded-[24px] border mb-8">
-        <h3 class="font-bold mb-4">Raporti sipas Klasave</h3>
-        <div class="overflow-x-auto">
-            <table class="w-full">
+    <!-- TABLE -->
+    <div class="bg-white p-6 rounded-2xl border border-slate-200 shadow-sm mb-8">
+        <h3 class="font-bold mb-4">Raporti sipas Klasave (Sot)</h3>
+
+        <div class="overflow-x-auto -mx-2 sm:mx-0">
+            <table class="w-full text-sm">
                 <thead>
-                    <tr class="text-left text-sm text-slate-500 border-b">
+                    <tr class="text-left text-slate-500 border-b">
                         <th class="pb-3">Klasa</th>
                         <th class="pb-3">Prezent</th>
-                        <th class="pb-3">Mungesa</th>
-                        <th class="pb-3">Përqindja</th>
+                        <th class="pb-3">Mungon</th>
+                        <th class="pb-3">%</th>
                     </tr>
                 </thead>
-                <tbody class="divide-y divide-slate-100">
-                    <?php foreach ($myClassesAttendance as $row): 
-                        $rate = round(($row['present'] / $row['total']) * 100);
+                <tbody class="divide-y">
+                    <?php foreach ($myClassesAttendance as $row):
+                        $rate = $row['total'] > 0 ? round(($row['present'] / $row['total']) * 100) : 0;
                     ?>
-                    <tr>
-                        <td class="py-4 font-bold text-slate-700">Klasa <?= htmlspecialchars($row['class_name']) ?></td>
-                        <td class="py-4 text-emerald-600 font-medium"><?= $row['present'] ?></td>
-                        <td class="py-4 text-red-500 font-medium"><?= $row['total'] - $row['present'] ?></td>
-                        <td class="py-4">
-                            <div class="flex items-center gap-2">
-                                <div class="w-16 bg-slate-100 h-1.5 rounded-full overflow-hidden">
-                                    <div class="bg-blue-500 h-full" style="width: <?= $rate ?>%"></div>
-                                </div>
-                                <span class="text-xs font-bold"><?= $rate ?>%</span>
-                            </div>
-                        </td>
-                    </tr>
+                        <tr>
+                            <td class="py-3 font-semibold">Klasa <?= htmlspecialchars($row['class_name']) ?></td>
+                            <td class="py-3 text-emerald-600"><?= $row['present'] ?></td>
+                            <td class="py-3 text-red-500"><?= $row['total'] - $row['present'] ?></td>
+                            <td class="py-3 font-bold"><?= $rate ?>%</td>
+                        </tr>
                     <?php endforeach; ?>
                 </tbody>
             </table>
         </div>
     </div>
+
 </div>
 
 <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
 <script>
-// Doughnut Chart
-const ctx1 = document.getElementById('teacherAttendanceChart');
-if(ctx1) {
-    new Chart(ctx1, {
+if (document.getElementById('teacherAttendanceChart')) {
+    new Chart(document.getElementById('teacherAttendanceChart'), {
         type: 'doughnut',
         data: {
             labels: ['Prezent', 'Mungon'],
@@ -265,25 +218,23 @@ if(ctx1) {
                 data: [<?= $presentToday ?>, <?= $missingToday ?>],
                 backgroundColor: ['#10b981', '#f43f5e'],
                 borderWidth: 0,
-                cutout: '75%'
+                cutout: '70%'
             }]
         },
         options: { plugins: { legend: { position: 'bottom' } } }
     });
 }
 
-// Trend Chart
 new Chart(document.getElementById('teacherTrendChart'), {
     type: 'line',
     data: {
         labels: <?= json_encode($attendanceDates) ?>,
         datasets: [{
-            label: 'Pjesëmarrja %',
             data: <?= json_encode($attendanceRates) ?>,
             borderColor: '#6366f1',
-            tension: 0.4,
-            fill: true,
-            backgroundColor: 'rgba(99, 102, 241, 0.1)'
+            backgroundColor: 'rgba(99,102,241,.1)',
+            tension: .4,
+            fill: true
         }]
     },
     options: {

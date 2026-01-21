@@ -22,7 +22,7 @@ function isAnyActive(array $paths) {
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>E-Shkolla | Teacher</title>
+    <title>E-Shkolla | Mësues</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <script defer src="https://unpkg.com/alpinejs@3.x.x/dist/cdn.min.js"></script>
     <link rel="icon" href="/E-Shkolla/images/icon.png" type="image/png">
@@ -63,7 +63,7 @@ function isAnyActive(array $paths) {
             <img src="/E-Shkolla/images/icon.png" class="h-10 w-auto min-w-[40px]" alt="Logo">
             <div x-show="!sidebarCollapsed" x-transition class="ml-3 whitespace-nowrap">
               <h1 class="text-xl font-bold tracking-tight text-slate-800">E-Shkolla</h1>
-              <p class="text-[10px] font-bold uppercase tracking-widest text-blue-600">Teacher</p>
+              <p class="text-[10px] font-bold uppercase tracking-widest text-blue-600">Mësues</p>
             </div>
         </a>
 
