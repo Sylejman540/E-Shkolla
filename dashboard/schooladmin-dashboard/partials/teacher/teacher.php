@@ -258,20 +258,40 @@ document.addEventListener('keydown', e => { if (e.target.classList.contains('edi
 function filterTeachers() {
     const filter = document.getElementById("liveSearch").value.toLowerCase().trim();
     const rows = document.querySelectorAll("tbody tr");
+
     rows.forEach(row => {
-        const searchables = row.querySelectorAll('[data-original]');
         let match = false;
-        searchables.forEach(el => {
-            const txt = el.getAttribute('data-original');
-            if (filter === "") { el.innerHTML = txt; match = true; }
-            else if (txt.toLowerCase().includes(filter)) {
-                el.innerHTML = txt.replace(new RegExp(`(${filter})`, 'gi'), '<mark class="bg-yellow-200 dark:bg-yellow-500/40 text-current rounded-sm px-0.5">$1</mark>');
+
+        row.querySelectorAll('[data-original]').forEach(el => {
+            const txt = el.getAttribute('data-original') || '';
+
+            // ⛔ Skip SELECT elements (gender)
+            if (el.tagName === 'SELECT') {
+                if (txt.toLowerCase().includes(filter) || filter === '') {
+                    match = true;
+                }
+                return;
+            }
+
+            // ✅ Safe to modify text elements
+            if (filter === '') {
+                el.textContent = txt;
                 match = true;
-            } else { el.innerHTML = txt; }
+            } else if (txt.toLowerCase().includes(filter)) {
+                el.innerHTML = txt.replace(
+                    new RegExp(`(${filter})`, 'gi'),
+                    '<mark class="bg-yellow-200 dark:bg-yellow-500/40 rounded px-0.5">$1</mark>'
+                );
+                match = true;
+            } else {
+                el.textContent = txt;
+            }
         });
-        row.style.display = match ? "" : "none";
+
+        row.style.display = match ? '' : 'none';
     });
 }
+
 
 const btn = document.getElementById('addTeacherBtn');
 const form = document.getElementById('addTeacherForm');
