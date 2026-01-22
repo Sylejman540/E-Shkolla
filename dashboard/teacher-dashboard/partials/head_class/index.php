@@ -1,7 +1,26 @@
 <?php
-if(session_status() === PHP_SESSION_NONE){
-    session_start();
+$subjectId = null;
+$classId   = null;
+
+if (isset($_GET['class_id']) && $_GET['class_id'] !== '') {
+    $classId = (int)$_GET['class_id'];
 }
+
+if (isset($_GET['subject_id']) && $_GET['subject_id'] !== '') {
+    $subjectId = (int)$_GET['subject_id'];
+}
+
+$params = [];
+
+if ($classId !== null) {
+    $params['class_id'] = $classId;
+}
+
+if ($subjectId !== null) {
+    $params['subject_id'] = $subjectId;
+}
+
+$query = $params ? '?' . http_build_query($params) : '';
 
 $current = $_SERVER['REQUEST_URI'];
 function isActive($path) {
@@ -70,10 +89,10 @@ function isAnyActive(array $paths) {
         <nav class="flex flex-1 flex-col overflow-y-auto px-4 py-6">
             <ul role="list" class="flex flex-1 flex-col gap-y-2">
                 <li>
-                    <a href="/E-Shkolla/teacher-dashboard"
+                    <a href="/E-Shkolla/head-class<?= $query ?>&type=header"
                     class="relative group flex items-center gap-x-3 rounded-xl p-3 text-sm font-semibold transition-all
-                    <?= isActive('/teacher-dashboard') ? 'bg-blue-50 text-blue-600 active-indicator' : 'text-slate-500 hover:bg-slate-50 hover:text-blue-600' ?>">
-                        <svg class="h-6 w-6 shrink-0" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor">
+                    <?= isActive('/head-class') ? 'bg-blue-50 text-blue-600 active-indicator' : 'text-slate-500 hover:bg-slate-50 hover:text-blue-600' ?>">
+                        <svg class="h-6 w-6 shrink-0" fill="none" viewBox="0 0 24 24" stroke-width="1.8" stroke="currentColor">
                             <path stroke-linecap="round" stroke-linejoin="round" d="M3.75 6A2.25 2.25 0 0 1 6 3.75h2.25A2.25 2.25 0 0 1 10.5 6v2.25a2.25 2.25 0 0 1-2.25 2.25H6a2.25 2.25 0 0 1-2.25-2.25V6ZM3.75 15.75A2.25 2.25 0 0 1 6 13.5h2.25a2.25 2.25 0 0 1 2.25 2.25V18a2.25 2.25 0 0 1-2.25 2.25H6A2.25 2.25 0 0 1 3.75 18v-2.25ZM13.5 6a2.25 2.25 0 0 1 2.25-2.25H18A2.25 2.25 0 0 1 20.25 6v2.25A2.25 2.25 0 0 1 18 10.5h-2.25a2.25 2.25 0 0 1-2.25-2.25V6ZM13.5 15.75a2.25 2.25 0 0 1 2.25-2.25H18a2.25 2.25 0 0 1 2.25 2.25V18A2.25 2.25 0 0 1 18 20.25h-2.25A2.25 2.25 0 0 1 13.5 18v-2.25Z" />
                         </svg>
                         <span x-show="!sidebarCollapsed || mobileOpen" class="whitespace-nowrap">Dashboard</span>
@@ -81,31 +100,65 @@ function isAnyActive(array $paths) {
                 </li>
 
                 <li>
-                    <a href="/E-Shkolla/teacher-classes"
+                  <a href="/E-Shkolla/class-head-attendance<?= $query ?>&type=header"
                     class="relative group flex items-center gap-x-3 rounded-xl p-3 text-sm font-semibold transition-all
-                    <?= isActive('/teacher-classes') ? 'bg-blue-50 text-blue-600 active-indicator' : 'text-slate-500 hover:bg-slate-50 hover:text-blue-600' ?>">
-                        <svg class="h-6 w-6 shrink-0" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor">
-                            <path stroke-linecap="round" stroke-linejoin="round" d="M12 21v-8.25M15.75 21v-8.25M8.25 21v-8.25M3 9l9-6 9 6m-1.5 12V10.332A48.36 48.36 0 0 0 12 9.75c-2.551 0-5.056.2-7.5.582V21M3 21h18M12 6.75h.008v.008H12V6.75Z" />
+                    <?= isActive('/class-head-attendance') ? 'bg-blue-50 text-blue-600 active-indicator' : 'text-slate-500 hover:bg-slate-50 hover:text-blue-600' ?>">
+                        <svg class="h-6 w-6 shrink-0" fill="none" viewBox="0 0 24 24" stroke-width="1.8" stroke="currentColor">
+                            <path stroke-linecap="round" stroke-linejoin="round" d="M9 12.75 11.25 15 15 9.75M21 12a9 9 0 1 1-18 0 9 9 0 0 1 18 0Z" />
                         </svg>
-                        <span x-show="!sidebarCollapsed || mobileOpen" class="whitespace-nowrap">Klasat e mia</span>
+                        <span x-show="!sidebarCollapsed || mobileOpen" class="whitespace-nowrap">Prezenca</span>
+                    </a>
+                </li>
+                
+
+                <li>
+                    <a href="/E-Shkolla/class-head-assignments<?= $query ?>&type=header"
+                    class="relative group flex items-center gap-x-3 rounded-xl p-3 text-sm font-semibold transition-all
+                    <?= isActive('/class-head-assignments') ? 'bg-blue-50 text-blue-600 active-indicator' : 'text-slate-500 hover:bg-slate-50 hover:text-blue-600' ?>">
+                        <svg class="h-6 w-6 shrink-0" fill="none" viewBox="0 0 24 24" stroke-width="1.8" stroke="currentColor">
+                            <path stroke-linecap="round" stroke-linejoin="round" d="M12 6.042A8.967 8.967 0 0 0 6 3.75c-1.052 0-2.062.18-3 .512v14.25A8.987 8.987 0 0 1 6 18c2.305 0 4.408.867 6 2.292m0-14.25a8.966 8.966 0 0 1 6-2.292c1.052 0 2.062.18 3 .512v14.25A8.987 8.987 0 0 0 18 18c-2.305 0-4.408.867-6 2.292m0-14.25v14.25" />
+                        </svg>
+                        <span x-show="!sidebarCollapsed || mobileOpen" class="whitespace-nowrap">Detyrat</span>
                     </a>
                 </li>
 
                 <li>
-                    <a href="/E-Shkolla/teacher-schedule"
+                    <a href="/E-Shkolla/class-head-grades<?= $query ?>&type=header"
                     class="relative group flex items-center gap-x-3 rounded-xl p-3 text-sm font-semibold transition-all
-                    <?= isActive('/teacher-schedule') ? 'bg-blue-50 text-blue-600 active-indicator' : 'text-slate-500 hover:bg-slate-50 hover:text-blue-600' ?>">
-                        <svg class="h-6 w-6 shrink-0" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor">
-                            <path stroke-linecap="round" stroke-linejoin="round" d="M6.75 3v2.25M17.25 3v2.25M3 18.75V7.5a2.25 2.25 0 0 1 2.25-2.25h13.5A2.25 2.25 0 0 1 21 7.5v11.25m-18 0A2.25 2.25 0 0 0 5.25 21h13.5A2.25 2.25 0 0 0 21 18.75m-18 0v-7.5A2.25 2.25 0 0 1 5.25 9h13.5A2.25 2.25 0 0 1 21 11.25v7.5m-9-6h.008v.008H12v-.008ZM12 15h.008v.008H12V15Zm0 2.25h.008v.008H12v-.008ZM9.75 15h.008v.008H9.75V15Zm0 2.25h.008v.008H9.75v-.008ZM7.5 15h.008v.008H7.5V15Zm0 2.25h.008v.008H7.5v-.008Zm6.75-4.5h.008v.008h-.008v-.008Zm0 2.25h.008v.008h-.008V15Zm0 2.25h.008v.008h-.008v-.008Zm2.25-4.5h.008v.008H16.5v-.008Zm0 2.25h.008v.008H16.5V15Z" />
+                    <?= isActive('/class-head-grades') ? 'bg-blue-50 text-blue-600 active-indicator' : 'text-slate-500 hover:bg-slate-50 hover:text-blue-600' ?>">
+                        <svg class="h-6 w-6 shrink-0" fill="none" viewBox="0 0 24 24" stroke-width="1.8" stroke="currentColor">
+                            <path stroke-linecap="round" stroke-linejoin="round" d="M4.26 10.147a60.438 60.438 0 0 0-.491 6.347A48.62 48.62 0 0 1 12 20.904a48.62 48.62 0 0 1 8.232-4.41 60.46 60.46 0 0 0-.491-6.347m-15.482 0a50.636 50.636 0 0 0-2.658-.813A59.906 59.906 0 0 1 12 3.493a59.903 59.903 0 0 1 10.399 5.84c-.896.248-1.783.52-2.658.814m-15.482 0A50.717 50.717 0 0 1 12 13.489a50.702 50.702 0 0 1 7.74-3.342M6.75 15a.75.75 0 1 0 0-1.5.75.75 0 0 0 0 1.5Zm0 0v-3.675A55.378 55.378 0 0 1 12 8.443m-7.007 11.55A5.981 5.981 0 0 0 6.75 15.75" />
                         </svg>
-                        <span x-show="!sidebarCollapsed || mobileOpen" class="whitespace-nowrap">Orari</span>
+                        <span x-show="!sidebarCollapsed || mobileOpen" class="whitespace-nowrap">Notat</span>
                     </a>
                 </li>
 
                 <li>
-                    <a href="/E-Shkolla/teacher-settings"
+                    <a href="/E-Shkolla/teacher-head-parent<?= $query ?>&type=header"
                     class="relative group flex items-center gap-x-3 rounded-xl p-3 text-sm font-semibold transition-all
-                    <?= isActive('/teacher-settings') ? 'bg-blue-50 text-blue-600 active-indicator' : 'text-slate-500 hover:bg-slate-50 hover:text-blue-600' ?>">
+                    <?= isActive('/teacher-head-parent') ? 'bg-blue-50 text-blue-600 active-indicator' : 'text-slate-500 hover:bg-slate-50 hover:text-blue-600' ?>">
+                        <svg class="h-6 w-6 shrink-0" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor">
+                            <path stroke-linecap="round" stroke-linejoin="round" d="M18 18.72a.75.75 0 00.75-.75V11a3 3 0 00-3-3h-1.5m-9 10.72a.75.75 0 01-.75-.75V11a3 3 0 013-3h1.5m-3 10.72V19.5a2.25 2.25 0 002.25 2.25h6a2.25 2.25 0 002.25-2.25v-1.356m-10.5 0h10.5m-9-3.433c-1.112.086-2.221.242-3.32.473L3 16.485m3.68-1.196L3.68 19.5m16.64-1.196L17.32 19.5m0-3.433c1.112.086 2.221.242 3.32.473L21 16.485M12 3.75a.75.75 0 110 1.5.75.75 0 010-1.5zm0 0v-1.5m0 9a3.75 3.75 0 100-7.5 3.75 3.75 0 000 7.5z" />
+                        </svg>
+                        <span x-show="!sidebarCollapsed || mobileOpen" class="whitespace-nowrap">Prindërit</span>
+                    </a>
+                </li>
+
+                <li>
+                    <a href="/E-Shkolla/teacher-head-notices<?= $query ?>&type=header"
+                    class="relative group flex items-center gap-x-3 rounded-xl p-3 text-sm font-semibold transition-all
+                    <?= isActive('/teacher-head-notices') ? 'bg-blue-50 text-blue-600 active-indicator' : 'text-slate-500 hover:bg-slate-50 hover:text-blue-600' ?>">
+                        <svg class="h-6 w-6 shrink-0" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor">
+                            <path stroke-linecap="round" stroke-linejoin="round" d="M14.857 17.082a23.848 23.848 0 005.454-1.31A8.967 8.967 0 0118 9.75v-.7V9A6 6 0 006 9v.75a8.967 8.967 0 01-2.312 6.022c1.733.64 3.56 1.085 5.455 1.31m5.714 0a24.255 24.255 0 01-5.714 0m5.714 0a3 3 0 11-5.714 0" />
+                        </svg>
+                        <span x-show="!sidebarCollapsed || mobileOpen" class="whitespace-nowrap">Njoftimet</span>
+                    </a>
+                </li>
+
+                <li>
+                    <a href="/E-Shkolla/teacher-head-settings<?= $query ?>&type=header"
+                    class="relative group flex items-center gap-x-3 rounded-xl p-3 text-sm font-semibold transition-all
+                    <?= isActive('/teacher-head-settings') ? 'bg-blue-50 text-blue-600 active-indicator' : 'text-slate-500 hover:bg-slate-50 hover:text-blue-600' ?>">
                         <svg class="h-6 w-6 shrink-0" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor">
                             <path stroke-linecap="round" stroke-linejoin="round" d="M10.343 3.94c.09-.542.56-.94 1.11-.94h1.093c.55 0 1.02.398 1.11.94l.149.894c.07.424.384.764.78.93.398.164.855.142 1.205-.108l.737-.527a1.125 1.125 0 0 1 1.45.12l.773.774a1.125 1.125 0 0 1 .12 1.45l-.527.737c-.25.35-.272.806-.107 1.204.165.397.505.71.93.78l.894.15c.542.09.94.56.94 1.109v1.094c0 .55-.398 1.02-.94 1.11l-.894.149c-.424.07-.764.383-.929.78-.165.398-.143.854.107 1.204l.527.738a1.125 1.125 0 0 1-.12 1.45l-.774.773a1.125 1.125 0 0 1-1.45.12l-.737-.527c-.35-.25-.806-.272-1.203-.107-.397.165-.71.505-.781.929l-.149.894c-.09.542-.56.94-1.11.94h-1.094c-.55 0-1.019-.398-1.11-.94l-.148-.894c-.071-.424-.384-.764-.781-.93-.398-.164-.854-.142-1.204.108l-.738.527a1.125 1.125 0 0 1-1.45-.12l-.773-.774a1.125 1.125 0 0 1-.12-1.45l.527-.737c.25-.35.273-.806.108-1.204-.165-.397-.505-.71-.93-.78l-.894-.15c-.542-.09-.94-.56-.94-1.109v-1.094c0-.55.398-1.02.94-1.11l.894-.149c.424-.07.765-.383.93-.78.165-.398.143-.854-.108-1.204l-.526-.738a1.125 1.125 0 0 1 .12-1.45l.773-.773a1.125 1.125 0 0 1 1.45-.12l.737.526c.351.25.807.272 1.204.108.397-.165.71-.505.78-.929l.15-.894Z" />
                             <path stroke-linecap="round" stroke-linejoin="round" d="M15 12a3 3 0 1 1-6 0 3 3 0 0 1 6 0Z" />
@@ -115,11 +168,11 @@ function isAnyActive(array $paths) {
                 </li>
 
                 <li class="mt-auto">
-                    <a href="/E-Shkolla/logout" class="group flex items-center gap-x-3 rounded-xl bg-red-50/50 p-3 text-sm font-semibold text-red-600 hover:bg-red-100 transition-all">
+                    <a href="/E-Shkolla/teacher-dashboard" class="group flex items-center gap-x-3 rounded-xl bg-blue-50/50 p-3 text-sm font-semibold text-blue-600 hover:bg-blue-100 transition-all">
                         <svg class="h-6 w-6 shrink-0 custom-transition group-hover:scale-110" fill="none" viewBox="0 0 24 24" stroke-width="1.8" stroke="currentColor">
-                            <path stroke-linecap="round" stroke-linejoin="round" d="M15.75 9V5.25A2.25 2.25 0 0013.5 3h-6a2.25 2.25 0 00-2.25 2.25v13.5A2.25 2.25 0 007.5 21h6a2.25 2.25 0 002.25-2.25V15m3 0l3-3m0 0l-3-3m3 3H9" />
+                        <path stroke-linecap="round" stroke-linejoin="round" d="M11.25 9l-3 3m0 0l3 3m-3-3h7.5M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
                         </svg>
-                        <span x-show="!sidebarCollapsed" x-transition.opacity class="whitespace-nowrap">Çkyçu nga Sistemi</span>
+                        <span x-show="!sidebarCollapsed" x-transition.opacity class="whitespace-nowrap">Kthehu te ballina</span>
                     </a>
                 </li>
             </ul>
