@@ -31,6 +31,8 @@ $routes = [
     '/teacher-schedule' => 'dashboard/teacher-dashboard/partials/schedule/schedule.php',
     '/teacher-settings' => 'dashboard/teacher-dashboard/partials/settings.php',
     '/teacher-classes' => 'dashboard/teacher-dashboard/partials/classes/classes.php',
+    '/teacher-parents' => 'dashboard/teacher-dashboard/partials/parents/parents.php',
+    '/teacher-notices' => 'dashboard/teacher-dashboard/partials/notices/notices.php',
     '/class-assignments' => 'dashboard/teacher-dashboard/partials/show-classes/assignments/assignments.php',
     '/class-attendance' => 'dashboard/teacher-dashboard/partials/show-classes/attendance/attendance.php',
     '/show-classes' => 'dashboard/teacher-dashboard/partials/show-classes/dashboard.php',
@@ -48,12 +50,6 @@ $routes = [
     '/csv-students' => 'dashboard/schooladmin-dashboard/partials/students/csv-students.php',
     '/classes-csv' => 'dashboard/schooladmin-dashboard/partials/classes/import-classes.php',
     '/parents-csv' => 'dashboard/schooladmin-dashboard/partials/parent/import-parents.php',
-    '/head-class' =>  'dashboard/teacher-dashboard/partials/head_class/dashboard.php',
-    '/class-head-attendance' => 'dashboard/teacher-dashboard/partials/head_class/attendance/attendance.php',
-    '/class-head-assignments' => 'dashboard/teacher-dashboard/partials/head_class/assignments/assignments.php',
-    '/class-head-grades' => 'dashboard/teacher-dashboard/partials/head_class/grades/grades.php',
-    '/teacher-head-parent' => 'dashboard/teacher-dashboard/partials/head_class/parent/parent.php', 
-    '/teacher-head-notices' => 'dashboard/teacher-dashboard/partials/head_class/notices/notices.php'
 ];
 
 if (array_key_exists($uri, $routes)) {

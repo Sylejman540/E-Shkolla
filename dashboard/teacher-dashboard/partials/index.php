@@ -102,6 +102,32 @@ function isAnyActive(array $paths) {
                     </a>
                 </li>
 
+                <h3 class="px-3 text-xs font-bold uppercase tracking-wider text-slate-400 mb-2">
+                    Menaxhimi i Klasës
+                </h3>
+
+                <li>
+                    <a href="/E-Shkolla/teacher-parents"
+                    class="relative group flex items-center gap-x-3 rounded-xl p-3 text-sm font-semibold transition-all
+                    <?= isActive('/teacher-parents') ? 'bg-blue-50 text-blue-600 active-indicator' : 'text-slate-500 hover:bg-slate-50 hover:text-blue-600' ?>">
+                        <svg class="h-6 w-6 shrink-0" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor">
+                            <path stroke-linecap="round" stroke-linejoin="round" d="M18 18.72a9.094 9.094 0 0 0 3.741-.479 3 3 0 0 0-4.682-2.72m.94 3.198.001.031c0 .225-.012.447-.037.666A11.944 11.944 0 0 1 12 21c-2.17 0-4.207-.576-5.963-1.584A6.062 6.062 0 0 1 6 18.719m12 0a5.971 5.971 0 0 0-.941-3.197m0 0A5.995 5.995 0 0 0 12 12.75a5.995 5.995 0 0 0-5.058 2.772m0 0a3 3 0 0 0-4.681 2.72 8.986 8.986 0 0 0 3.74.477m.94-3.197a5.971 5.971 0 0 0-.94 3.197M15 6.75a3 3 0 1 1-6 0 3 3 0 0 1 6 0Zm6 3a2.25 2.25 0 1 1-4.5 0 2.25 2.25 0 0 1 4.5 0Zm-13.5 0a2.25 2.25 0 1 1-4.5 0 2.25 2.25 0 0 1 4.5 0Z" />
+                        </svg>
+                        <span x-show="!sidebarCollapsed || mobileOpen" class="whitespace-nowrap">Prindërit</span>
+                    </a>
+                </li>
+
+                <li>
+                    <a href="/E-Shkolla/teacher-notices"
+                    class="relative group flex items-center gap-x-3 rounded-xl p-3 text-sm font-semibold transition-all
+                    <?= isActive('/teacher-notices') ? 'bg-blue-50 text-blue-600 active-indicator' : 'text-slate-500 hover:bg-slate-50 hover:text-blue-600' ?>">
+                        <svg class="h-6 w-6 shrink-0" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor">
+                            <path stroke-linecap="round" stroke-linejoin="round" d="M14.857 17.082a23.848 23.848 0 0 0 5.454-1.31A8.967 8.967 0 0 1 18 9.75V9A6 6 0 0 0 6 9v.75a8.967 8.967 0 0 1-2.312 6.022c1.733.64 3.56 1.085 5.455 1.31m5.714 0a24.255 24.255 0 0 1-5.714 0m5.714 0a3 3 0 1 1-5.714 0M3.124 7.5A8.969 8.969 0 0 1 5.292 3m13.416 0a8.969 8.969 0 0 1 2.168 4.5" />
+                        </svg>
+                        <span x-show="!sidebarCollapsed || mobileOpen" class="whitespace-nowrap">Njoftimet</span>
+                    </a>
+                </li>
+
                 <li>
                     <a href="/E-Shkolla/teacher-settings"
                     class="relative group flex items-center gap-x-3 rounded-xl p-3 text-sm font-semibold transition-all
