@@ -60,18 +60,42 @@ ob_start();
         </button>
     </div>
 
-    <div class="grid grid-cols-1 sm:grid-cols-4 gap-4 mb-10">
-        <div class="bg-white dark:bg-gray-900 rounded-2xl p-5 border border-slate-200 dark:border-white/10 shadow-sm">
-            <p class="text-[10px] font-bold text-slate-400 uppercase tracking-widest">Totali</p>
-            <p class="text-2xl font-black text-slate-900 dark:text-white mt-1"><?= $total ?></p>
+    <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 mb-10 print:hidden">
+
+        <!-- TOTAL -->
+        <div class="relative overflow-hidden bg-white dark:bg-slate-900 rounded-2xl border border-slate-200 dark:border-white/10 p-5 shadow-sm">
+            <div class="absolute right-4 top-4 text-slate-400/20 text-4xl">📦</div>
+            <p class="text-[11px] font-bold text-slate-400 uppercase tracking-widest">Totali</p>
+            <span class="mt-2 block text-3xl font-black text-slate-900 dark:text-white">
+                <?= $total ?>
+            </span>
         </div>
-        <div class="bg-white dark:bg-gray-900 rounded-2xl p-5 border border-slate-200 dark:border-white/10 shadow-sm border-l-4 border-l-indigo-500">
-            <p class="text-[10px] font-bold text-indigo-500 uppercase tracking-widest">Aktive</p>
-            <p class="text-2xl font-black text-indigo-600 dark:text-indigo-400 mt-1"><?= $active ?></p>
+
+        <!-- ACTIVE -->
+        <div class="relative overflow-hidden bg-white dark:bg-slate-900 rounded-2xl border border-slate-200 dark:border-white/10 p-5 shadow-sm">
+            <div class="absolute right-4 top-4 text-blue-500/20 text-4xl">⚡</div>
+            <p class="text-[11px] font-bold text-slate-400 uppercase tracking-widest">Aktive</p>
+            <span class="mt-2 block text-3xl font-black text-blue-600 dark:text-blue-400">
+                <?= $active ?>
+            </span>
         </div>
-        <div class="bg-white dark:bg-gray-900 rounded-2xl p-5 border border-slate-200 dark:border-white/10 shadow-sm border-l-4 border-l-emerald-500">
-            <p class="text-[10px] font-bold text-emerald-500 uppercase tracking-widest">Përfunduara</p>
-            <p class="text-2xl font-black text-emerald-600 dark:text-emerald-400 mt-1"><?= $overdue ?></p>
+
+        <!-- COMPLETED -->
+        <div class="relative overflow-hidden bg-white dark:bg-slate-900 rounded-2xl border border-slate-200 dark:border-white/10 p-5 shadow-sm">
+            <div class="absolute right-4 top-4 text-emerald-500/20 text-4xl">✅</div>
+            <p class="text-[11px] font-bold text-slate-400 uppercase tracking-widest">Përfunduara</p>
+            <span class="mt-2 block text-3xl font-black text-emerald-600 dark:text-emerald-400">
+                <?= $completed ?>
+            </span>
+        </div>
+
+        <!-- OVERDUE -->
+        <div class="relative overflow-hidden bg-gradient-to-br from-rose-500 to-rose-600 rounded-2xl p-5 shadow-lg text-white">
+            <div class="absolute right-4 top-4 text-white/30 text-4xl">⏰</div>
+            <p class="text-[11px] font-bold uppercase tracking-widest opacity-80">Afat i kaluar</p>
+            <span class="mt-2 block text-3xl font-black">
+                <?= $overdue ?>
+            </span>
         </div>
     </div>
 
