@@ -1,6 +1,6 @@
 <?php 
 if (session_status() === PHP_SESSION_NONE) { session_start(); }
-require_once __DIR__ . '/../../../../../../db.php';
+require_once __DIR__ . '/../../../../../db.php';
 
 /* ================= AUTH & TEACHER FETCH ================= */
 $schoolId = (int) ($_SESSION['user']['school_id'] ?? 0);
@@ -258,7 +258,7 @@ document.addEventListener('click', function (e) {
     const row = dBtn.closest('tr');
     row.style.opacity = '0.5';
 
-    fetch('/E-Shkolla/dashboard/teacher-dashboard/partials/head_class/show-classes/assignments/delete_assignments.php', {
+    fetch('/E-Shkolla/dashboard/teacher-dashboard/partials/show-classes/assignments/delete_assignments.php', {
         method: 'POST',
         headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
         body: 'id=' + encodeURIComponent(id)
@@ -279,5 +279,5 @@ updatePagination();
 
 <?php
 $content = ob_get_clean();
-require_once __DIR__ . '/../../index.php'; 
+require_once __DIR__ . '/../index.php'; 
 ?>

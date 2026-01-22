@@ -114,32 +114,63 @@ ob_start();
                         </tr>
                     </thead>
                     <tbody id="journalBody">
+                    <?php 
+                    // Kontrollojmë nëse variabla $students ekziston dhe ka të dhëna
+                    $hasRows = isset($students) && is_array($students) && count($students) > 0; 
+                    
+                    if (!$hasRows): ?>
+                        <tr id="emptyState">
+                            <td colspan="14" class="px-6 py-12 text-center text-slate-400 italic bg-white">
+                                <div class="flex flex-col items-center justify-center gap-2">
+                                    <span>Nuk u gjet asnjë nxënës i regjistruar në këtë klasë.</span>
+                                </div>
+                            </td>
+                        </tr>
+                    <?php else: ?>
                         <?php $nr = 1; foreach ($students as $row): ?>
-                        <tr class="border-b border-slate-200 hover:bg-slate-50 transition-colors">
-                            <td class="text-center text-xs font-bold text-slate-400 border-r bg-slate-50/50"><?= $nr++ ?></td>
-                            <td class="px-6 border-r font-bold text-slate-800 text-sm italic uppercase"><?= htmlspecialchars($row['name']) ?></td>
+                        <tr class="border-b border-slate-200 hover:bg-slate-50 transition-colors bg-white">
+                            <td class="text-center text-xs font-bold text-slate-400 border-r bg-slate-50/50 w-10"><?= $nr++ ?></td>
                             
-                            <td class="border-r p-0"><input type="number" class="grade-input" data-student-id="<?= $row['student_id'] ?>" data-period="p1" data-field="homework" value="<?= $row['p1_homework'] ?>"></td>
-                            <td class="border-r p-0"><input type="number" class="grade-input" data-student-id="<?= $row['student_id'] ?>" data-period="p1" data-field="activity" value="<?= $row['p1_activity'] ?>"></td>
-                            <td class="border-r p-0"><input type="number" class="grade-input" data-student-id="<?= $row['student_id'] ?>" data-period="p1" data-field="project" value="<?= $row['p1_project'] ?>"></td>
-                            <td class="border-r p-0"><input type="number" class="grade-input" data-student-id="<?= $row['student_id'] ?>" data-period="p1" data-field="test" value="<?= $row['p1_test'] ?>"></td>
-                            <td class="border-r p-0 bg-blue-50/30"><input type="text" class="grade-input p1-final text-blue-700" value="<?= $row['p1_final'] ?>" readonly></td>
-
-                            <td class="border-r p-0"><input type="number" class="grade-input" data-student-id="<?= $row['student_id'] ?>" data-period="p2" data-field="homework" value="<?= $row['p2_homework'] ?>"></td>
-                            <td class="border-r p-0"><input type="number" class="grade-input" data-student-id="<?= $row['student_id'] ?>" data-period="p2" data-field="activity" value="<?= $row['p2_activity'] ?>"></td>
-                            <td class="border-r p-0"><input type="number" class="grade-input" data-student-id="<?= $row['student_id'] ?>" data-period="p2" data-field="project" value="<?= $row['p2_project'] ?>"></td>
-                            <td class="border-r p-0"><input type="number" class="grade-input" data-student-id="<?= $row['student_id'] ?>" data-period="p2" data-field="test" value="<?= $row['p2_test'] ?>"></td>
-                            <td class="border-r p-0 bg-indigo-50/30"><input type="text" class="grade-input p2-final text-indigo-700" value="<?= $row['p2_final'] ?>" readonly></td>
-
-                            <td class="border-r p-0 bg-slate-200/30 text-center font-black yearly-avg text-slate-900"></td>
+                            <td class="px-4 border-r font-bold text-slate-800 text-sm italic uppercase min-w-[200px]">
+                                <?= htmlspecialchars($row['name']) ?>
+                            </td>
                             
-                            <td class="px-2 relative">
-                                <input type="text" class="auto-save-comment w-full h-10 bg-transparent border-none text-[11px] italic focus:outline-none" data-student-id="<?= $row['student_id'] ?>" placeholder="..." value="<?= htmlspecialchars($row['comment'] ?? '') ?>">
+                            <td class="border-r p-0"><input type="number" class="grade-input" data-student-id="<?= $row['student_id'] ?>" data-period="p1" data-field="homework" value="<?= $row['p1_homework'] ?>" min="1" max="10"></td>
+                            <td class="border-r p-0"><input type="number" class="grade-input" data-student-id="<?= $row['student_id'] ?>" data-period="p1" data-field="activity" value="<?= $row['p1_activity'] ?>" min="1" max="10"></td>
+                            <td class="border-r p-0"><input type="number" class="grade-input" data-student-id="<?= $row['student_id'] ?>" data-period="p1" data-field="project" value="<?= $row['p1_project'] ?>" min="1" max="10"></td>
+                            <td class="border-r p-0"><input type="number" class="grade-input" data-student-id="<?= $row['student_id'] ?>" data-period="p1" data-field="test" value="<?= $row['p1_test'] ?>" min="1" max="10"></td>
+                            <td class="border-r p-0 bg-blue-50/30">
+                                <input type="text" class="grade-input p1-final text-blue-700 font-bold" value="<?= $row['p1_final'] ?>" readonly>
+                            </td>
+
+                            <td class="border-r p-0"><input type="number" class="grade-input" data-student-id="<?= $row['student_id'] ?>" data-period="p2" data-field="homework" value="<?= $row['p2_homework'] ?>" min="1" max="10"></td>
+                            <td class="border-r p-0"><input type="number" class="grade-input" data-student-id="<?= $row['student_id'] ?>" data-period="p2" data-field="activity" value="<?= $row['p2_activity'] ?>" min="1" max="10"></td>
+                            <td class="border-r p-0"><input type="number" class="grade-input" data-student-id="<?= $row['student_id'] ?>" data-period="p2" data-field="project" value="<?= $row['p2_project'] ?>" min="1" max="10"></td>
+                            <td class="border-r p-0"><input type="number" class="grade-input" data-student-id="<?= $row['student_id'] ?>" data-period="p2" data-field="test" value="<?= $row['p2_test'] ?>" min="1" max="10"></td>
+                            <td class="border-r p-0 bg-indigo-50/30">
+                                <input type="text" class="grade-input p2-final text-indigo-700 font-bold" value="<?= $row['p2_final'] ?>" readonly>
+                            </td>
+
+                            <td class="border-r p-0 bg-slate-200/30 text-center font-black yearly-avg text-slate-900 w-16">
+                                <?php 
+                                    // Llogaritje e shpejtë në PHP për shfaqje fillestare
+                                    if($row['p1_final'] > 0 && $row['p2_final'] > 0) {
+                                        echo round(($row['p1_final'] + $row['p2_final']) / 2, 1);
+                                    }
+                                ?>
+                            </td>
+                            
+                            <td class="px-2 relative min-w-[150px]">
+                                <input type="text" class="auto-save-comment w-full h-10 bg-transparent border-none text-[11px] italic focus:outline-none" 
+                                    data-student-id="<?= $row['student_id'] ?>" 
+                                    placeholder="Shto shënim..." 
+                                    value="<?= htmlspecialchars($row['comment'] ?? '') ?>">
                                 <div class="save-indicator absolute right-0 top-0 w-1 h-full bg-blue-600 opacity-0 transition-opacity"></div>
                             </td>
                         </tr>
                         <?php endforeach; ?>
-                    </tbody>
+                    <?php endif; ?>
+                </tbody>
                 </table>
             </div>
         </div>

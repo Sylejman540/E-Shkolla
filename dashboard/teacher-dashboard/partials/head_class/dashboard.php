@@ -1,5 +1,5 @@
 <?php
-require_once __DIR__ . '/../../../../../db.php';
+require_once __DIR__ . '/../../../../db.php';
 
 if (session_status() === PHP_SESSION_NONE) {
     session_start();
@@ -225,4 +225,4 @@ new Chart(document.getElementById('teacherTrendChart'), {
 
 <?php
 $content = ob_get_clean();
-require_once __DIR__ . '/../index.php';
+require_once __DIR__ . '/index.php';

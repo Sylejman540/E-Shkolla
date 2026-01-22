@@ -116,49 +116,82 @@ ob_start();
                 </tr>
             </thead>
             <tbody class="divide-y divide-slate-100 dark:divide-white/5">
+            <?php 
+            // Sigurohemi që $rows është array që të mos kemi error në count
+            $hasRows = is_array($rows) && count($rows) > 0; 
+            
+            if (!$hasRows): ?>
+                <tr id="emptyState">
+                    <td colspan="<?= ($view === 'history') ? '4' : '3' ?>" class="px-6 py-12 text-center text-slate-400 italic">
+                        Nuk u gjet asnjë regjistrim.
+                    </td>
+                </tr>
+            <?php else: ?>
                 <?php foreach ($rows as $r): 
                     $isLocked = false;
+                    // Logjika e bllokimit (45 minuta pas përditësimit të fundit)
                     if ($view === 'live' && !empty($r['updated_at'])) {
                         $isLocked = (time() - strtotime($r['updated_at'])) < (45 * 60);
                     }
                 ?>
                 <tr class="hover:bg-slate-50 dark:hover:bg-white/5 transition-colors">
+                    
                     <?php if ($view === 'history'): ?>
                         <td class="px-6 py-4 text-sm text-slate-600 dark:text-slate-400">
-                            <span class="font-medium text-slate-900 dark:text-white"><?= date('d/m/Y', strtotime($r['lesson_date'])) ?></span>
-                            <span class="block text-xs opacity-60"><?= substr($r['lesson_start_time'],0,5) ?></span>
+                            <span class="font-medium text-slate-900 dark:text-white">
+                                <?= date('d/m/Y', strtotime($r['lesson_date'])) ?>
+                            </span>
+                            <span class="block text-xs opacity-60">
+                                <?= substr($r['lesson_start_time'], 0, 5) ?>
+                            </span>
                         </td>
                     <?php endif; ?>
 
                     <td class="px-6 py-4 text-sm font-semibold text-slate-900 dark:text-white uppercase tracking-tight">
                         <div class="flex items-center gap-2">
-                            <?= htmlspecialchars($r['name']) ?>
-                            <?php if($isLocked): ?> <span class="text-amber-500 text-xs">🔒</span> <?php endif; ?>
+                            <?= htmlspecialchars($r['name'] ?? 'I panjohur') ?>
+                            <?php if($isLocked): ?> 
+                                <span class="text-amber-500 text-xs" title="E bllokuar për modifikim">🔒</span> 
+                            <?php endif; ?>
                         </div>
                     </td>
 
                     <?php if ($view === 'live'): ?>
                         <td class="px-6 py-4 text-center">
                             <div class="flex items-center justify-center gap-2">
-                                <button onclick="save(<?= $r['student_id'] ?>,'present')" <?= $isLocked ? 'disabled' : '' ?> class="w-8 h-8 flex items-center justify-center bg-blue-600 text-white text-[11px] font-bold rounded-lg hover:bg-blue-700 transition active:scale-95 disabled:opacity-20 shadow-sm">P</button>
-                                <button onclick="save(<?= $r['student_id'] ?>,'missing')" <?= $isLocked ? 'disabled' : '' ?> class="w-8 h-8 flex items-center justify-center bg-rose-600 text-white text-[11px] font-bold rounded-lg hover:bg-rose-700 transition active:scale-95 disabled:opacity-20 shadow-sm">M</button>
-                                <button onclick="resetA(<?= $r['student_id'] ?>)" class="w-8 h-8 flex items-center justify-center bg-slate-100 dark:bg-slate-800 text-slate-500 dark:text-slate-400 text-[11px] font-bold rounded-lg hover:bg-rose-50 dark:hover:bg-rose-500/20 hover:text-rose-600 transition">R</button>
+                                <button onclick="save(<?= $r['student_id'] ?>,'present')" 
+                                        <?= $isLocked ? 'disabled' : '' ?> 
+                                        class="w-8 h-8 flex items-center justify-center bg-blue-600 text-white text-[11px] font-bold rounded-lg hover:bg-blue-700 transition active:scale-95 disabled:opacity-20 shadow-sm">
+                                    P
+                                </button>
+                                
+                                <button onclick="save(<?= $r['student_id'] ?>,'missing')" 
+                                        <?= $isLocked ? 'disabled' : '' ?> 
+                                        class="w-8 h-8 flex items-center justify-center bg-rose-600 text-white text-[11px] font-bold rounded-lg hover:bg-rose-700 transition active:scale-95 disabled:opacity-20 shadow-sm">
+                                    M
+                                </button>
+                                
+                                <button onclick="resetA(<?= $r['student_id'] ?>)" 
+                                        class="w-8 h-8 flex items-center justify-center bg-slate-100 dark:bg-slate-800 text-slate-500 dark:text-slate-400 text-[11px] font-bold rounded-lg hover:bg-rose-50 dark:hover:bg-rose-500/20 hover:text-rose-600 transition">
+                                    R
+                                </button>
                             </div>
                         </td>
                     <?php endif; ?>
 
                     <td class="px-6 py-4 text-right pr-10">
-                        <?php if ($r['present']): ?>
+                        <?php if (!empty($r['present']) && $r['present'] == 1): ?>
                             <span class="text-[11px] font-bold text-blue-600 dark:text-blue-400 uppercase tracking-widest">Prezent</span>
-                        <?php elseif ($r['missing']): ?>
+                        <?php elseif (!empty($r['missing']) && $r['missing'] == 1): ?>
                             <span class="text-[11px] font-bold text-rose-600 dark:text-rose-400 uppercase tracking-widest">Mungon</span>
                         <?php else: ?>
-                            <span class="text-[10px] font-bold text-slate-300 dark:text-slate-700 italic">Pa regjistruar</span>
+                            <span class="text-[10px] font-bold text-slate-300 dark:text-slate-700 italic text-nowrap">Pa regjistruar</span>
                         <?php endif; ?>
                     </td>
                 </tr>
                 <?php endforeach; ?>
-            </tbody>
+            <?php endif; ?>
+        </tbody>
         </table>
     </div>
 </div>

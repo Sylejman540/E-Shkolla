@@ -1,33 +1,76 @@
-<?php 
-if (session_status() === PHP_SESSION_NONE) { session_start(); }
+<?php
+/* =====================================================
+   SESSION & DB
+===================================================== */
+if (session_status() === PHP_SESSION_NONE) {
+    session_start();
+}
+
 require_once __DIR__ . '/../../../../../db.php';
 
-/* ================= AUTH & TEACHER FETCH ================= */
+/* =====================================================
+   AUTH & TEACHER CONTEXT
+===================================================== */
 $schoolId = (int) ($_SESSION['user']['school_id'] ?? 0);
 $userId   = (int) ($_SESSION['user']['id'] ?? 0);
 
-if (!$schoolId || !$userId) { die('Sesioni i pavlefshëm'); }
+if (!$schoolId || !$userId) {
+    die('Sesioni i pavlefshëm');
+}
 
-$stmt = $pdo->prepare("SELECT id FROM teachers WHERE user_id = ? AND school_id = ?");
+$stmt = $pdo->prepare("
+    SELECT id 
+    FROM teachers 
+    WHERE user_id = ? AND school_id = ?
+");
 $stmt->execute([$userId, $schoolId]);
 $teacherId = (int) $stmt->fetchColumn();
 
-if (!$teacherId) { die('Mësuesi nuk u gjet'); }
+if (!$teacherId) {
+    die('Mësuesi nuk u gjet');
+}
 
-/* ================= DATA FETCHING ================= */
+/* =====================================================
+   CLASS CONTEXT (FROM URL)
+===================================================== */
+$classId = isset($_GET['class_id']) && $_GET['class_id'] !== ''
+    ? (int) $_GET['class_id']
+    : null;
+
+if (!$classId) {
+    die('Klasa nuk është specifikuar.');
+}
+
+/* Optional security: make sure teacher teaches this class */
+$check = $pdo->prepare("
+    SELECT 1 
+    FROM teacher_class 
+    WHERE teacher_id = ? AND class_id = ?
+");
+$check->execute([$teacherId, $classId]);
+
+if (!$check->fetchColumn()) {
+    die('Nuk keni akses në këtë klasë.');
+}
+
+/* =====================================================
+   DATA FETCHING
+===================================================== */
 $today = date('Y-m-d');
 
-// Fetch Assignments
+/* -------- Assignments (ONLY THIS CLASS) -------- */
 $stmt = $pdo->prepare("
-    SELECT id, title, description, status, due_date, created_at 
-    FROM assignments 
-    WHERE school_id = ? AND teacher_id = ? 
+    SELECT id, title, description, status, due_date, created_at
+    FROM assignments
+    WHERE school_id = ?
+      AND teacher_id = ?
+      AND class_id = ?
     ORDER BY created_at DESC
 ");
-$stmt->execute([$schoolId, $teacherId]);
+$stmt->execute([$schoolId, $teacherId, $classId]);
 $assignments = $stmt->fetchAll(PDO::FETCH_ASSOC);
 
-// Fetch Stats
+/* -------- Stats (ONLY THIS CLASS) -------- */
 $stmt = $pdo->prepare("
     SELECT
         COUNT(*) AS total,
@@ -35,16 +78,24 @@ $stmt = $pdo->prepare("
         SUM(CASE WHEN status = 'completed' THEN 1 ELSE 0 END) AS completed,
         SUM(CASE WHEN status = 'active' AND due_date < ? THEN 1 ELSE 0 END) AS overdue
     FROM assignments
-    WHERE school_id = ? AND teacher_id = ?
+    WHERE school_id = ?
+      AND teacher_id = ?
+      AND class_id = ?
 ");
-$stmt->execute([$today, $today, $schoolId, $teacherId]);
+$stmt->execute([$today, $today, $schoolId, $teacherId, $classId]);
 $stats = $stmt->fetch(PDO::FETCH_ASSOC);
 
+/* =====================================================
+   SAFE CAST
+===================================================== */
 $total     = (int) ($stats['total'] ?? 0);
 $active    = (int) ($stats['active'] ?? 0);
 $completed = (int) ($stats['completed'] ?? 0);
 $overdue   = (int) ($stats['overdue'] ?? 0);
 
+/* =====================================================
+   VIEW
+===================================================== */
 ob_start();
 ?>
 

@@ -1,6 +1,6 @@
 <?php
 if (session_status() === PHP_SESSION_NONE) session_start();
-require_once __DIR__ . '/../../../../../../db.php';
+require_once __DIR__ . '/../../../../../db.php';
 
 /* ===============================
     1. SESSION + PARAMS
@@ -8,7 +8,6 @@ require_once __DIR__ . '/../../../../../../db.php';
 $schoolId  = (int) ($_SESSION['user']['school_id'] ?? 0);
 $teacherId = (int) ($_SESSION['user']['teacher_id'] ?? 0);
 $classId   = (int) ($_GET['class_id'] ?? 0);
-$subjectId = (int) ($_GET['subject_id'] ?? 0);
 
 $lessonDate = $_GET['lesson_date'] ?? date('Y-m-d');
 $lessonTime = $_GET['lesson_start_time'] ?? date('H:i:00');
@@ -18,7 +17,7 @@ $page    = (int)($_GET['page'] ?? 1);
 $perPage = 25;
 $offset  = ($page - 1) * $perPage;
 
-if (!$schoolId || !$teacherId || !$classId || !$subjectId) die('Missing parameters');
+if (!$schoolId || !$teacherId || !$classId) die('Missing parameters');
 
 /* ===============================
     2. ACTIONS
@@ -191,5 +190,5 @@ function markAllPresentBulk() {
 
 <?php
 $content = ob_get_clean();
-require_once __DIR__ . '/../../index.php';
+require_once __DIR__ . '/../index.php';
 ?>

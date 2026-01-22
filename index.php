@@ -48,12 +48,12 @@ $routes = [
     '/csv-students' => 'dashboard/schooladmin-dashboard/partials/students/csv-students.php',
     '/classes-csv' => 'dashboard/schooladmin-dashboard/partials/classes/import-classes.php',
     '/parents-csv' => 'dashboard/schooladmin-dashboard/partials/parent/import-parents.php',
-    '/head-class' =>  'dashboard/teacher-dashboard/partials/head_class/show-classes/dashboard.php',
-    '/class-head-attendance' => 'dashboard/teacher-dashboard/partials/head_class/show-classes/attendance/attendance.php',
-    '/class-head-assignments' => 'dashboard/teacher-dashboard/partials/head_class/show-classes/assignments/assignments.php',
-    '/class-head-grades' => 'dashboard/teacher-dashboard/partials/head_class/show-classes/grades/grades.php',
-    '/teacher-head-parent' => 'dashboard/teacher-dashboard/partials/head_class/show-classes/parent/parent.php', 
-    '/teacher-head-notices' => 'dashboard/teacher-dashboard/partials/head_class/show-classes/notices/notices.php'
+    '/head-class' =>  'dashboard/teacher-dashboard/partials/head_class/dashboard.php',
+    '/class-head-attendance' => 'dashboard/teacher-dashboard/partials/head_class/attendance/attendance.php',
+    '/class-head-assignments' => 'dashboard/teacher-dashboard/partials/head_class/assignments/assignments.php',
+    '/class-head-grades' => 'dashboard/teacher-dashboard/partials/head_class/grades/grades.php',
+    '/teacher-head-parent' => 'dashboard/teacher-dashboard/partials/head_class/parent/parent.php', 
+    '/teacher-head-notices' => 'dashboard/teacher-dashboard/partials/head_class/notices/notices.php'
 ];
 
 if (array_key_exists($uri, $routes)) {
