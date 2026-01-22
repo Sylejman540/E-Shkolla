@@ -100,31 +100,65 @@ ob_start();
         <?php endif; ?>
     </div>
 
-    <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
-        <div class="bg-white p-7 rounded-[32px] border border-slate-100 shadow-sm">
-            <div class="w-10 h-10 bg-indigo-50 text-indigo-600 rounded-xl flex items-center justify-center mb-4 text-xl">📈</div>
-            <p class="text-xs font-bold text-slate-400 uppercase tracking-widest">Përqindja</p>
-            <p class="text-3xl font-black text-slate-900"><?= $presenceRate ?>%</p>
+<div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 print:hidden">
+
+    <!-- Presence Rate -->
+    <div class="relative overflow-hidden bg-white dark:bg-slate-900 rounded-2xl border border-slate-200 dark:border-white/10 p-5 shadow-sm">
+        <div class="absolute right-4 top-4 text-emerald-500/20 text-4xl select-none">✅</div>
+
+        <p class="text-[11px] font-bold text-slate-400 uppercase tracking-widest">
+            Pjesëmarrja
+        </p>
+
+        <div class="mt-2 flex items-end gap-2">
+            <span class="text-3xl font-black text-slate-900 dark:text-white leading-none">
+                <?= $presenceRate ?>%
+            </span>
         </div>
 
-        <div class="bg-white p-7 rounded-[32px] border border-slate-100 shadow-sm border-b-4 border-b-red-400">
-            <div class="w-10 h-10 bg-red-50 text-red-600 rounded-xl flex items-center justify-center mb-4 text-xl">❌</div>
-            <p class="text-xs font-bold text-slate-400 uppercase tracking-widest">Mungesa</p>
-            <p class="text-3xl font-black text-slate-900"><?= $absences ?></p>
-        </div>
+        <p class="mt-1 text-xs text-slate-500 font-medium">
+            Prezencë totale
+        </p>
+    </div>
 
-        <div class="bg-white p-7 rounded-[32px] border border-slate-100 shadow-sm border-b-4 border-b-emerald-400">
-            <div class="w-10 h-10 bg-emerald-50 text-emerald-600 rounded-xl flex items-center justify-center mb-4 text-xl">✅</div>
-            <p class="text-xs font-bold text-slate-400 uppercase tracking-widest">I Pranishëm</p>
-            <p class="text-3xl font-black text-slate-900"><?= $totalLessons - $absences ?></p>
-        </div>
+    <!-- Total Absences -->
+    <div class="relative overflow-hidden bg-white dark:bg-slate-900 rounded-2xl border border-slate-200 dark:border-white/10 p-5 shadow-sm">
+        <div class="absolute right-4 top-4 text-rose-500/20 text-4xl select-none">❌</div>
 
-        <div class="bg-white p-7 rounded-[32px] border border-slate-100 shadow-sm">
-            <div class="w-10 h-10 bg-slate-50 text-slate-600 rounded-xl flex items-center justify-center mb-4 text-xl">📚</div>
-            <p class="text-xs font-bold text-slate-400 uppercase tracking-widest">Totali i Orëve</p>
-            <p class="text-3xl font-black text-slate-900"><?= $totalLessons ?></p>
+        <p class="text-[11px] font-bold text-slate-400 uppercase tracking-widest">
+            Mungesa
+        </p>
+
+        <span class="mt-2 block text-3xl font-black text-slate-900 dark:text-white leading-none">
+            <?= $absences ?>
+        </span>
+
+        <p class="mt-1 text-xs text-slate-500 font-medium">
+            Orë të humbura
+        </p>
+    </div>
+
+    <!-- Weakest Subject -->
+    <div class="relative overflow-hidden bg-gradient-to-br from-indigo-500 to-indigo-600 rounded-2xl p-5 shadow-lg text-white">
+
+        <div class="absolute right-4 top-4 text-white/30 text-4xl select-none">📉</div>
+
+        <p class="text-[11px] font-bold uppercase tracking-widest opacity-80">
+            Lënda me më shumë mungesa
+        </p>
+
+        <div class="mt-2 text-lg font-black leading-tight">
+            <?= $weakestSubject ?? '—' ?>
+            <?php if (!empty($weakestCount)): ?>
+                <span class="block text-sm font-medium opacity-80">
+                    <?= $weakestCount ?> mungesa
+                </span>
+            <?php endif; ?>
         </div>
     </div>
+
+</div>
+
 
     <div class="bg-white rounded-[40px] border border-slate-100 shadow-sm overflow-hidden">
         <div class="overflow-x-auto">
