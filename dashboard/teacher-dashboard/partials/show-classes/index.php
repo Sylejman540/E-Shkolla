@@ -109,6 +109,7 @@ function isAnyActive(array $paths) {
                         <span x-show="!sidebarCollapsed || mobileOpen" class="whitespace-nowrap">Prezenca</span>
                     </a>
                 </li>
+                
 
                 <li>
                     <a href="/E-Shkolla/class-assignments<?= $query ?>"

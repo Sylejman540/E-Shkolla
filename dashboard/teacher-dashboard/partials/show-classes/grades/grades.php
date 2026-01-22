@@ -7,13 +7,17 @@ $classId   = (int) ($_GET['class_id'] ?? 0);
 $subjectId = (int) ($_GET['subject_id'] ?? 0);
 $userId    = (int) ($_SESSION['user']['id'] ?? 0);
 
-// --- 1. SAVE LOGIC (POST) ---
+// --- LOGJIKA E RUAJTJES (POST) ---
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     $studentId = (int) $_POST['student_id'];
     $column = $_POST['column'] ?? '';
     $value = $_POST['value'] ?? '';
 
-    $allowedColumns = ['p1_oral', 'p1_test', 'p1_final', 'p2_oral', 'p2_test', 'p2_final', 'comment'];
+    $allowedColumns = [
+        'p1_homework', 'p1_activity', 'p1_project', 'p1_test', 'p1_final',
+        'p2_homework', 'p2_activity', 'p2_project', 'p2_test', 'p2_final',
+        'comment'
+    ];
 
     if (in_array($column, $allowedColumns)) {
         try {
@@ -31,24 +35,19 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             $stmt = $pdo->prepare($sql);
             $stmt->execute([$schoolId, $realTeacherId, $studentId, $classId, $subjectId, $value]);
             echo "success";
-        } catch (Exception $e) {
-            http_response_code(500);
-            echo "error";
-        }
+        } catch (Exception $e) { echo "error"; }
     }
     exit;
 }
 
-// --- 2. DATA FETCHING ---
+// --- MARRJA E TË DHËNAVE ---
 $stmt = $pdo->prepare("
-    SELECT s.student_id, s.name, s.email, 
-           g.p1_oral, g.p1_test, g.p1_final, 
-           g.p2_oral, g.p2_test, g.p2_final, g.comment 
+    SELECT s.student_id, s.name, 
+           g.p1_homework, g.p1_activity, g.p1_project, g.p1_test, g.p1_final, 
+           g.p2_homework, g.p2_activity, g.p2_project, g.p2_test, g.p2_final, g.comment 
     FROM student_class sc 
     JOIN students s ON s.student_id = sc.student_id 
-    LEFT JOIN grades g ON g.student_id = s.student_id 
-        AND g.subject_id = ? 
-        AND g.class_id = ?
+    LEFT JOIN grades g ON g.student_id = s.student_id AND g.subject_id = ? AND g.class_id = ?
     WHERE sc.class_id = ? 
     ORDER BY s.name ASC");
 $stmt->execute([$subjectId, $classId, $classId]);
@@ -58,130 +57,124 @@ ob_start();
 ?>
 
 <style>
-    @media print {
-        body * { visibility: hidden; }
-        #journalPrintArea, #journalPrintArea * { visibility: visible; }
-        #journalPrintArea { position: absolute; left: 0; top: 0; width: 100%; }
-        .no-print { display: none !important; }
-        input::-webkit-outer-spin-button, input::-webkit-inner-spin-button { -webkit-appearance: none; margin: 0; }
+    .grade-input { 
+        width: 100%; height: 48px; text-align: center; border: none; 
+        background: transparent; font-size: 15px; font-weight: 700;
+        display: block; cursor: text; color: #1e293b;
     }
-    .grade-input:focus { background-color: rgba(99, 102, 241, 0.05); outline: none; }
+    .grade-input:focus { background-color: #fff; outline: 2px solid #2563eb; z-index: 10; box-shadow: inset 0 0 0 1px #2563eb; }
+    
+    input::-webkit-outer-spin-button, input::-webkit-inner-spin-button { -webkit-appearance: none; margin: 0; }
+    
+    .table-container { background: white; border-radius: 12px; border: 1px solid #e2e8f0; box-shadow: 0 4px 6px -1px rgb(0 0 0 / 0.1); }
+    .header-cell { background-color: #f1f5f9; text-transform: uppercase; font-size: 11px; font-weight: 800; color: #475569; border-bottom: 2px solid #e2e8f0; }
+    
+    @media print { .no-print { display: none !important; } }
 </style>
 
-<div class="px-4 sm:px-6 lg:px-8 py-8" id="journalPrintArea">
-    <div class="sm:flex sm:items-center justify-between mb-8 no-print">
-        <div>
-            <h1 class="text-2xl font-bold text-slate-900 dark:text-white">Ditari i Klasës</h1>
-            <p class="mt-1 text-sm text-slate-500">Përdorni tastet e shigjetave për navigim të shpejtë (Excel-style).</p>
-        </div>
-        <div class="flex gap-3">
-            <button onclick="window.print()" class="flex items-center gap-2 bg-white border border-slate-300 px-4 py-2 rounded-xl text-sm font-semibold hover:bg-slate-50 transition shadow-sm">
-                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path d="M17 17h2a2 2 0 002-2v-4a2 2 0 00-2-2H5a2 2 0 00-2 2v4a2 2 0 002 2h2m2 4h6a2 2 0 002-2v-4a2 2 0 00-2-2H9a2 2 0 00-2 2v4a2 2 0 002 2zm8-12V5a2 2 0 00-2-2H9a2 2 0 00-2 2v4h10z" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>
-                Printo Ditarin
+<div class="p-8 bg-slate-50 min-h-screen">
+    <div class="max-w-[1440px] mx-auto">
+        <div class="mb-8 flex justify-between items-center no-print">
+            <div>
+                <h1 class="text-3xl font-black text-slate-900 tracking-tight">Regjistri i Arritjeve</h1>
+                <p class="text-slate-500 font-bold">Sistemi i Kosovës (1-5)</p>
+            </div>
+            <button onclick="window.print()" class="inline-flex items-center justify-center rounded-xl bg-indigo-600 px-5 py-2.5 text-sm font-bold text-white shadow-lg shadow-indigo-500/20 hover:bg-indigo-700 transition-all active:scale-95">
+                <svg xmlns="http://www.w3.org/2000/svg" class="w-4 h-4 mr-2" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="3" d="M17 17h2a2 2 0 002-2v-4a2 2 0 00-2-2H5a2 2 0 00-2 2v4a2 2 0 002 2h2m2 4h6a2 2 0 002-2v-4a2 2 0 00-2-2H9a2 2 0 00-2 2v4a2 2 0 002 2zm8-12V5a2 2 0 00-2-2H9a2 2 0 00-2 2v4h10z" /></svg>
+                Printo Regjistrin
             </button>
         </div>
-    </div>
 
-    <div class="bg-white dark:bg-gray-900 rounded-lg border-2 border-slate-300 dark:border-white/20 shadow-xl overflow-hidden">
-        <div class="overflow-x-auto">
-            <table class="w-full text-left border-collapse table-fixed min-w-[1100px]">
-                <thead>
-                    <tr class="bg-slate-100 dark:bg-slate-800 border-b-2 border-slate-300">
-                        <th class="w-12 px-2 py-4 text-[10px] font-bold uppercase text-slate-600 border-r border-slate-300 text-center">Nr.</th>
-                        <th class="w-64 px-4 py-4 text-xs font-bold uppercase text-slate-600 border-r border-slate-300">Nxënësi</th>
-                        <th colspan="3" class="text-center text-[10px] font-bold uppercase bg-blue-50/50 border-r border-slate-300">Periudha I</th>
-                        <th colspan="3" class="text-center text-[10px] font-bold uppercase bg-emerald-50/50 border-r border-slate-300">Periudha II</th>
-                        <th class="w-20 text-center text-[10px] font-bold uppercase bg-amber-50 border-r border-slate-300">Vjetore</th>
-                        <th class="px-4 py-4 text-xs font-bold uppercase text-slate-600 text-center">Vërejtje</th>
-                    </tr>
-                    <tr class="bg-slate-50 dark:bg-slate-800/50 border-b border-slate-300 text-[9px] uppercase text-slate-500">
-                        <th class="border-r border-slate-300"></th>
-                        <th class="border-r border-slate-300"></th>
-                        <th class="border-r border-slate-200 text-center py-2">Gojë</th>
-                        <th class="border-r border-slate-200 text-center py-2">Test</th>
-                        <th class="border-r border-slate-300 text-center py-2 font-bold text-blue-600 bg-blue-50/30">Nota P1</th>
-                        <th class="border-r border-slate-200 text-center py-2">Gojë</th>
-                        <th class="border-r border-slate-200 text-center py-2">Test</th>
-                        <th class="border-r border-slate-300 text-center py-2 font-bold text-emerald-600 bg-emerald-50/30">Nota P2</th>
-                        <th class="border-r border-slate-300"></th>
-                        <th></th>
-                    </tr>
-                </thead>
-                <tbody id="journalBody" class="divide-y divide-slate-200">
-                    <?php $nr = 1; foreach ($students as $row): ?>
-                    <tr class="group hover:bg-slate-50 transition-colors">
-                        <td class="px-2 py-0 text-center text-xs text-slate-400 border-r border-slate-200"><?= $nr++ ?></td>
-                        <td class="px-4 py-0 border-r border-slate-200">
-                            <div class="text-sm font-bold text-slate-800 truncate"><?= htmlspecialchars($row['name']) ?></div>
-                        </td>
-                        
-                        <td class="p-0 border-r border-slate-200"><input type="number" class="grade-input w-full h-10 text-center bg-transparent border-none" data-student-id="<?= $row['student_id'] ?>" data-period="p1" data-field="oral" value="<?= $row['p1_oral'] ?>" min="1" max="5"></td>
-                        <td class="p-0 border-r border-slate-200"><input type="number" class="grade-input w-full h-10 text-center bg-transparent border-none" data-student-id="<?= $row['student_id'] ?>" data-period="p1" data-field="test" value="<?= $row['p1_test'] ?>" min="1" max="5"></td>
-                        <td class="p-0 border-r border-slate-300 bg-blue-50/30"><input type="number" class="p1-final w-full h-10 text-center bg-transparent border-none font-bold text-blue-700" value="<?= $row['p1_final'] ?>" readonly></td>
-                        
-                        <td class="p-0 border-r border-slate-200"><input type="number" class="grade-input w-full h-10 text-center bg-transparent border-none" data-student-id="<?= $row['student_id'] ?>" data-period="p2" data-field="oral" value="<?= $row['p2_oral'] ?>" min="1" max="5"></td>
-                        <td class="p-0 border-r border-slate-200"><input type="number" class="grade-input w-full h-10 text-center bg-transparent border-none" data-student-id="<?= $row['student_id'] ?>" data-period="p2" data-field="test" value="<?= $row['p2_test'] ?>" min="1" max="5"></td>
-                        <td class="p-0 border-r border-slate-300 bg-emerald-50/30"><input type="number" class="p2-final w-full h-10 text-center bg-transparent border-none font-bold text-emerald-700" value="<?= $row['p2_final'] ?>" readonly></td>
-                        
-                        <td class="p-0 border-r border-slate-300 bg-amber-50 text-center font-black text-slate-900 yearly-avg text-sm"></td>
+        <div class="table-container overflow-hidden">
+            <div class="overflow-x-auto">
+                <table class="w-full border-collapse">
+                    <thead>
+                        <tr>
+                            <th rowspan="2" class="header-cell px-4 border-r w-12 text-center">Nr.</th>
+                            <th rowspan="2" class="header-cell px-6 border-r w-80 text-left">Emri dhe Mbiemri</th>
+                            <th colspan="5" class="header-cell py-4 border-r border-b bg-blue-50 text-blue-700 text-center">Periudha I</th>
+                            <th colspan="5" class="header-cell py-4 border-r border-b bg-indigo-50 text-indigo-700 text-center">Periudha II</th>
+                            <th rowspan="2" class="header-cell px-4 border-r w-24 text-center bg-slate-200/50">Vjetore</th>
+                            <th rowspan="2" class="header-cell px-4 text-center">Vërejtje</th>
+                        </tr>
+                        <tr>
+                            <th class="header-cell border-r py-2 w-20 text-center">Detyrë</th>
+                            <th class="header-cell border-r py-2 w-20 text-center">Aktiv.</th>
+                            <th class="header-cell border-r py-2 w-20 text-center">Proj.</th>
+                            <th class="header-cell border-r py-2 w-20 text-center">Test</th>
+                            <th class="header-cell border-r py-2 w-20 text-center bg-blue-100/50">Nota I</th>
+                            
+                            <th class="header-cell border-r py-2 w-20 text-center">Detyrë</th>
+                            <th class="header-cell border-r py-2 w-20 text-center">Aktiv.</th>
+                            <th class="header-cell border-r py-2 w-20 text-center">Proj.</th>
+                            <th class="header-cell border-r py-2 w-20 text-center">Test</th>
+                            <th class="header-cell border-r py-2 w-20 text-center bg-indigo-100/50">Nota II</th>
+                        </tr>
+                    </thead>
+                    <tbody id="journalBody">
+                        <?php $nr = 1; foreach ($students as $row): ?>
+                        <tr class="border-b border-slate-200 hover:bg-slate-50 transition-colors">
+                            <td class="text-center text-xs font-bold text-slate-400 border-r bg-slate-50/50"><?= $nr++ ?></td>
+                            <td class="px-6 border-r font-bold text-slate-800 text-sm italic uppercase"><?= htmlspecialchars($row['name']) ?></td>
+                            
+                            <td class="border-r p-0"><input type="number" class="grade-input" data-student-id="<?= $row['student_id'] ?>" data-period="p1" data-field="homework" value="<?= $row['p1_homework'] ?>"></td>
+                            <td class="border-r p-0"><input type="number" class="grade-input" data-student-id="<?= $row['student_id'] ?>" data-period="p1" data-field="activity" value="<?= $row['p1_activity'] ?>"></td>
+                            <td class="border-r p-0"><input type="number" class="grade-input" data-student-id="<?= $row['student_id'] ?>" data-period="p1" data-field="project" value="<?= $row['p1_project'] ?>"></td>
+                            <td class="border-r p-0"><input type="number" class="grade-input" data-student-id="<?= $row['student_id'] ?>" data-period="p1" data-field="test" value="<?= $row['p1_test'] ?>"></td>
+                            <td class="border-r p-0 bg-blue-50/30"><input type="text" class="grade-input p1-final text-blue-700" value="<?= $row['p1_final'] ?>" readonly></td>
 
-                        <td class="px-4 py-0 relative">
-                            <input type="text" class="auto-save-comment w-full h-10 bg-transparent border-none text-[11px] italic focus:ring-0" data-student-id="<?= $row['student_id'] ?>" placeholder="..." value="<?= htmlspecialchars($row['comment'] ?? '') ?>">
-                            <div class="save-indicator absolute right-1 top-4 opacity-0 transition-opacity">
-                                <div class="w-1.5 h-1.5 rounded-full bg-emerald-500"></div>
-                            </div>
-                        </td>
-                    </tr>
-                    <?php endforeach; ?>
-                </tbody>
-                <tfoot class="bg-slate-100 font-bold border-t-2 border-slate-300 no-print">
-                    <tr class="h-10 text-slate-600 text-[11px]">
-                        <td colspan="2" class="px-4 text-right uppercase tracking-tighter">Mesatarja e Klasës:</td>
-                        <td id="avg-p1-oral" class="text-center border-r border-slate-200">0</td>
-                        <td id="avg-p1-test" class="text-center border-r border-slate-200">0</td>
-                        <td id="avg-p1-final" class="text-center border-r border-slate-300 bg-blue-100/50">0</td>
-                        <td id="avg-p2-oral" class="text-center border-r border-slate-200">0</td>
-                        <td id="avg-p2-test" class="text-center border-r border-slate-200">0</td>
-                        <td id="avg-p2-final" class="text-center border-r border-slate-300 bg-emerald-100/50">0</td>
-                        <td id="avg-yearly" class="text-center bg-amber-100/50 border-r border-slate-300">0</td>
-                        <td></td>
-                    </tr>
-                </tfoot>
-            </table>
+                            <td class="border-r p-0"><input type="number" class="grade-input" data-student-id="<?= $row['student_id'] ?>" data-period="p2" data-field="homework" value="<?= $row['p2_homework'] ?>"></td>
+                            <td class="border-r p-0"><input type="number" class="grade-input" data-student-id="<?= $row['student_id'] ?>" data-period="p2" data-field="activity" value="<?= $row['p2_activity'] ?>"></td>
+                            <td class="border-r p-0"><input type="number" class="grade-input" data-student-id="<?= $row['student_id'] ?>" data-period="p2" data-field="project" value="<?= $row['p2_project'] ?>"></td>
+                            <td class="border-r p-0"><input type="number" class="grade-input" data-student-id="<?= $row['student_id'] ?>" data-period="p2" data-field="test" value="<?= $row['p2_test'] ?>"></td>
+                            <td class="border-r p-0 bg-indigo-50/30"><input type="text" class="grade-input p2-final text-indigo-700" value="<?= $row['p2_final'] ?>" readonly></td>
+
+                            <td class="border-r p-0 bg-slate-200/30 text-center font-black yearly-avg text-slate-900"></td>
+                            
+                            <td class="px-2 relative">
+                                <input type="text" class="auto-save-comment w-full h-10 bg-transparent border-none text-[11px] italic focus:outline-none" data-student-id="<?= $row['student_id'] ?>" placeholder="..." value="<?= htmlspecialchars($row['comment'] ?? '') ?>">
+                                <div class="save-indicator absolute right-0 top-0 w-1 h-full bg-blue-600 opacity-0 transition-opacity"></div>
+                            </td>
+                        </tr>
+                        <?php endforeach; ?>
+                    </tbody>
+                </table>
+            </div>
         </div>
     </div>
 </div>
 
 <script>
-// --- Excel Style Keyboard Navigation ---
-document.getElementById('journalBody').addEventListener('keydown', function(e) {
-    const active = document.activeElement;
-    if (!active || (!active.classList.contains('grade-input') && !active.classList.contains('auto-save-comment'))) return;
+// Formula e vlerësimit për Kosovë (Pesha mund të rregullohet këtu)
+function calculateRow(row) {
+    const studentId = row.querySelector('.grade-input').dataset.studentId;
+    ['p1', 'p2'].forEach(p => {
+        const h = parseFloat(row.querySelector(`[data-period="${p}"][data-field="homework"]`).value) || 0;
+        const a = parseFloat(row.querySelector(`[data-period="${p}"][data-field="activity"]`).value) || 0;
+        const pr = parseFloat(row.querySelector(`[data-period="${p}"][data-field="project"]`).value) || 0;
+        const t = parseFloat(row.querySelector(`[data-period="${p}"][data-field="test"]`).value) || 0;
+        const finalInput = row.querySelector(`.${p}-final`);
 
-    const row = active.closest('tr');
-    const td = active.closest('td');
-    const colIndex = Array.from(row.cells).indexOf(td);
+        // Nëse janë plotësuar të gjitha kolonat, llogarit mesataren e rrumbullakuar
+        if (h > 0 && a > 0 && pr > 0 && t > 0) {
+            const avg = Math.round((h + a + pr + t) / 4);
+            if (finalInput.value != avg) {
+                finalInput.value = avg;
+                saveData(studentId, `${p}_final`, avg);
+            }
+        } else { finalInput.value = ''; }
+    });
 
-    if (e.key === "ArrowDown" || e.key === "Enter") {
-        e.preventDefault();
-        const nextRow = row.nextElementSibling;
-        if (nextRow) nextRow.cells[colIndex].querySelector('input')?.focus();
-    } else if (e.key === "ArrowUp") {
-        e.preventDefault();
-        const prevRow = row.previousElementSibling;
-        if (prevRow) prevRow.cells[colIndex].querySelector('input')?.focus();
-    } else if (e.key === "ArrowRight" && active.selectionEnd === active.value.length) {
-        td.nextElementSibling?.querySelector('input')?.focus();
-    } else if (e.key === "ArrowLeft" && active.selectionStart === 0) {
-        td.previousElementSibling?.querySelector('input')?.focus();
-    }
-});
+    // Llogaritja Vjetore
+    const f1 = parseFloat(row.querySelector('.p1-final').value) || 0;
+    const f2 = parseFloat(row.querySelector('.p2-final').value) || 0;
+    const yearlyCell = row.querySelector('.yearly-avg');
+    yearlyCell.innerText = (f1 > 0 && f2 > 0) ? Math.round((f1 + f2) / 2) : '';
+}
 
-// --- Save Logic ---
 function saveData(studentId, column, value) {
     const row = document.querySelector(`[data-student-id="${studentId}"]`).closest('tr');
     const indicator = row.querySelector('.save-indicator');
-    
     const formData = new FormData();
     formData.append('student_id', studentId);
     formData.append('column', column);
@@ -192,72 +185,18 @@ function saveData(studentId, column, value) {
     .then(data => {
         if(data.trim() === "success") {
             indicator.style.opacity = '1';
-            setTimeout(() => { indicator.style.opacity = '0'; }, 800);
-            updateClassAverages();
+            setTimeout(() => { indicator.style.opacity = '0'; }, 600);
         }
     });
-}
-
-// --- Calculation Logic ---
-function calculateRow(row) {
-    const studentId = row.querySelector('.grade-input').dataset.studentId;
-    
-    ['p1', 'p2'].forEach(p => {
-        const oral = parseFloat(row.querySelector(`[data-period="${p}"][data-field="oral"]`).value) || 0;
-        const test = parseFloat(row.querySelector(`[data-period="${p}"][data-field="test"]`).value) || 0;
-        const finalInput = row.querySelector(`.${p}-final`);
-
-        if (oral > 0 && test > 0) {
-            const avg = Math.round((oral + test) / 2);
-            if (finalInput.value != avg) {
-                finalInput.value = avg;
-                saveData(studentId, `${p}_final`, avg);
-            }
-        } else {
-            finalInput.value = '';
-        }
-    });
-
-    const f1 = parseFloat(row.querySelector('.p1-final').value) || 0;
-    const f2 = parseFloat(row.querySelector('.p2-final').value) || 0;
-    const yearlyCell = row.querySelector('.yearly-avg');
-    if (f1 > 0 && f2 > 0) {
-        yearlyCell.innerText = Math.round((f1 + f2) / 2);
-    } else {
-        yearlyCell.innerText = '';
-    }
-}
-
-function updateClassAverages() {
-    const columns = [
-        { selector: '[data-period="p1"][data-field="oral"]', target: 'avg-p1-oral' },
-        { selector: '[data-period="p1"][data-field="test"]', target: 'avg-p1-test' },
-        { selector: '.p1-final', target: 'avg-p1-final' },
-        { selector: '[data-period="p2"][data-field="oral"]', target: 'avg-p2-oral' },
-        { selector: '[data-period="p2"][data-field="test"]', target: 'avg-p2-test' },
-        { selector: '.p2-final', target: 'avg-p2-final' }
-    ];
-
-    columns.forEach(col => {
-        const inputs = Array.from(document.querySelectorAll(col.selector));
-        const values = inputs.map(i => parseFloat(i.value || i.innerText)).filter(v => v > 0);
-        const avg = values.length ? (values.reduce((a, b) => a + b, 0) / values.length).toFixed(2) : 0;
-        document.getElementById(col.target).innerText = avg;
-    });
-
-    const yearlyValues = Array.from(document.querySelectorAll('.yearly-avg')).map(c => parseFloat(c.innerText)).filter(v => v > 0);
-    document.getElementById('avg-yearly').innerText = yearlyValues.length ? (yearlyValues.reduce((a, b) => a + b, 0) / yearlyValues.length).toFixed(2) : 0;
 }
 
 document.getElementById('journalBody').addEventListener('input', (e) => {
     if (e.target.classList.contains('grade-input')) {
         let val = parseInt(e.target.value);
-        if (val < 1) e.target.value = '';
-        if (val > 5) e.target.value = 5;
+        if (val < 1) e.target.value = ''; 
+        if (val > 5) e.target.value = 5; // Limiti maksimal 5
         
-        const sid = e.target.dataset.studentId;
-        const col = `${e.target.dataset.period}_${e.target.dataset.field}`;
-        saveData(sid, col, e.target.value);
+        saveData(e.target.dataset.studentId, `${e.target.dataset.period}_${e.target.dataset.field}`, e.target.value);
         calculateRow(e.target.closest('tr'));
     }
 });
@@ -268,9 +207,20 @@ document.getElementById('journalBody').addEventListener('blur', (e) => {
     }
 }, true);
 
-// Initial Load
+// Llogaritja fillestare
 document.querySelectorAll('#journalBody tr').forEach(row => calculateRow(row));
-updateClassAverages();
+
+// Navigimi me shigjeta
+document.addEventListener('keydown', (e) => {
+    const active = document.activeElement;
+    if (!active.classList.contains('grade-input')) return;
+    const row = active.closest('tr');
+    const cell = active.closest('td');
+    const colIdx = cell.cellIndex;
+
+    if (e.key === 'ArrowDown') row.nextElementSibling?.cells[colIdx].querySelector('input')?.focus();
+    if (e.key === 'ArrowUp') row.previousElementSibling?.cells[colIdx].querySelector('input')?.focus();
+});
 </script>
 
 <?php
