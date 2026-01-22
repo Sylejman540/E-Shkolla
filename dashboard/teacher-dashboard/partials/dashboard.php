@@ -1,31 +1,32 @@
 <?php
+declare(strict_types=1);
+
 require_once __DIR__ . '/../../../db.php';
 
 if (session_status() === PHP_SESSION_NONE) {
     session_start();
 }
 
-/* =====================================================
-   SESSION & TEACHER CONTEXT
-===================================================== */
 $schoolId  = $_SESSION['user']['school_id'] ?? null;
 $teacherId = $_SESSION['user']['teacher_id'] ?? null;
 
 if (!$schoolId || !$teacherId) {
-    die('Aksesi i mohuar: Të dhënat e mësuesit mungojnë.');
+    die('Akses i mohuar');
 }
 
-/* =====================================================
+/* ======================
    TEACHER INFO
-===================================================== */
-$stmt = $pdo->prepare("SELECT name FROM teachers WHERE id = ?");
-$stmt->execute([$teacherId]);
+====================== */
+$stmt = $pdo->prepare("
+    SELECT name FROM teachers 
+    WHERE id = ? AND school_id = ?
+");
+$stmt->execute([$teacherId, $schoolId]);
 $teacherName = $stmt->fetchColumn() ?: 'Mësues';
 
-/* =====================================================
-   KPIs
-===================================================== */
-// Total students
+/* ======================
+   KPI: STUDENTS
+====================== */
 $stmt = $pdo->prepare("
     SELECT COUNT(DISTINCT sc.student_id)
     FROM teacher_class tc
@@ -36,70 +37,88 @@ $stmt = $pdo->prepare("
 $stmt->execute([$teacherId, $schoolId]);
 $myTotalStudents = (int)$stmt->fetchColumn();
 
-// Total classes
-$stmt = $pdo->prepare("SELECT COUNT(DISTINCT class_id) FROM class_schedule WHERE teacher_id = ?");
+/* ======================
+   KPI: CLASSES
+====================== */
+$stmt = $pdo->prepare("
+    SELECT COUNT(*) 
+    FROM teacher_class 
+    WHERE teacher_id = ?
+");
 $stmt->execute([$teacherId]);
 $myTotalClasses = (int)$stmt->fetchColumn();
 
-// Total subjects
-$stmt = $pdo->prepare("SELECT COUNT(DISTINCT subject_id) FROM class_schedule WHERE teacher_id = ?");
+/* ======================
+   KPI: SUBJECTS
+====================== */
+$stmt = $pdo->prepare("
+    SELECT COUNT(DISTINCT cs.subject_id)
+    FROM class_subject cs
+    JOIN teacher_class tc ON tc.class_id = cs.class_id
+    WHERE tc.teacher_id = ?
+");
 $stmt->execute([$teacherId]);
 $myTotalSubjects = (int)$stmt->fetchColumn();
 
-/* =====================================================
+/* ======================
    TODAY ATTENDANCE
-===================================================== */
-$today = date('Y-m-d');
+====================== */
 $stmt = $pdo->prepare("
-    SELECT SUM(a.present) AS present, SUM(a.missing) AS missing
+    SELECT 
+        SUM(a.present) AS present,
+        SUM(a.missing) AS missing
     FROM attendance a
-    JOIN class_schedule cs ON cs.class_id = a.class_id
-    WHERE cs.teacher_id = ? AND DATE(a.created_at) = ?
-");
-$stmt->execute([$teacherId, $today]);
-$attendanceToday = $stmt->fetch(PDO::FETCH_ASSOC);
-
-$presentToday = (int)($attendanceToday['present'] ?? 0);
-$missingToday = (int)($attendanceToday['missing'] ?? 0);
-
-/* =====================================================
-   ATTENDANCE TREND (7 DAYS)
-===================================================== */
-$stmt = $pdo->prepare("
-    SELECT DATE(a.created_at) AS day,
-           SUM(a.present) AS present,
-           COUNT(a.student_id) AS total_logs
-    FROM attendance a
-    JOIN class_schedule cs ON cs.class_id = a.class_id
-    WHERE cs.teacher_id = ?
-      AND a.created_at >= DATE_SUB(CURDATE(), INTERVAL 7 DAY)
-    GROUP BY DATE(a.created_at)
-    ORDER BY DATE(a.created_at)
+    JOIN teacher_class tc ON tc.class_id = a.class_id
+    WHERE tc.teacher_id = ?
+      AND a.lesson_date = CURDATE()
 ");
 $stmt->execute([$teacherId]);
-$trendRows = $stmt->fetchAll(PDO::FETCH_ASSOC);
+$row = $stmt->fetch(PDO::FETCH_ASSOC);
+
+$presentToday = (int)($row['present'] ?? 0);
+$missingToday = (int)($row['missing'] ?? 0);
+
+/* ======================
+   ATTENDANCE TREND (7 DAYS)
+====================== */
+$stmt = $pdo->prepare("
+    SELECT 
+        a.lesson_date AS day,
+        SUM(a.present) AS present,
+        COUNT(*) AS total
+    FROM attendance a
+    JOIN teacher_class tc ON tc.class_id = a.class_id
+    WHERE tc.teacher_id = ?
+      AND a.lesson_date >= DATE_SUB(CURDATE(), INTERVAL 7 DAY)
+    GROUP BY a.lesson_date
+    ORDER BY a.lesson_date
+");
+$stmt->execute([$teacherId]);
+$trend = $stmt->fetchAll(PDO::FETCH_ASSOC);
 
 $attendanceDates = [];
 $attendanceRates = [];
 
-foreach ($trendRows as $row) {
-    $attendanceDates[] = date('D', strtotime($row['day']));
-    $attendanceRates[] = $row['total_logs'] > 0
-        ? round(($row['present'] / $row['total_logs']) * 100)
+foreach ($trend as $t) {
+    $attendanceDates[] = date('D', strtotime($t['day']));
+    $attendanceRates[] = $t['total'] > 0
+        ? round(($t['present'] / $t['total']) * 100)
         : 0;
 }
 
-/* =====================================================
-   PER CLASS ATTENDANCE (TODAY)
-===================================================== */
+/* ======================
+   PER CLASS (TODAY)
+====================== */
 $stmt = $pdo->prepare("
-    SELECT c.grade AS class_name,
-           SUM(a.present) AS present,
-           COUNT(a.student_id) AS total
+    SELECT 
+        c.grade AS class_name,
+        SUM(a.present) AS present,
+        COUNT(*) AS total
     FROM attendance a
     JOIN classes c ON c.id = a.class_id
-    JOIN class_schedule cs ON cs.class_id = c.id
-    WHERE cs.teacher_id = ? AND DATE(a.created_at) = CURDATE()
+    JOIN teacher_class tc ON tc.class_id = c.id
+    WHERE tc.teacher_id = ?
+      AND a.lesson_date = CURDATE()
     GROUP BY c.id
 ");
 $stmt->execute([$teacherId]);

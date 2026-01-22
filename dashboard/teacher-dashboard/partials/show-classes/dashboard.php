@@ -95,62 +95,98 @@ foreach ($trendRows as $row) {
 ob_start();
 ?>
 
-<div class="px-4 sm:px-6 lg:px-8">
-    <div class="mb-8 flex flex-col md:flex-row md:items-center md:justify-between gap-4">
+
+<div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 pb-12">
+
+    <!-- HEADER -->
+    <div class="mb-10 flex flex-col lg:flex-row lg:items-center lg:justify-between gap-6">
         <div>
-            <h1 class="text-3xl font-bold text-slate-900">Klasa <?= htmlspecialchars($currentClassName) ?></h1>
-            <p class="text-slate-500">Lënda: <span class="font-semibold text-blue-600"><?= htmlspecialchars($currentSubjectName) ?></span></p>
+            <h1 class="text-3xl font-black text-slate-900">
+                Klasa <?= htmlspecialchars($currentClassName) ?>
+            </h1>
+            <p class="mt-1 text-slate-500">
+                Lënda:
+                <span class="font-semibold text-indigo-600">
+                    <?= htmlspecialchars($currentSubjectName) ?>
+                </span>
+            </p>
         </div>
-        
-        <button onclick="window.print()" class="no-print inline-flex items-center gap-2 bg-white border border-slate-200 px-4 py-2 rounded-xl text-sm font-semibold text-slate-700 hover:bg-slate-50 transition-all shadow-sm">
-            <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 17h2a2 2 0 002-2v-4a2 2 0 00-2-2H5a2 2 0 00-2 2v4a2 2 0 002 2h2m2 4h6a2 2 0 002-2v-4a2 2 0 00-2-2H9a2 2 0 00-2 2v4a2 2 0 002 2zm8-12V5a2 2 0 00-2-2H9a2 2 0 00-2 2v4h10z"/>
-            </svg>
-            Printo Raportin
+
+        <button onclick="window.print()"
+            class="no-print inline-flex items-center gap-2 rounded-xl border border-slate-200 bg-white px-4 py-2 text-sm font-semibold text-slate-700 shadow-sm hover:bg-slate-50">
+            🖨️ Printo Raportin
         </button>
     </div>
 
-    <div class="grid grid-cols-1 sm:grid-cols-2 gap-6 mb-10">
-        <div class="bg-white p-6 rounded-[24px] border shadow-sm border-blue-100">
-            <h3 class="text-xs font-bold text-slate-500 uppercase">Nxënësit në këtë klasë</h3>
-            <p class="text-3xl font-black mt-1 text-blue-600"><?= $myTotalStudents ?></p>
-        </div>
-        <div class="bg-white p-6 rounded-[24px] border shadow-sm border-emerald-100">
-            <h3 class="text-xs font-bold text-slate-500 uppercase">Prezenca Sot (%)</h3>
-            <p class="text-3xl font-black mt-1 text-emerald-600">
-                <?= ($presentToday + $missingToday > 0) ? round(($presentToday / ($presentToday + $missingToday)) * 100) : 0 ?>%
+    <!-- KPI CARDS -->
+    <div class="grid grid-cols-1 sm:grid-cols-2 gap-6 mb-12">
+
+        <div class="relative overflow-hidden rounded-3xl border border-slate-200 bg-white p-6 shadow-sm">
+            <p class="text-xs font-bold uppercase tracking-widest text-slate-400">
+                Nxënës në klasë
             </p>
+            <div class="mt-3 text-4xl font-black text-indigo-600">
+                <?= $myTotalStudents ?>
+            </div>
         </div>
+
+        <div class="relative overflow-hidden rounded-3xl border border-emerald-200 bg-emerald-50 p-6 shadow-sm">
+            <p class="text-xs font-bold uppercase tracking-widest text-emerald-700">
+                Prezenca sot
+            </p>
+            <div class="mt-3 text-4xl font-black text-emerald-600">
+                <?= ($presentToday + $missingToday > 0)
+                    ? round(($presentToday / ($presentToday + $missingToday)) * 100)
+                    : 0 ?>%
+            </div>
+        </div>
+
     </div>
 
-    <div class="grid grid-cols-1 lg:grid-cols-2 gap-8 mb-8">
-        <div class="bg-white p-8 rounded-[32px] border">
-            <h2 class="font-bold mb-4 text-slate-800">Pjesëmarrja Sot (<?= htmlspecialchars($currentSubjectName) ?>)</h2>
-            <div class="h-[260px]">
+    <!-- CHARTS -->
+    <div class="grid grid-cols-1 lg:grid-cols-2 gap-8 mb-12">
+
+        <div class="rounded-3xl border border-slate-200 bg-white p-8 shadow-sm">
+            <h2 class="mb-2 text-lg font-bold text-slate-800">
+                Pjesëmarrja Sot
+            </h2>
+            <p class="mb-6 text-sm text-slate-500">
+                <?= htmlspecialchars($currentSubjectName) ?>
+            </p>
+
+            <div class="h-[280px]">
                 <?php if ($presentToday + $missingToday > 0): ?>
                     <canvas id="teacherAttendanceChart"></canvas>
                 <?php else: ?>
-                    <div class="h-full flex items-center justify-center text-slate-400 italic text-center">
-                        Nuk ka të dhëna për sot për këtë lëndë. <br>
-                        Ju lutem shënoni prezencën së pari.
+                    <div class="flex h-full items-center justify-center text-center text-slate-400 italic">
+                        Nuk ka të dhëna për sot.<br>
+                        Shënoni prezencën për të parë grafikun.
                     </div>
                 <?php endif; ?>
             </div>
         </div>
 
-        <div class="bg-white p-8 rounded-[32px] border">
-            <h2 class="font-bold mb-4 text-slate-800">Trendi i Pjesëmarrjes (7 Ditë)</h2>
-            <div class="h-[260px]">
+        <div class="rounded-3xl border border-slate-200 bg-white p-8 shadow-sm">
+            <h2 class="mb-2 text-lg font-bold text-slate-800">
+                Trendi i Pjesëmarrjes
+            </h2>
+            <p class="mb-6 text-sm text-slate-500">
+                7 ditët e fundit
+            </p>
+
+            <div class="h-[280px]">
                 <canvas id="teacherTrendChart"></canvas>
             </div>
         </div>
+
     </div>
+
 </div>
 
 <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
 <script>
 const ctx1 = document.getElementById('teacherAttendanceChart');
-if(ctx1) {
+if (ctx1) {
     new Chart(ctx1, {
         type: 'doughnut',
         data: {
@@ -159,10 +195,12 @@ if(ctx1) {
                 data: [<?= $presentToday ?>, <?= $missingToday ?>],
                 backgroundColor: ['#10b981', '#f43f5e'],
                 borderWidth: 0,
-                cutout: '75%'
+                cutout: '72%'
             }]
         },
-        options: { plugins: { legend: { position: 'bottom' } } }
+        options: {
+            plugins: { legend: { position: 'bottom' } }
+        }
     });
 }
 
@@ -171,12 +209,11 @@ new Chart(document.getElementById('teacherTrendChart'), {
     data: {
         labels: <?= json_encode($attendanceDates) ?>,
         datasets: [{
-            label: 'Pjesëmarrja %',
             data: <?= json_encode($attendanceRates) ?>,
             borderColor: '#6366f1',
+            backgroundColor: 'rgba(99,102,241,.15)',
             tension: 0.4,
-            fill: true,
-            backgroundColor: 'rgba(99, 102, 241, 0.1)'
+            fill: true
         }]
     },
     options: {
@@ -189,4 +226,3 @@ new Chart(document.getElementById('teacherTrendChart'), {
 <?php
 $content = ob_get_clean();
 require_once __DIR__ . '/index.php';
-?>
