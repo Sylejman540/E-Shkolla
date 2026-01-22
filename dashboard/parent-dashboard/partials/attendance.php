@@ -82,7 +82,9 @@ ob_start();
 
 <div class="max-w-7xl mx-auto space-y-6 pb-12">
     
-    <div class="bg-white rounded-[32px] border border-slate-100 shadow-sm p-8 flex flex-col lg:flex-row justify-between items-start lg:items-center gap-6">
+    <div class="bg-white rounded-[40px] border border-slate-100 shadow-sm p-8 relative overflow-hidden">
+        <div class="absolute top-0 right-0 -mr-20 -mt-20 w-64 h-64 bg-indigo-50 rounded-full opacity-50"></div>
+        
         <div>
             <h2 class="text-3xl font-black text-slate-900 tracking-tight">Regjistri i Prezencës 📅</h2>
             <p class="text-slate-500 font-medium mt-1">Po shikoni mungesat dhe prezencën për: <span class="text-indigo-600 font-bold"><?= htmlspecialchars($currentStudent['name']) ?></span></p>
@@ -100,64 +102,64 @@ ob_start();
         <?php endif; ?>
     </div>
 
-<div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 print:hidden">
+    <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 print:hidden">
 
-    <!-- Presence Rate -->
-    <div class="relative overflow-hidden bg-white dark:bg-slate-900 rounded-2xl border border-slate-200 dark:border-white/10 p-5 shadow-sm">
-        <div class="absolute right-4 top-4 text-emerald-500/20 text-4xl select-none">✅</div>
+        <!-- Presence Rate -->
+        <div class="relative overflow-hidden bg-white dark:bg-slate-900 rounded-2xl border border-slate-200 dark:border-white/10 p-5 shadow-sm">
+            <div class="absolute right-4 top-4 text-emerald-500/20 text-4xl select-none">✅</div>
 
-        <p class="text-[11px] font-bold text-slate-400 uppercase tracking-widest">
-            Pjesëmarrja
-        </p>
+            <p class="text-[11px] font-bold text-slate-400 uppercase tracking-widest">
+                Pjesëmarrja
+            </p>
 
-        <div class="mt-2 flex items-end gap-2">
-            <span class="text-3xl font-black text-slate-900 dark:text-white leading-none">
-                <?= $presenceRate ?>%
-            </span>
-        </div>
-
-        <p class="mt-1 text-xs text-slate-500 font-medium">
-            Prezencë totale
-        </p>
-    </div>
-
-    <!-- Total Absences -->
-    <div class="relative overflow-hidden bg-white dark:bg-slate-900 rounded-2xl border border-slate-200 dark:border-white/10 p-5 shadow-sm">
-        <div class="absolute right-4 top-4 text-rose-500/20 text-4xl select-none">❌</div>
-
-        <p class="text-[11px] font-bold text-slate-400 uppercase tracking-widest">
-            Mungesa
-        </p>
-
-        <span class="mt-2 block text-3xl font-black text-slate-900 dark:text-white leading-none">
-            <?= $absences ?>
-        </span>
-
-        <p class="mt-1 text-xs text-slate-500 font-medium">
-            Orë të humbura
-        </p>
-    </div>
-
-    <!-- Weakest Subject -->
-    <div class="relative overflow-hidden bg-gradient-to-br from-indigo-500 to-indigo-600 rounded-2xl p-5 shadow-lg text-white">
-
-        <div class="absolute right-4 top-4 text-white/30 text-4xl select-none">📉</div>
-
-        <p class="text-[11px] font-bold uppercase tracking-widest opacity-80">
-            Lënda me më shumë mungesa
-        </p>
-
-        <div class="mt-2 text-lg font-black leading-tight">
-            <?= $weakestSubject ?? '—' ?>
-            <?php if (!empty($weakestCount)): ?>
-                <span class="block text-sm font-medium opacity-80">
-                    <?= $weakestCount ?> mungesa
+            <div class="mt-2 flex items-end gap-2">
+                <span class="text-3xl font-black text-slate-900 dark:text-white leading-none">
+                    <?= $presenceRate ?>%
                 </span>
-            <?php endif; ?>
-        </div>
-    </div>
+            </div>
 
-</div>
+            <p class="mt-1 text-xs text-slate-500 font-medium">
+                Prezencë totale
+            </p>
+        </div>
+
+        <!-- Total Absences -->
+        <div class="relative overflow-hidden bg-white dark:bg-slate-900 rounded-2xl border border-slate-200 dark:border-white/10 p-5 shadow-sm">
+            <div class="absolute right-4 top-4 text-rose-500/20 text-4xl select-none">❌</div>
+
+            <p class="text-[11px] font-bold text-slate-400 uppercase tracking-widest">
+                Mungesa
+            </p>
+
+            <span class="mt-2 block text-3xl font-black text-slate-900 dark:text-white leading-none">
+                <?= $absences ?>
+            </span>
+
+            <p class="mt-1 text-xs text-slate-500 font-medium">
+                Orë të humbura
+            </p>
+        </div>
+
+        <!-- Weakest Subject -->
+        <div class="relative overflow-hidden bg-gradient-to-br from-indigo-500 to-indigo-600 rounded-2xl p-5 shadow-lg text-white">
+
+            <div class="absolute right-4 top-4 text-white/30 text-4xl select-none">📉</div>
+
+            <p class="text-[11px] font-bold uppercase tracking-widest opacity-80">
+                Lënda me më shumë mungesa
+            </p>
+
+            <div class="mt-2 text-lg font-black leading-tight">
+                <?= $weakestSubject ?? '—' ?>
+                <?php if (!empty($weakestCount)): ?>
+                    <span class="block text-sm font-medium opacity-80">
+                        <?= $weakestCount ?> mungesa
+                    </span>
+                <?php endif; ?>
+            </div>
+        </div>
+
+    </div>
 
 
     <div class="bg-white rounded-[40px] border border-slate-100 shadow-sm overflow-hidden">
