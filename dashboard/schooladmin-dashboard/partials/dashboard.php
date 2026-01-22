@@ -259,24 +259,27 @@ ob_start();
         <?= htmlspecialchars($schoolName) ?> Dashboard
     </h1>
 
-    <!-- KPIs -->
-    <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6 mb-10">
-        <div class="bg-white p-6 rounded-[24px] border shadow-sm">
-            <h3 class="text-xs font-bold text-slate-500 uppercase">Total Students</h3>
-            <p class="text-3xl font-black mt-1"><?= $totalStudents ?></p>
+<div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 mb-8">
+        <?php
+        $stats = [
+            ['title' => 'Nxënës', 'count' => $totalStudents, 'color' => 'blue', 'icon' => 'M12 4.354a4 4 0 110 5.292M15 21H3v-1a6 6 0 0112 0v1zm0 0h6v-1a6 6 0 00-9-5.197M13 7a4 4 0 11-8 0 4 4 0 018 0z'],
+            ['title' => 'Mësues', 'count' => $totalTeachers, 'color' => 'emerald', 'icon' => 'M21 13.255A23.931 23.931 0 0112 15c-3.183 0-6.22-.62-9-1.745M16 6V4a2 2 0 00-2-2h-4a2 2 0 00-2 2v2m4 6h.01M5 20h14a2 2 0 002-2V8a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z'],
+            ['title' => 'Prindër', 'count' => $totalParents, 'color' => 'amber', 'icon' => 'M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0zm6 3a2 2 0 11-4 0 2 2 0 014 0zM7 10a2 2 0 11-4 0 2 2 0 014 0z'],
+            ['title' => 'Klasa', 'count' => $totalClasses, 'color' => 'purple', 'icon' => 'M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0h2m-2 0h-5m-9 0H3m2 0h5M9 7h1m-1 4h1m4-4h1m-1 4h1m-5 10v-5a1 1 0 011-1h2a1 1 0 011 1v5m-4 0h4'],
+        ];
+
+        foreach ($stats as $stat):
+        ?>
+        <div class="bg-white p-5 rounded-2xl border border-slate-200 shadow-sm flex items-center gap-4">
+            <div class="w-12 h-12 bg-<?= $stat['color'] ?>-50 rounded-xl flex items-center justify-center text-<?= $stat['color'] ?>-600 flex-shrink-0">
+                <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="<?= $stat['icon'] ?>"></path></svg>
+            </div>
+            <div>
+                <p class="text-sm font-medium text-slate-500"><?= $stat['title'] ?></p>
+                <p class="text-2xl font-bold text-slate-900"><?= number_format($stat['count']) ?></p>
+            </div>
         </div>
-        <div class="bg-white p-6 rounded-[24px] border shadow-sm">
-            <h3 class="text-xs font-bold text-slate-500 uppercase">Total Teachers</h3>
-            <p class="text-3xl font-black mt-1"><?= $totalTeachers ?></p>
-        </div>
-        <div class="bg-white p-6 rounded-[24px] border shadow-sm">
-            <h3 class="text-xs font-bold text-slate-500 uppercase">Total Parents</h3>
-            <p class="text-3xl font-black mt-1"><?= $totalParents ?></p>
-        </div>
-        <div class="bg-white p-6 rounded-[24px] border shadow-sm">
-            <h3 class="text-xs font-bold text-slate-500 uppercase">Total Classes</h3>
-            <p class="text-3xl font-black mt-1"><?= $totalClasses ?></p>
-        </div>
+        <?php endforeach; ?>
     </div>
 
     <!-- First Row of Charts -->
