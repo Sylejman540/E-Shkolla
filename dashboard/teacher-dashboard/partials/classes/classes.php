@@ -119,7 +119,7 @@ ob_start();
                 </thead>
                 <tbody class="divide-y divide-slate-100 bg-white" id="tableBody">
 
-<?php if ($pinnedClass): ?>
+                <?php if ($pinnedClass): ?>
                     <tr class="bg-blue-50/50 transition-colors group class-row border-l-4 border-blue-600">
                         <td class="whitespace-nowrap py-5 pl-6 pr-3">
                             <div class="flex items-center">
@@ -141,7 +141,7 @@ ob_start();
                             <?= (int)$pinnedClass['max_students'] ?> Studentë
                         </td>
                         <td class="whitespace-nowrap py-5 pl-3 pr-6 text-right text-sm font-medium">
-                            <a href="/E-Shkolla/show-classes?class_id=<?= (int)$pinnedClass['class_id'] ?>&type=header"
+                            <a href="/E-Shkolla/head-class?class_id=<?= (int)$pinnedClass['class_id'] ?>&type=header"
                                class="inline-flex items-center gap-2 bg-blue-600 text-white px-4 py-2 rounded-xl hover:bg-blue-700 transition-all shadow-sm">
                                 <span>Menaxho</span>
                                 <svg class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.5">
@@ -150,9 +150,9 @@ ob_start();
                             </a>
                         </td>
                     </tr>
-<?php endif; ?>
+                <?php endif; ?>
 
-<?php foreach ($classes as $row): ?>
+                <?php foreach ($classes as $row): ?>
                     <tr class="hover:bg-slate-50 transition-colors group class-row">
                         <td class="whitespace-nowrap py-5 pl-6 pr-3">
                             <div class="flex items-center">
