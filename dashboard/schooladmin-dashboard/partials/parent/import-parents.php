@@ -173,7 +173,7 @@ document.getElementById('submitImportBtn').onclick = async function () {
     btn.innerHTML = 'Duke u procesuar...';
 
     try {
-        const response = await fetch('process-import.php', {
+        const response = await fetch('/E-Shkolla/dashboard/schooladmin-dashboard/partials/parent/process-import.php', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify(parentData)
