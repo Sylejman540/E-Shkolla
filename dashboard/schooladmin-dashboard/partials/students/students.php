@@ -30,10 +30,15 @@ if ($totalPages <= 7) {
     else { $range = [1, '...', $page - 1, $page, $page + 1, '...', $totalPages]; }
 }
 
-ob_start(); 
+// --- AJAX CHECK ---
+$isAjax = !empty($_SERVER['HTTP_X_REQUESTED_WITH']) && strtolower($_SERVER['HTTP_X_REQUESTED_WITH']) == 'xmlhttprequest';
+
+if (!$isAjax) {
+    ob_start(); 
+}
 ?>
 
-<div class="px-4 sm:px-6 lg:px-8 py-8">
+<div id="studentTableContainer" class="px-4 sm:px-6 lg:px-8 py-8">
     <div class="sm:flex sm:items-center justify-between mb-8">
         <div>
             <h1 class="text-2xl font-bold tracking-tight text-slate-900 dark:text-white">Nxënësit e Shkollës</h1>
@@ -71,7 +76,6 @@ ob_start();
 
     <?php if (isset($_SESSION['success'])): ?>
     <script>
-        // This calls the JavaScript function we defined in schedule.php
         window.addEventListener('DOMContentLoaded', (event) => {
             showToast("<?= addslashes($_SESSION['success']) ?>", "success");
         });
@@ -150,19 +154,19 @@ ob_start();
         <?php if ($totalPages > 1): ?>
         <div class="px-6 py-4 bg-slate-50 dark:bg-white/5 border-t border-slate-200 dark:border-white/10 flex items-center justify-center">
             <nav class="flex items-center gap-1">
-                <a href="?page=<?= max(1, $page - 1) ?>" class="p-2 rounded-lg hover:bg-slate-200 dark:hover:bg-gray-800 transition <?= $page <= 1 ? 'pointer-events-none opacity-30' : '' ?>">
+                <a href="?page=<?= max(1, $page - 1) ?>" class="ajax-page-link p-2 rounded-lg hover:bg-slate-200 dark:hover:bg-gray-800 transition <?= $page <= 1 ? 'pointer-events-none opacity-30' : '' ?>">
                     <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 19l-7-7 7-7"/></svg>
                 </a>
                 <?php foreach ($range as $p): ?>
                     <?php if ($p === '...'): ?>
                         <span class="px-3 py-1 text-slate-400">...</span>
                     <?php else: ?>
-                        <a href="?page=<?= $p ?>" class="px-3.5 py-1.5 rounded-lg text-sm font-semibold transition-all <?= $p == $page ? 'bg-indigo-600 text-white shadow-md' : 'text-slate-600 dark:text-slate-400 hover:bg-slate-200 dark:hover:bg-gray-800' ?>">
+                        <a href="?page=<?= $p ?>" class="ajax-page-link px-3.5 py-1.5 rounded-lg text-sm font-semibold transition-all <?= $p == $page ? 'bg-indigo-600 text-white shadow-md' : 'text-slate-600 dark:text-slate-400 hover:bg-slate-200 dark:hover:bg-gray-800' ?>">
                             <?= $p ?>
                         </a>
                     <?php endif; ?>
                 <?php endforeach; ?>
-                <a href="?page=<?= min($totalPages, $page + 1) ?>" class="p-2 rounded-lg hover:bg-slate-200 dark:hover:bg-gray-800 transition <?= $page >= $totalPages ? 'pointer-events-none opacity-30' : '' ?>">
+                <a href="?page=<?= min($totalPages, $page + 1) ?>" class="ajax-page-link p-2 rounded-lg hover:bg-slate-200 dark:hover:bg-gray-800 transition <?= $page >= $totalPages ? 'pointer-events-none opacity-30' : '' ?>">
                     <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"/></svg>
                 </a>
             </nav>
@@ -170,6 +174,8 @@ ob_start();
         <?php endif; ?>
     </div>
 </div>
+
+<?php if ($isAjax) { exit; } ?>
 
 <div id="statusModal" class="hidden fixed inset-0 z-[100] flex items-center justify-center p-4">
     <div class="absolute inset-0 bg-slate-900/60 backdrop-blur-sm"></div>
@@ -193,6 +199,31 @@ ob_start();
 <script>
 const API_URL = '/E-Shkolla/dashboard/schooladmin-dashboard/partials/students/update-inline.php';
 let pendingStatusChange = null;
+
+// --- AJAX PAGINATION ---
+document.addEventListener('click', e => {
+    const link = e.target.closest('.ajax-page-link');
+    if (link) {
+        e.preventDefault();
+        loadPage(link.getAttribute('href'));
+    }
+});
+
+async function loadPage(url) {
+    const container = document.getElementById('studentTableContainer');
+    container.style.opacity = '0.5';
+    try {
+        const response = await fetch(url, { headers: { 'X-Requested-With': 'XMLHttpRequest' } });
+        const html = await response.text();
+        container.innerHTML = html;
+        window.history.pushState({}, '', url);
+        filterStudents(); // Re-apply search/highlights if input exists
+    } catch (err) {
+        showToast('Gabim gjatë ngarkimit të faqes', 'error');
+    } finally {
+        container.style.opacity = '1';
+    }
+}
 
 // --- TOAST NOTIFICATIONS ---
 function showToast(message, type = 'success') {
@@ -264,7 +295,7 @@ document.addEventListener('focusout', e => { if (e.target.classList.contains('ed
 document.addEventListener('change', e => { if (e.target.classList.contains('editable-select')) save(e.target); });
 document.addEventListener('keydown', e => { if (e.target.classList.contains('editable') && e.key === 'Enter') { e.preventDefault(); e.target.blur(); } });
 
-// --- SEARCH & HIGHLIGHTING (ANTI-SHIFT) ---
+// --- SEARCH & HIGHLIGHTING ---
 function filterStudents() {
     const filter = document.getElementById("liveSearch").value.toLowerCase().trim();
     const rows = document.querySelectorAll("tbody tr");
@@ -296,15 +327,11 @@ addBtn?.addEventListener('click', () => {
 cancelBtn?.addEventListener('click', () => {
     addForm.classList.add('hidden');
 });
-
-function filterStudents() {
-    const filter = document.getElementById("liveSearch").value.toLowerCase().trim();
-    const rows = document.querySelectorAll("tbody tr");
-    rows.forEach(row => {
-        const text = row.innerText.toLowerCase();
-        row.style.display = text.includes(filter) ? '' : 'none';
-    });
-}
 </script>
 
-<?php $content = ob_get_clean(); require_once __DIR__ . '/../../index.php'; ?>
+<?php 
+if (!$isAjax) {
+    $content = ob_get_clean(); 
+    require_once __DIR__ . '/../../index.php'; 
+}
+?>
