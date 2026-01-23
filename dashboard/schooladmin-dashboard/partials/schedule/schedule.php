@@ -5,114 +5,120 @@ require_once __DIR__ . '/../../../../db.php';
 $schoolId = $_SESSION['user']['school_id'] ?? null;
 if (!$schoolId) die("Aksesi i ndaluar.");
 
-// Fetch all classes for the school
-$stmt = $pdo->prepare("SELECT * FROM classes WHERE school_id = ? ORDER BY grade ASC");
+// --- LOGJIKA E PAGINIMIT ---
+$limit = 10; 
+$page = isset($_GET['p']) ? (int)$_GET['p'] : 1;
+$offset = ($page - 1) * $limit;
+
+$countStmt = $pdo->prepare("SELECT COUNT(*) FROM classes WHERE school_id = ?");
+$countStmt->execute([$schoolId]);
+$totalRows = $countStmt->fetchColumn();
+$totalPages = ceil($totalRows / $limit);
+
+$stmt = $pdo->prepare("SELECT * FROM classes WHERE school_id = ? ORDER BY grade ASC LIMIT $limit OFFSET $offset");
 $stmt->execute([$schoolId]);
 $classes = $stmt->fetchAll(PDO::FETCH_ASSOC);
 
 ob_start(); 
 ?>
 
-<div class="px-4 sm:px-6 lg:px-8 py-8">
-    <div class="sm:flex sm:items-center justify-between mb-8">
+<div class="px-6 py-8 bg-white dark:bg-gray-900 min-h-screen">
+    <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-8">
         <div>
-            <h1 class="text-2xl font-bold tracking-tight text-slate-900 dark:text-white">Orari i Mësimit</h1>
-            <p class="mt-1 text-sm text-slate-500 dark:text-slate-400">Menaxhoni orarin javor për çdo klasë të shkollës suaj.</p>
+            <h1 class="text-2xl font-semibold text-slate-800 dark:text-white tracking-tight">Orari i Mësimit</h1>
+            <p class="text-sm text-slate-500 mt-1">Menaxhimi i orarit javor për klasat.</p>
         </div>
-        <div class="mt-4 sm:mt-0">
-            <button id="addScheduleBtn" class="inline-flex items-center gap-2 rounded-xl bg-indigo-600 px-6 py-2.5 text-sm font-semibold text-white shadow-md hover:bg-indigo-500 transition-all active:scale-95">
-                <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"/></svg>
-                Shto Orë Mësimi
-            </button>
-        </div>
+        <button id="addScheduleBtn" type="button" class="inline-flex items-center justify-center gap-2 rounded-xl bg-indigo-600 px-5 py-2.5 text-sm font-medium text-white hover:bg-indigo-700 transition-all shadow-sm active:scale-95">
+            <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path d="M12 4v16m8-8H4" stroke-width="2" stroke-linecap="round"/></svg>
+            Shto Orë të Re
+        </button>
     </div>
 
-    <?php if (isset($_SESSION['success'])): ?>
-    <script>
-        // This calls the JavaScript function we defined in schedule.php
-        window.addEventListener('DOMContentLoaded', (event) => {
-            showToast("<?= addslashes($_SESSION['success']) ?>", "success");
-        });
-    </script>
-    <?php unset($_SESSION['success']); ?>
-    <?php endif; ?>
+    <div class="bg-white dark:bg-slate-900 rounded-2xl border border-slate-200 dark:border-white/10 shadow-sm overflow-hidden">
+        <table class="w-full text-left border-collapse table-fixed">
+            <thead>
+                <tr class="bg-slate-50/50 dark:bg-white/5 border-b border-slate-200 dark:border-white/10">
+                    <th class="w-[70%] px-6 py-4 text-[11px] font-semibold uppercase text-slate-400 tracking-wider">Klasa</th>
+                    <th class="w-[30%] px-6 py-4 text-[11px] font-semibold uppercase text-slate-400 tracking-wider text-right">Veprimet</th>
+                </tr>
+            </thead>
+            <tbody class="divide-y divide-slate-100 dark:divide-white/5">
+                <?php foreach($classes as $row): ?>
+                <tr class="hover:bg-slate-50/30 dark:hover:bg-white/[0.02] transition-colors group">
+                    <td class="px-6 py-4">
+                        <div class="flex items-center gap-4">
+                            <div class="h-10 w-10 flex items-center justify-center rounded-xl bg-indigo-50 dark:bg-indigo-500/10 text-indigo-600 dark:text-indigo-400 text-sm font-bold border border-indigo-100/50 dark:border-indigo-500/20">
+                                <?= htmlspecialchars($row['grade']) ?>
+                            </div>
+                            <span class="text-sm font-medium text-slate-700 dark:text-slate-200">Klasa <?= htmlspecialchars($row['grade']) ?></span>
+                        </div>
+                    </td>
+                    <td class="px-6 py-4 text-right">
+                        <button onclick="toggleSchedule(<?= $row['id'] ?>)" class="text-sm font-semibold text-indigo-600 dark:text-indigo-400 hover:text-indigo-800 inline-flex items-center gap-2">
+                            <span>Shiko Orarin</span>
+                            <svg id="icon-<?= $row['id'] ?>" class="w-4 h-4 transition-transform duration-300" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path d="M19 9l-7 7-7-7" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"/></svg>
+                        </button>
+                    </td>
+                </tr>
+                <tr id="sched-row-<?= $row['id'] ?>" class="hidden">
+                    <td colspan="2" class="p-0 bg-slate-50/30 dark:bg-black/10">
+                        <div id="grid-container-<?= $row['id'] ?>" class="p-6 border-t border-slate-200 dark:border-white/5">
+                            <div class="flex flex-col items-center py-4 text-slate-400 gap-2">
+                                <div class="animate-spin h-5 w-5 border-2 border-indigo-500 border-t-transparent rounded-full"></div>
+                                <span class="text-[10px] font-medium uppercase italic">Duke ngarkuar...</span>
+                            </div>
+                        </div>
+                    </td>
+                </tr>
+                <?php endforeach; ?>
+            </tbody>
+        </table>
 
-    <div class="bg-white dark:bg-gray-900 rounded-2xl border border-slate-200 dark:border-white/10 shadow-sm overflow-hidden">
-        <div class="overflow-x-auto">
-            <table class="w-full text-left border-collapse table-fixed min-w-[600px]">
-                <thead>
-                    <tr class="bg-slate-50 dark:bg-white/5 border-b border-slate-200 dark:border-white/10">
-                        <th class="w-[70%] px-6 py-4 text-xs font-bold uppercase tracking-wider text-slate-500 dark:text-slate-400">Klasa dhe Viti Akademik</th>
-                        <th class="w-[30%] px-6 py-4 text-xs font-bold uppercase tracking-wider text-slate-500 dark:text-slate-400 text-right">Veprime</th>
-                    </tr>
-                </thead>
-                <tbody class="divide-y divide-slate-200 dark:divide-white/5">
-                    <?php foreach($classes as $row): ?>
-                    <tr class="hover:bg-slate-50/50 dark:hover:bg-white/5 transition-colors group">
-                        <td class="px-6 py-4 whitespace-nowrap">
-                            <div class="flex items-center gap-3">
-                                <div class="flex h-10 w-10 items-center justify-center rounded-lg bg-indigo-100 dark:bg-indigo-900/30 text-indigo-600 dark:text-indigo-400 font-bold">
-                                    <?= htmlspecialchars($row['grade']) ?>
-                                </div>
-                                <div>
-                                    <div class="text-sm font-bold text-slate-900 dark:text-white">Klasa <?= htmlspecialchars($row['grade']) ?></div>
-                                    <div class="text-xs text-slate-500 italic"><?= htmlspecialchars($row['academic_year'] ?? 'Viti aktual') ?></div>
-                                </div>
-                            </div>
-                        </td>
-                        <td class="px-6 py-4 text-right">
-                            <button onclick="toggleSchedule(<?= $row['id'] ?>)" 
-                                    class="inline-flex items-center gap-2 text-sm font-bold text-indigo-600 dark:text-indigo-400 hover:bg-indigo-50 dark:hover:bg-indigo-900/20 px-4 py-2 rounded-xl transition">
-                                <span>Shiko Orarin</span>
-                                <svg id="icon-<?= $row['id'] ?>" class="w-4 h-4 transition-transform duration-300" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path d="M19 9l-7 7-7-7" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>
-                            </button>
-                        </td>
-                    </tr>
-                    <tr id="sched-row-<?= $row['id'] ?>" class="hidden bg-slate-50/50 dark:bg-black/20 overflow-hidden">
-                        <td colspan="2" class="p-0 border-none">
-                            <div class="px-6 py-8 border-t border-slate-200 dark:border-white/5">
-                                <div id="grid-container-<?= $row['id'] ?>" class="bg-white dark:bg-gray-800 rounded-2xl shadow-sm border border-slate-200 dark:border-white/10 min-h-[200px] flex items-center justify-center">
-                                     <div class="flex flex-col items-center gap-3 text-slate-400">
-                                         <div class="animate-spin h-6 w-6 border-2 border-indigo-500 border-t-transparent rounded-full"></div>
-                                         <span class="text-xs font-medium uppercase tracking-widest">Duke ngarkuar të dhënat...</span>
-                                     </div>
-                                </div>
-                            </div>
-                        </td>
-                    </tr>
-                    <?php endforeach; ?>
-                </tbody>
-            </table>
+        <?php if ($totalPages > 1): ?>
+        <div class="px-6 py-4 bg-slate-50/50 dark:bg-white/5 border-t border-slate-200 dark:border-white/10 flex items-center justify-between">
+            <p class="text-xs text-slate-500 font-medium">Faqja <?= $page ?> nga <?= $totalPages ?></p>
+            <div class="inline-flex gap-2">
+                <a href="?p=<?= max(1, $page - 1) ?>" class="p-2 rounded-lg border border-slate-200 dark:border-white/10 text-slate-600 <?= $page <= 1 ? 'opacity-30 pointer-events-none' : 'hover:bg-white' ?>"><svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path d="M15 19l-7-7 7-7" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg></a>
+                <a href="?p=<?= min($totalPages, $page + 1) ?>" class="p-2 rounded-lg border border-slate-200 dark:border-white/10 text-slate-600 <?= $page >= $totalPages ? 'opacity-30 pointer-events-none' : 'hover:bg-white' ?>"><svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path d="M9 5l7 7-7 7" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg></a>
+            </div>
         </div>
+        <?php endif; ?>
     </div>
 </div>
 
-<div id="toast-container" class="fixed bottom-5 right-5 z-[110] flex flex-col gap-2"></div>
+<div id="toast-container" class="fixed bottom-5 right-5 z-[110]"></div>
 
-<?php require_once 'form.php'; ?>
+<?php 
+// Përfshijmë formën këtu në fund
+require_once 'form.php'; 
+?>
 
 <script>
-// --- TOAST NOTIFICATIONS ---
-function showToast(message, type = 'success') {
-    const container = document.getElementById('toast-container');
-    const toast = document.createElement('div');
-    const isSuccess = type === 'success';
-    toast.className = `${isSuccess ? 'bg-emerald-600' : 'bg-rose-600'} text-white px-5 py-3 rounded-2xl shadow-xl flex items-center gap-3 text-sm font-medium transform transition-all duration-300 translate-y-10 opacity-0`;
-    toast.innerHTML = `${isSuccess ? '✓' : '✕'} <span>${message}</span>`;
-    container.appendChild(toast);
-    setTimeout(() => toast.classList.remove('translate-y-10', 'opacity-0'), 10);
-    setTimeout(() => {
-        toast.classList.add('opacity-0', 'translate-y-2');
-        setTimeout(() => toast.remove(), 300);
-    }, 3000);
-}
+// 1. Logjika e Modalit (Fix i bllokimit)
+document.addEventListener('DOMContentLoaded', () => {
+    const addBtn = document.getElementById('addScheduleBtn');
+    const modal = document.getElementById('addScheduleForm');
+    const cancelBtn = document.getElementById('closeModal');
 
-// Check for PHP session success messages
-<?php if (isset($_SESSION['success'])): ?>
-    showToast("<?= addslashes($_SESSION['success']) ?>");
-    <?php unset($_SESSION['success']); ?>
-<?php endif; ?>
+    if (addBtn && modal) {
+        addBtn.addEventListener('click', (e) => {
+            e.preventDefault();
+            modal.classList.remove('hidden');
+            modal.classList.add('flex');
+            document.body.style.overflow = 'hidden';
+        });
+    }
 
+    if (cancelBtn) {
+        cancelBtn.addEventListener('click', () => {
+            modal.classList.add('hidden');
+            modal.classList.remove('flex');
+            document.body.style.overflow = 'auto';
+        });
+    }
+});
+
+// 2. Logjika e Orarit (Expand/Collapse)
 async function toggleSchedule(classId) {
     const row = document.getElementById(`sched-row-${classId}`);
     const container = document.getElementById(`grid-container-${classId}`);
@@ -121,14 +127,11 @@ async function toggleSchedule(classId) {
     if (row.classList.contains('hidden')) {
         row.classList.remove('hidden');
         icon.classList.add('rotate-180');
-        
         try {
             const res = await fetch(`/E-Shkolla/dashboard/schooladmin-dashboard/partials/schedule/get-schedule-grid.php?class_id=${classId}`);
-            if (!res.ok) throw new Error();
             container.innerHTML = await res.text();
-            container.classList.remove('flex', 'items-center', 'justify-center'); // Remove spinner centering
         } catch (err) {
-            container.innerHTML = `<div class="text-rose-500 text-sm font-medium">Dështoi ngarkimi i orarit. Ju lutem provoni përsëri.</div>`;
+            container.innerHTML = `<p class="text-xs text-red-500">Gabim gjatë ngarkimit.</p>`;
         }
     } else {
         row.classList.add('hidden');
@@ -136,49 +139,15 @@ async function toggleSchedule(classId) {
     }
 }
 
-async function deleteScheduleEntry(id, classId) {
-    if(!confirm('A jeni të sigurt që dëshironi të fshini këtë orë mësimi?')) return;
-    
-    try {
-        const res = await fetch('/E-Shkolla/dashboard/schooladmin-dashboard/partials/schedule/delete-entry.php', {
-            method: 'POST',
-            headers: {'Content-Type': 'application/json'},
-            body: JSON.stringify({ id })
-        });
-        const data = await res.json();
-        
-        if(data.success) {
-            showToast("Ora e mësimit u fshi me sukses.");
-            // Refresh grid only
-            const refresh = await fetch(`/E-Shkolla/dashboard/schooladmin-dashboard/partials/schedule/get-schedule-grid.php?class_id=${classId}`);
-            document.getElementById(`grid-container-${classId}`).innerHTML = await refresh.text();
-        } else {
-            showToast("Gabim: " + (data.message || "Fshirja dështoi"), "error");
-        }
-    } catch (err) { 
-        showToast("Gabim gjatë komunikimit me serverin.", "error"); 
-    }
-}
-const btn = document.getElementById('addScheduleBtn');
-const form = document.getElementById('addScheduleForm');
-const cancel = document.getElementById('closeModal');
-
-btn?.addEventListener('click', () => {
- form.classList.remove('hidden');
- form.scrollIntoView({ behavior: 'smooth', block: 'start' });
-});
-
-cancel?.addEventListener('click', () => {
- form.classList.add('hidden');
-});
-
-function autoSelectSubject() {
-    const teacher = document.getElementById('f_teacher');
-    const subject = document.getElementById('f_subject');
-    const subId = teacher.options[teacher.selectedIndex].getAttribute('data-sub');
-    if(subId) {
-        subject.value = subId;
-    }
+// 3. Toast Function
+function showToast(msg) {
+    const container = document.getElementById('toast-container');
+    const toast = document.createElement('div');
+    toast.className = "bg-slate-800 text-white px-6 py-3 rounded-xl shadow-lg text-sm font-medium mb-3 transition-all duration-300 transform translate-y-10";
+    toast.textContent = msg;
+    container.appendChild(toast);
+    setTimeout(() => toast.classList.remove('translate-y-10'), 10);
+    setTimeout(() => { toast.style.opacity = '0'; setTimeout(() => toast.remove(), 500); }, 3000);
 }
 </script>
 

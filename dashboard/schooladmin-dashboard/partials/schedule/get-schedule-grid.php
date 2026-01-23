@@ -1,95 +1,167 @@
 <?php
 require_once __DIR__ . '/../../../../db.php';
-$classId = $_GET['class_id'] ?? 0;
 
-// 1. Marrja e të dhënave me JOIN për të shfaqur emrat në vend të ID-ve
+$classId = $_GET['class_id'] ?? null;
+if (!$classId) die("ID e klasës mungon.");
+
 $stmt = $pdo->prepare("
     SELECT cs.*, s.subject_name, t.name as teacher_name 
     FROM class_schedule cs
     JOIN subjects s ON cs.subject_id = s.id
     JOIN teachers t ON cs.teacher_id = t.id
-    WHERE cs.class_id = ?
-    ORDER BY cs.start_time ASC
+    WHERE cs.class_id = ? 
+    ORDER BY FIELD(cs.day, 'monday', 'tuesday', 'wednesday', 'thursday', 'friday'), cs.start_time ASC
 ");
 $stmt->execute([$classId]);
 $entries = $stmt->fetchAll(PDO::FETCH_ASSOC);
 
-// 2. Definimi i ditëve saktësisht siç vijnë nga databaza (shkronja të vogla)
-$days = ['monday', 'tuesday', 'wednesday', 'thursday', 'friday'];
-
-// Emrat për shfaqje në tabelë
-$dayLabels = [
-    'monday' => 'E hënë',
-    'tuesday' => 'E martë',
-    'wednesday' => 'E mërkurë',
-    'thursday' => 'E enjte',
-    'friday' => 'E premte'
-];
-
+$days_map = ['monday' => 'HËN', 'tuesday' => 'MAR', 'wednesday' => 'MËR', 'thursday' => 'ENJ', 'friday' => 'PRE'];
 $grid = [];
-
-// 3. Gruponi të dhënat sipas orës dhe ditës
-foreach ($entries as $e) {
-    $timeKey = date('H:i', strtotime($e['start_time'])) . ' - ' . date('H:i', strtotime($e['end_time']));
-    // Sigurohemi që çelësi i ditës të jetë me shkronja të vogla
-    $grid[$timeKey][strtolower($e['day'])] = $e;
+foreach ($entries as $entry) {
+    $grid[$entry['day']][] = $entry;
 }
+$max_slots = 7;
 ?>
 
-<div class="overflow-x-auto">
-    <table class="min-w-full border-separate border-spacing-2">
-        <thead>
-            <tr>
-                <th class="w-24 text-xs font-bold uppercase text-slate-400 text-left px-2">Ora</th>
-                <?php foreach($days as $day): ?>
-                    <th class="bg-slate-100 dark:bg-gray-700 rounded-lg py-2 px-4 text-sm font-semibold text-slate-700 dark:text-white">
-                        <?= $dayLabels[$day] ?>
-                    </th>
-                <?php endforeach; ?>
-            </tr>
-        </thead>
-        <tbody>
-            <?php if(empty($grid)): ?>
-                <tr>
-                    <td colspan="6" class="text-center py-12">
-                        <div class="flex flex-col items-center">
-                            <span class="text-slate-300 dark:text-gray-600 text-4xl mb-2">📅</span>
-                            <p class="text-gray-400 text-sm italic">Nuk ka orë të caktuara për këtë klasë.</p>
+<style>
+    .schedule-grid-container {
+        display: grid;
+        grid-template-columns: 80px repeat(<?= $max_slots ?>, minmax(140px, 1fr));
+        gap: 8px;
+        padding: 16px;
+        user-select: none !important;
+        -webkit-user-select: none !important;
+    }
+
+    .grid-header {
+        text-align: center;
+        font-size: 10px;
+        font-weight: 700;
+        color: #94a3b8;
+        text-transform: uppercase;
+        letter-spacing: 0.05em;
+        padding-bottom: 8px;
+    }
+
+    .day-label {
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        background: #f8fafc;
+        border-radius: 12px;
+        font-size: 11px;
+        font-weight: 700;
+        color: #64748b;
+        border: 1px solid #f1f5f9;
+    }
+
+    .drop-zone {
+        height: 100px;
+        background: rgba(248, 250, 252, 0.5);
+        border: 2px dashed #e2e8f0;
+        border-radius: 14px;
+        position: relative;
+        transition: all 0.2s ease;
+    }
+
+    .drop-zone.drag-over {
+        background: #eef2ff;
+        border-color: #6366f1;
+    }
+
+    .draggable-card {
+        position: absolute;
+        inset: 4px;
+        background: white;
+        border: 1px solid #e2e8f0;
+        border-radius: 12px;
+        padding: 12px;
+        cursor: grab;
+        z-index: 50;
+        box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+    }
+
+    .draggable-card:active { cursor: grabbing; }
+
+    /* Parandalon markimin e tekstit brenda kartës */
+    .draggable-card * { pointer-events: none; }
+    .delete-btn { pointer-events: auto !important; }
+
+    .sortable-ghost { opacity: 0; } /* Fsheh kartën origjinale gjatë drag-it */
+</style>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/Sortable/1.15.0/Sortable.min.js"></script>
+
+<div class="schedule-grid-container bg-white dark:bg-slate-900 rounded-b-2xl overflow-x-auto">
+    <div></div>
+    <?php for($i=1; $i<=$max_slots; $i++): ?>
+        <div class="grid-header">Ora <?= $i ?></div>
+    <?php endfor; ?>
+
+    <?php foreach ($days_map as $dayKey => $dayLabel): ?>
+        <div class="day-label"><?= $dayLabel ?></div>
+        <?php for($i=0; $i < $max_slots; $i++): ?>
+            <div class="drop-zone" data-day="<?= $dayKey ?>" data-slot="<?= $i ?>">
+                <?php if (isset($grid[$dayKey][$i])): 
+                    $item = $grid[$dayKey][$i]; ?>
+                    <div class="draggable-card group" data-id="<?= $item['id'] ?>">
+                        <div class="text-[11px] font-bold text-indigo-600 leading-tight">
+                            <?= htmlspecialchars($item['subject_name']) ?>
                         </div>
-                    </td>
-                </tr>
-            <?php else: ?>
-                <?php foreach($grid as $time => $dayEntries): ?>
-                    <tr>
-                        <td class="text-xs font-mono font-bold text-indigo-600 dark:text-indigo-400 whitespace-nowrap">
-                            <?= $time ?>
-                        </td>
-                        <?php foreach($days as $day): ?>
-                            <td class="relative group min-w-[140px]">
-                                <?php if(isset($dayEntries[$day])): $item = $dayEntries[$day]; ?>
-                                    <div class="p-3 rounded-xl bg-indigo-50 dark:bg-indigo-900/40 border border-indigo-100 dark:border-indigo-800 shadow-sm transition hover:shadow-md relative">
-                                        <div class="text-sm font-bold text-slate-800 dark:text-white truncate">
-                                            <?= htmlspecialchars($item['subject_name']) ?>
-                                        </div>
-                                        <div class="text-[10px] uppercase tracking-wider text-slate-500 dark:text-indigo-300 mt-1 truncate">
-                                            <?= htmlspecialchars($item['teacher_name']) ?>
-                                        </div>
-                                        
-                                        <button onclick="deleteScheduleEntry(<?= $item['id'] ?>, <?= $classId ?>)" 
-                                                class="absolute -top-2 -right-2 hidden group-hover:flex bg-red-500 hover:bg-red-600 h-6 w-6 rounded-full items-center justify-center text-white shadow-lg transition-all scale-90 hover:scale-100">
-                                            <svg class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="3" d="M6 18L18 6M6 6l12 12"/></svg>
-                                        </button>
-                                    </div>
-                                <?php else: ?>
-                                    <div class="h-16 rounded-xl border-2 border-dashed border-slate-100 dark:border-gray-700/50 flex items-center justify-center text-slate-200 dark:text-gray-800 hover:border-indigo-200 dark:hover:border-indigo-900/50 transition-colors">
-                                        <span class="text-lg">+</span>
-                                    </div>
-                                <?php endif; ?>
-                            </td>
-                        <?php endforeach; ?>
-                    </tr>
-                <?php endforeach; ?>
-            <?php endif; ?>
-        </tbody>
-    </table>
+                        <div class="text-[10px] text-slate-500 mt-1">
+                            <?= htmlspecialchars($item['teacher_name']) ?>
+                        </div>
+                        
+                        <button onclick="deleteScheduleEntry(<?= $item['id'] ?>, <?= $classId ?>)" 
+                                class="delete-btn absolute -top-2 -right-2 opacity-0 group-hover:opacity-100 bg-rose-500 text-white p-1 rounded-full shadow-lg transition-all">
+                            <svg class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path d="M6 18L18 6M6 6l12 12" stroke-width="3" stroke-linecap="round"/></svg>
+                        </button>
+                    </div>
+                <?php endif; ?>
+            </div>
+        <?php endfor; ?>
+    <?php endforeach; ?>
 </div>
+
+<script>
+(function() {
+    const zones = document.querySelectorAll('.drop-zone');
+    
+    zones.forEach(zone => {
+        new Sortable(zone, {
+            group: 'schedule_app',
+            animation: 200,
+            delay: 100, // Vonesë e shtuar për të evituar markimin blu
+            delayOnTouchOnly: false,
+            swapThreshold: 1,
+            draggable: '.draggable-card',
+            ghostClass: 'sortable-ghost',
+            
+            onStart: function() {
+                document.body.classList.add('dragging-active');
+            },
+
+            onEnd: async function (evt) {
+                document.body.classList.remove('dragging-active');
+                
+                if (evt.to === evt.from) return;
+
+                const cardId = evt.item.getAttribute('data-id');
+                const newDay = evt.to.getAttribute('data-day');
+
+                try {
+                    const res = await fetch('/E-Shkolla/dashboard/schooladmin-dashboard/partials/schedule/update-position.php', {
+                        method: 'POST',
+                        headers: {'Content-Type': 'application/json'},
+                        body: JSON.stringify({ id: cardId, day: newDay })
+                    });
+                    const data = await res.json();
+                    if(data.success) showToast("U ruajt me sukses");
+                } catch (e) {
+                    showToast("Gabim gjatë komunikimit", "error");
+                }
+            }
+        });
+    });
+})();
+</script>
