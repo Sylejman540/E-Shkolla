@@ -270,21 +270,6 @@ function isAnyActive(array $paths) {
             ?>
 
             <div class="flex items-center gap-2 lg:gap-4">
-                <div class="relative" x-data="{ open: false }">
-                    <button @click="open = !open" class="p-2 text-slate-400 hover:text-blue-600 relative transition-colors">
-                        <span class="absolute top-2 right-2 flex h-2 w-2">
-                            <span class="animate-ping absolute inline-flex h-full w-full rounded-full bg-red-400 opacity-75"></span>
-                            <span class="relative inline-flex rounded-full h-2 w-2 bg-red-500"></span>
-                        </span>
-                        <svg class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.5"><path d="M15 17h5l-1.405-1.405A2.032 2.032 0 0118 14.158V11a6.002 6.002 0 00-4-5.659V5a2 2 0 10-4 0v.341C7.67 6.165 6 8.388 6 11v3.159c0 .538-.214 1.055-.595 1.436L4 17h5m6 0v1a3 3 0 11-6 0v-1m6 0H9"/></svg>
-                    </button>
-                    <div x-show="open" @click.away="open = false" x-transition x-cloak
-                         class="absolute right-0 mt-3 w-72 md:w-80 bg-white rounded-2xl shadow-2xl border border-slate-100 p-4">
-                        <h3 class="font-bold text-slate-800 mb-4">Njoftimet</h3>
-                        <div class="text-xs text-slate-500 text-center py-4 italic">Nuk ka njoftime të reja</div>
-                    </div>
-                </div>
-
                 <div class="flex items-center gap-3 pl-2 lg:pl-4 border-l border-slate-100">
                     <span class="hidden md:block text-sm font-semibold text-slate-700"><?= htmlspecialchars($teacherName) ?></span>
                     <div class="h-9 w-9 rounded-full bg-blue-600 flex items-center justify-center text-white text-sm font-bold shadow-sm">
