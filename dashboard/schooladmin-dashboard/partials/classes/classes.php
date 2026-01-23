@@ -97,7 +97,7 @@ ob_start();
 
     <div class="bg-white dark:bg-gray-900 rounded-2xl border border-slate-200 dark:border-white/10 shadow-sm overflow-hidden">
         <div class="overflow-x-auto">
-            <table class="w-full text-left border-collapse table-fixed min-w-[900px]">
+            <table class="w-full text-left border-collapse table-fixed min-w-[920px]">
                 <thead>
                     <tr class="bg-slate-50 dark:bg-white/5 border-b border-slate-200 dark:border-white/10">
                         <th class="w-[20%] px-6 py-4 text-xs font-bold uppercase tracking-wider text-slate-500 dark:text-slate-400">Viti Akademik</th>
@@ -128,21 +128,20 @@ ob_start();
                                 <?= htmlspecialchars($row['max_students']) ?>
                             </span>
                         </td>
-<td class="px-4 py-3 text-sm text-gray-700">
-    <?php if (!empty($row['class_header_name'])): ?>
-        <?= htmlspecialchars($row['class_header_name'], ENT_QUOTES, 'UTF-8') ?>
-    <?php else: ?>
-        <span class="italic text-gray-400">I pacaktuar</span>
-    <?php endif; ?>
-</td>
-
+                        <td class="px-4 py-3 text-sm text-gray-700">
+                            <?php if (!empty($row['class_header_name'])): ?>
+                                <?= htmlspecialchars($row['class_header_name'], ENT_QUOTES, 'UTF-8') ?>
+                            <?php else: ?>
+                                <span class="italic text-gray-400">I pacaktuar</span>
+                            <?php endif; ?>
+                        </td>
                         <td class="px-6 py-4 text-center">
                             <button class="status-toggle px-3 py-1 rounded-full text-[10px] font-bold uppercase tracking-wider transition-all <?= $row['status'] === 'active' ? 'bg-green-100 text-green-700 dark:bg-green-500/20 dark:text-green-400' : 'bg-red-100 text-red-600 dark:bg-red-500/20 dark:text-red-400' ?>" 
                                     data-id="<?= $row['id'] ?>" data-field="status" data-value="<?= $row['status'] ?>" data-original="<?= $row['status'] ?>">
                                 <?= $row['status'] ?>
                             </button>
                         </td>
-                        <td class="px-1 py-4 text-right whitespace-nowrap">
+                        <td class="px-6 py-4 text-right whitespace-nowrap">
                             <a href="/E-Shkolla/schedule?class_id=<?= $row['id'] ?>" 
                                class="inline-flex items-center gap-1 text-xs text-indigo-600 hover:text-indigo-900 dark:text-indigo-400 font-bold transition">
                                 <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>

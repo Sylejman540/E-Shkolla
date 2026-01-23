@@ -157,7 +157,7 @@ ob_start();
                 <button onclick="location.reload()" class="flex-1 sm:flex-none px-8 py-3 text-sm font-bold text-slate-400 hover:text-slate-600 transition-colors">Pastro</button>
                 <button id="submitImportBtn"
                     class="flex-1 sm:flex-none bg-emerald-600 text-white px-12 py-3 rounded-2xl font-black hover:bg-emerald-500 shadow-lg shadow-emerald-100 transition-all active:scale-95">
-                    Konfirmo & Importo
+                    Importo
                 </button>
             </div>
         </div>
