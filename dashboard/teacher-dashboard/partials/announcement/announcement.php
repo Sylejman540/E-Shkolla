@@ -1,82 +1,74 @@
 <?php
+if(session_status() === PHP_SESSION_NONE){ session_start(); }
 require_once __DIR__ . '/../../../../db.php';
 
-if (session_status() === PHP_SESSION_NONE) {
-    session_start();
-}
-
 $schoolId = $_SESSION['user']['school_id'] ?? null;
-$teacherId = $_SESSION['user']['id'] ?? null;
 
-if (!$schoolId || !$teacherId) {
-    die('Aksesi i mohuar.');
-}
-
-// 1. Fetching logic: Only announcements made by this teacher
+// Query: Marrim vetëm njoftimet që nuk kanë skaduar ende (ose s'kanë datë skadimi)
 $stmt = $pdo->prepare("
-    SELECT * FROM announcements 
-    WHERE teacher_id = ? 
-    AND (expires_at IS NULL OR expires_at >= CURDATE()) 
-    ORDER BY created_at DESC
+    SELECT a.*, c.grade as class_name 
+    FROM announcements a 
+    LEFT JOIN classes c ON a.class_id = c.id 
+    WHERE a.school_id = ? 
+    AND (a.expires_at IS NULL OR a.expires_at >= CURDATE()) 
+    ORDER BY a.created_at DESC
 ");
-$stmt->execute([$teacherId]);
+$stmt->execute([$schoolId]);
 $announcements = $stmt->fetchAll(PDO::FETCH_ASSOC);
+
+$classesStmt = $pdo->prepare("SELECT id, grade FROM classes WHERE school_id = ? AND status = 'active'");
+$classesStmt->execute([$schoolId]);
+$classes = $classesStmt->fetchAll(PDO::FETCH_ASSOC);
 
 $isAjax = (!empty($_SERVER['HTTP_X_REQUESTED_WITH']) && strtolower($_SERVER['HTTP_X_REQUESTED_WITH']) == 'xmlhttprequest');
 if (!$isAjax) { ob_start(); }
 ?>
 
-<div class="p-6 lg:p-10 max-w-7xl mx-auto space-y-10">
-    
-    <div class="flex justify-between items-end border-b border-slate-200 pb-8">
+<div class="px-4 py-8">
+    <div class="flex justify-between items-center mb-8">
         <div>
-            <h1 class="text-3xl font-black text-slate-900 tracking-tight">Komunikimi</h1>
-            <p class="text-slate-500 text-sm mt-1">Dërgoni njoftime për nxënësit dhe prindërit.</p>
+            <h1 class="text-2xl font-bold text-slate-900 dark:text-white">Komunikimi</h1>
+            <p class="text-sm text-slate-500">Njoftimet aktive që shfaqen në dashboard.</p>
         </div>
         <button onclick="document.getElementById('announcementModal').classList.remove('hidden')" 
-                class="bg-indigo-600 text-white px-6 py-3 rounded-xl font-bold text-sm shadow-lg shadow-indigo-100 hover:bg-indigo-500 transition-all active:scale-95 uppercase tracking-widest">
+                class="inline-flex items-center gap-2 rounded-xl bg-indigo-600 px-5 py-2.5 text-sm font-semibold text-white shadow-sm hover:bg-indigo-500 transition-all active:scale-95">
+                <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"/>
+                </svg>
             Njoftim i Ri
         </button>
     </div>
 
     <div class="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
-        <?php if (empty($announcements)): ?>
-            <div class="col-span-full bg-white border-2 border-dashed border-slate-200 rounded-3xl p-20 text-center">
-                <p class="text-slate-400 font-bold italic uppercase text-[10px] tracking-[0.2em]">Nuk ka njoftime aktive</p>
-            </div>
-        <?php else: ?>
-            <?php foreach ($announcements as $ann): ?>
-            <div class="group bg-white p-8 rounded-2xl border border-slate-200 shadow-sm flex flex-col justify-between relative transition-all hover:border-indigo-400">
-                <?php if($ann['expires_at']): ?>
-                    <div class="absolute top-0 right-0 px-3 py-1 bg-rose-500 text-white rounded-bl-xl text-[9px] font-black uppercase tracking-tighter">
-                        Skadon: <?= date('d/m', strtotime($ann['expires_at'])) ?>
-                    </div>
-                <?php endif; ?>
-                
-                <div>
-                    <div class="flex justify-between items-center mb-6">
-                        <span class="px-2.5 py-1 text-[9px] font-black uppercase tracking-[0.15em] rounded bg-slate-900 text-white">
-                            <?= $ann['target_audience'] === 'all' ? 'Të gjithë' : ($ann['target_audience'] === 'students' ? 'Nxënës' : 'Prindër') ?>
-                        </span>
-                        <span class="text-[10px] text-slate-400 font-bold"><?= date('d/m/Y', strtotime($ann['created_at'])) ?></span>
-                    </div>
-                    <h3 class="font-black text-slate-900 mb-3 text-xl leading-tight tracking-tight italic"><?= htmlspecialchars($ann['title']) ?></h3>
-                    <p class="text-sm text-slate-500 leading-relaxed font-medium line-clamp-4"><?= nl2br(htmlspecialchars($ann['content'])) ?></p>
+        <?php foreach ($announcements as $ann): ?>
+        <div class="bg-white dark:bg-gray-900 p-6 rounded-2xl border border-slate-200 dark:border-white/10 shadow-sm flex flex-col justify-between relative">
+            <?php if($ann['expires_at']): ?>
+                <div class="absolute top-2 right-2 px-2 py-1 bg-slate-100 dark:bg-gray-800 rounded text-[9px] text-slate-500 font-bold uppercase">
+                    Skadon: <?= date('d/m', strtotime($ann['expires_at'])) ?>
                 </div>
-
-                <div class="mt-8 pt-6 border-t border-slate-50 flex justify-between items-center">
-                    <button onclick="deleteAnn(<?= $ann['id'] ?>)" class="text-rose-500 text-[10px] font-black uppercase tracking-widest hover:underline">Fshij</button>
-                    <span class="text-[9px] font-bold text-slate-300 italic">Mësimdhënësi ID: #<?= $teacherId ?></span>
+            <?php endif; ?>
+            
+            <div>
+                <div class="flex justify-between mb-4">
+                    <span class="px-2 py-1 text-[10px] font-bold uppercase rounded bg-indigo-100 text-indigo-700 dark:bg-indigo-900/30 dark:text-indigo-400">
+                        <?= $ann['target_role'] ?> <?= $ann['class_name'] ? "({$ann['class_name']})" : "" ?>
+                    </span>
+                    <span class="text-xs text-slate-400 font-medium"><?= date('d/m/Y', strtotime($ann['created_at'])) ?></span>
                 </div>
+                <h3 class="font-bold text-slate-900 dark:text-white mb-2 leading-tight"><?= htmlspecialchars($ann['title']) ?></h3>
+                <p class="text-sm text-slate-600 dark:text-slate-400 mb-4"><?= nl2br(htmlspecialchars($ann['content'])) ?></p>
             </div>
-            <?php endforeach; ?>
-        <?php endif; ?>
+            <div class="border-t border-slate-50 dark:border-white/5 pt-4 text-right">
+                <button onclick="deleteAnn(<?= $ann['id'] ?>)" class="text-rose-500 text-xs font-bold uppercase hover:text-rose-700 transition">Fshij</button>
+            </div>
+        </div>
+        <?php endforeach; ?>
     </div>
 </div>
 
-<div id="announcementModal" class="hidden fixed inset-0 z-[100] flex items-center justify-center p-4 bg-slate-900/40 backdrop-blur-md">
-    <div class="bg-white w-full max-w-lg rounded-[2.5rem] p-10 border border-slate-200 shadow-2xl transition-all">
-        <h2 class="text-2xl font-black mb-8 text-slate-900 tracking-tight">Krijo Njoftim</h2>
+<div id="announcementModal" class="hidden fixed inset-0 z-[100] flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-sm">
+    <div class="bg-white dark:bg-gray-900 w-full max-w-lg rounded-3xl p-8 border border-slate-200 dark:border-white/10 shadow-2xl">
+        <h2 class="text-xl font-bold mb-6 text-slate-900 dark:text-white">Krijo Njoftim</h2>
         <form action="/E-Shkolla/dashboard/teacher-dashboard/partials/announcement/save-announcement.php" method="POST" class="space-y-4">
             
             <div>
@@ -123,8 +115,12 @@ if (!$isAjax) { ob_start(); }
 </div>
 
 <script>
+function toggleCls() {
+    const isStudent = document.getElementById('roleSel').value === 'student';
+    document.getElementById('classSelectDiv').classList.toggle('hidden', !isStudent);
+}
 function deleteAnn(id) {
-    if(confirm('A jeni të sigurt? Kjo nuk mund të kthehet prapa.')) {
+    if(confirm('A jeni të sigurt? Njoftimi do të fshihet përgjithmonë.')) {
         window.location.href = `/E-Shkolla/dashboard/teacher-dashboard/partials/announcement/delete-announcement.php?id=${id}`;
     }
 }
