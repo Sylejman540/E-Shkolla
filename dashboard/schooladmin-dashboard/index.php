@@ -62,84 +62,84 @@ function isAnyActive(array $paths) {
          class="fixed inset-0 z-40 bg-slate-900/40 backdrop-blur-sm">
     </div>
 
-<template x-teleport="body">
-    <div x-show="helpOpen" 
-         x-transition:enter="transition ease-in-out duration-300 transform"
-         x-transition:enter-start="translate-x-full"
-         x-transition:enter-end="translate-x-0"
-         x-transition:leave="transition ease-in-out duration-300 transform"
-         x-transition:leave-start="translate-x-0"
-         x-transition:leave-end="translate-x-full"
-         x-cloak
-         class="fixed inset-y-0 right-0 z-50 w-full max-w-md bg-white shadow-2xl border-l border-slate-100 flex flex-col">
-        
-        <div class="flex items-center justify-between p-6 border-b border-slate-100 bg-slate-50/50">
-            <div class="flex items-center gap-3">
-                <div class="p-2 bg-blue-600 text-white rounded-lg shadow-sm">
-                    <svg class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
-                        <path stroke-linecap="round" stroke-linejoin="round" d="M8.228 9c.549-1.165 2.03-2 3.772-2 2.21 0 4 1.343 4 3 0 1.4-1.278 2.575-3.006 2.907-.542.104-.994.54-.994 1.093m0 3h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
-                    </svg>
+    <template x-teleport="body">
+        <div x-show="helpOpen" 
+            x-transition:enter="transition ease-in-out duration-300 transform"
+            x-transition:enter-start="translate-x-full"
+            x-transition:enter-end="translate-x-0"
+            x-transition:leave="transition ease-in-out duration-300 transform"
+            x-transition:leave-start="translate-x-0"
+            x-transition:leave-end="translate-x-full"
+            x-cloak
+            class="fixed inset-y-0 right-0 z-50 w-full max-w-md bg-white shadow-2xl border-l border-slate-100 flex flex-col">
+            
+            <div class="flex items-center justify-between p-6 border-b border-slate-100 bg-slate-50/50">
+                <div class="flex items-center gap-3">
+                    <div class="p-2 bg-blue-600 text-white rounded-lg shadow-sm">
+                        <svg class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+                            <path stroke-linecap="round" stroke-linejoin="round" d="M8.228 9c.549-1.165 2.03-2 3.772-2 2.21 0 4 1.343 4 3 0 1.4-1.278 2.575-3.006 2.907-.542.104-.994.54-.994 1.093m0 3h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                        </svg>
+                    </div>
+                    <div>
+                        <h2 class="text-xl font-bold text-slate-800">Udhëzuesi i Operimeve</h2>
+                        <p class="text-xs text-slate-500 font-medium">Ndiqni rregullat e sistemit</p>
+                    </div>
                 </div>
-                <div>
-                    <h2 class="text-xl font-bold text-slate-800">Udhëzuesi i Operimeve</h2>
-                    <p class="text-xs text-slate-500 font-medium">Ndiqni rregullat e sistemit</p>
+                <button @click="helpOpen = false" class="text-slate-400 hover:text-slate-600 p-2 rounded-full hover:bg-white transition-all">
+                    <svg class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path d="M6 18L18 6M6 6l12 12" /></svg>
+                </button>
+            </div>
+
+            <div class="flex-1 overflow-y-auto p-8">
+                <div class="space-y-8">
+                    
+                    <section>
+                        <h3 class="text-xs font-bold uppercase tracking-widest text-blue-600 mb-4">Hierarkia e Regjistrimit</h3>
+                        <div class="p-4 bg-blue-50/50 rounded-xl border border-blue-100 relative overflow-hidden">
+                            <h4 class="font-bold text-blue-900 text-sm mb-3">Rradha strikte e veprimeve:</h4>
+                            <ol class="text-xs text-blue-800 space-y-3 list-decimal ml-4 font-medium leading-relaxed">
+                                <li><strong>Klasat:</strong> Krijoni klasat fillimisht.</li>
+                                <li><strong>Mësuesit:</strong> Regjistroni mësuesit si përdorues.</li>
+                                <li><strong>Kujdestaria:</strong> Te seksioni "Klasat", shtoni mësuesin kujdestar.</li>
+                                <li><strong>Nxënësit:</strong> Regjistroni nxënësit në klasat përkatëse.</li>
+                                <li><strong>Prindërit:</strong> Krijoni llogaritë e prindërve pas nxënësve.</li>
+                                <li><strong>Orari:</strong> Gjeneroni orarin vetëm pasi të gjitha më lart janë kryer.</li>
+                            </ol>
+                        </div>
+                    </section>
+
+                    <section>
+                        <h3 class="text-xs font-bold uppercase tracking-widest text-slate-400 mb-4">Përdorimi i CSV</h3>
+                        <div class="space-y-4">
+                            <div class="p-4 bg-slate-50 rounded-xl border border-slate-100">
+                                <h4 class="font-bold text-slate-800 text-sm">Ku ndodhet CSV?</h4>
+                                <p class="text-xs text-slate-500 mt-1">
+                                    Butoni i importit <strong>CSV</strong> është i pranishëm në pjesën e sipërme të çdo faqeje (Mësuesit, Nxënësit, etj).
+                                </p>
+                            </div>
+                            
+                            <div class="p-4 bg-amber-50 rounded-xl border border-amber-100 border-dashed">
+                                <h4 class="font-bold text-amber-900 text-sm flex items-center gap-2">
+                                    <svg class="h-4 w-4" fill="currentColor" viewBox="0 0 20 20"><path d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" /></svg>
+                                    Jeni konfuz me formatin?
+                                </h4>
+                                <p class="text-xs text-amber-800 mt-1">
+                                    Nëse nuk jeni të sigurt si të plotësoni të dhënat, shkarkoni <strong>"Template-in CSV"</strong> që ekziston brenda dritares së importit në çdo faqe. Plotësoni atë dhe bëni upload përsëri.
+                                </p>
+                            </div>
+                        </div>
+                    </section>
                 </div>
             </div>
-            <button @click="helpOpen = false" class="text-slate-400 hover:text-slate-600 p-2 rounded-full hover:bg-white transition-all">
-                <svg class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path d="M6 18L18 6M6 6l12 12" /></svg>
-            </button>
-        </div>
 
-        <div class="flex-1 overflow-y-auto p-8">
-            <div class="space-y-8">
-                
-                <section>
-                    <h3 class="text-xs font-bold uppercase tracking-widest text-blue-600 mb-4">Hierarkia e Regjistrimit</h3>
-                    <div class="p-4 bg-blue-50/50 rounded-xl border border-blue-100 relative overflow-hidden">
-                        <h4 class="font-bold text-blue-900 text-sm mb-3">Rradha strikte e veprimeve:</h4>
-                        <ol class="text-xs text-blue-800 space-y-3 list-decimal ml-4 font-medium leading-relaxed">
-                            <li><strong>Klasat:</strong> Krijoni klasat fillimisht.</li>
-                            <li><strong>Mësuesit:</strong> Regjistroni mësuesit si përdorues.</li>
-                            <li><strong>Kujdestaria:</strong> Te seksioni "Klasat", shtoni mësuesin kujdestar.</li>
-                            <li><strong>Nxënësit:</strong> Regjistroni nxënësit në klasat përkatëse.</li>
-                            <li><strong>Prindërit:</strong> Krijoni llogaritë e prindërve pas nxënësve.</li>
-                            <li><strong>Orari:</strong> Gjeneroni orarin vetëm pasi të gjitha më lart janë kryer.</li>
-                        </ol>
-                    </div>
-                </section>
-
-                <section>
-                    <h3 class="text-xs font-bold uppercase tracking-widest text-slate-400 mb-4">Përdorimi i CSV</h3>
-                    <div class="space-y-4">
-                        <div class="p-4 bg-slate-50 rounded-xl border border-slate-100">
-                            <h4 class="font-bold text-slate-800 text-sm">Ku ndodhet CSV?</h4>
-                            <p class="text-xs text-slate-500 mt-1">
-                                Butoni i importit <strong>CSV</strong> është i pranishëm në pjesën e sipërme të çdo faqeje (Mësuesit, Nxënësit, etj).
-                            </p>
-                        </div>
-                        
-                        <div class="p-4 bg-amber-50 rounded-xl border border-amber-100 border-dashed">
-                            <h4 class="font-bold text-amber-900 text-sm flex items-center gap-2">
-                                <svg class="h-4 w-4" fill="currentColor" viewBox="0 0 20 20"><path d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" /></svg>
-                                Jeni konfuz me formatin?
-                            </h4>
-                            <p class="text-xs text-amber-800 mt-1">
-                                Nëse nuk jeni të sigurt si të plotësoni të dhënat, shkarkoni <strong>"Template-in CSV"</strong> që ekziston brenda dritares së importit në çdo faqe. Plotësoni atë dhe bëni upload përsëri.
-                            </p>
-                        </div>
-                    </div>
-                </section>
+            <div class="p-6 border-t border-slate-100 bg-white">
+                <a href="mailto:support@e-shkolla.com" class="w-full flex items-center justify-center gap-2 py-3.5 px-4 bg-slate-900 text-white rounded-xl font-semibold hover:bg-slate-800 transition-all shadow-lg shadow-slate-200">
+                    <svg class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path d="M3 8l7.89 5.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z" /></svg>
+                    Na kontaktoni për asistencë
+                </a>
             </div>
         </div>
-
-        <div class="p-6 border-t border-slate-100 bg-white">
-            <a href="mailto:support@e-shkolla.com" class="w-full flex items-center justify-center gap-2 py-3.5 px-4 bg-slate-900 text-white rounded-xl font-semibold hover:bg-slate-800 transition-all shadow-lg shadow-slate-200">
-                <svg class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path d="M3 8l7.89 5.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z" /></svg>
-                Na kontaktoni për asistencë
-            </a>
-        </div>
-    </div>
-</template>
+    </template>
 
     <aside class="fixed inset-y-0 left-0 z-50 flex flex-col bg-white shadow-[4px_0_24px_rgba(0,0,0,0.02)] border-r border-slate-100 custom-transition"
            :class="[sidebarCollapsed ? 'w-20' : 'w-72', mobileOpen ? 'translate-x-0' : '-translate-x-full lg:translate-x-0']">
