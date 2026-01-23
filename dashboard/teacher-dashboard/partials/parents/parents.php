@@ -12,6 +12,7 @@ if (!$schoolId) {
     die('Aksesi i mohuar.');
 }
 
+// Optimized Query
 $stmt = $pdo->prepare("
     SELECT 
         s.name AS student_name,
@@ -19,94 +20,121 @@ $stmt = $pdo->prepare("
         p.phone AS parent_phone,
         p.email AS parent_email
     FROM students s
-    INNER JOIN student_class sc 
-        ON sc.student_id = s.student_id
-    INNER JOIN parent_student ps 
-        ON ps.student_id = s.student_id
-    INNER JOIN parents p 
-        ON p.id = ps.parent_id
-    WHERE sc.class_id = ?
-      AND s.school_id = ?
+    INNER JOIN student_class sc ON sc.student_id = s.student_id
+    INNER JOIN parent_student ps ON ps.student_id = s.student_id
+    INNER JOIN parents p ON p.id = ps.parent_id
+    WHERE sc.class_id = ? AND s.school_id = ?
     ORDER BY s.name ASC
 ");
 
 $stmt->execute([$classId, $schoolId]);
 $results = $stmt->fetchAll(PDO::FETCH_ASSOC);
 
+// Calculate Stats
+$totalActive = count($results);
+$noEmail = 0;
+$noPhone = 0;
+foreach ($results as $r) {
+    if (empty($r['parent_email'])) $noEmail++;
+    if (empty($r['parent_phone'])) $noPhone++;
+}
 
 ob_start();
 ?>
 
-<div class="max-w-6xl mx-auto px-4 py-10">
-    <div class="mb-8 flex justify-between items-end">
+<div class="p-6 lg:p-10 max-w-7xl mx-auto space-y-10">
+    
+    <div class="flex flex-col md:flex-row md:items-end justify-between gap-4 border-b border-slate-200 pb-8">
         <div>
             <h1 class="text-3xl font-black text-slate-900 tracking-tight">Kontaktet e Prindërve</h1>
-            <p class="text-slate-500 mt-1">Lista zyrtare e kontakteve për prindërit e klasës sate.</p>
+            <p class="text-slate-500 text-sm mt-1">Lista zyrtare dhe mjetet e komunikimit për prindërit e klasës.</p>
         </div>
-        <button onclick="window.print()" class="bg-white border border-slate-200 px-5 py-2.5 rounded-2xl text-sm font-bold text-slate-700 hover:bg-slate-50 transition flex items-center gap-2 shadow-sm">
-            <span>🖨️</span> Printo Listën
-        </button>
+        <div class="flex gap-3">
+            <button onclick="window.print()" class="px-5 py-2.5 bg-white border border-slate-200 text-sm font-bold text-slate-700 rounded-lg hover:bg-slate-50 transition shadow-sm flex items-center gap-2">
+                <span>🖨️</span> Printo
+            </button>
+        </div>
     </div>
 
-    <div class="bg-white border border-slate-200 rounded-[2.5rem] overflow-hidden shadow-sm">
-        <table class="w-full text-left border-collapse">
+    <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
+        <div class="bg-indigo-600 min-h-[140px] p-6 rounded-2xl text-white shadow-lg shadow-indigo-100 flex items-center justify-between transition-transform hover:scale-[1.01]">
+            <div>
+                <p class="text-[10px] font-bold opacity-70 uppercase tracking-[0.2em] mb-1">Lidhje Aktive</p>
+                <p class="text-4xl font-black"><?= $totalActive ?></p>
+            </div>
+            <span class="text-5xl opacity-20">📊</span>
+        </div>
+
+        <div class="bg-white border border-slate-200 min-h-[140px] p-6 rounded-2xl shadow-sm flex items-center justify-between transition-transform hover:scale-[1.01]">
+            <div>
+                <p class="text-[10px] font-bold text-slate-400 uppercase tracking-[0.2em] mb-1">Pa E-mail</p>
+                <p class="text-4xl font-black text-slate-900"><?= $noEmail ?></p>
+            </div>
+            <span class="text-5xl">📧</span>
+        </div>
+
+        <div class="bg-white border border-slate-200 min-h-[140px] p-6 rounded-2xl shadow-sm flex items-center justify-between transition-transform hover:scale-[1.01]">
+            <div>
+                <p class="text-[10px] font-bold text-rose-400 uppercase tracking-[0.2em] mb-1">Pa Telefon</p>
+                <p class="text-4xl font-black text-slate-900"><?= $noPhone ?></p>
+            </div>
+            <span class="text-5xl">📱</span>
+        </div>
+    </div>
+
+    <div class="bg-slate-50 border border-slate-200 p-4 rounded-2xl flex items-center gap-4">
+        <div class="relative flex-1">
+            <span class="absolute left-4 top-3.5 text-slate-400">🔍</span>
+            <input type="text" id="parentSearch" placeholder="Kërko me emër nxënësi ose prindi..." 
+                   class="w-full pl-12 pr-4 py-3 border border-slate-200 rounded-xl text-sm focus:ring-4 focus:ring-indigo-500/10 focus:border-indigo-500 outline-none transition-all shadow-sm">
+        </div>
+    </div>
+
+    <div class="bg-white border border-slate-200 rounded-2xl shadow-sm overflow-hidden">
+        <table class="w-full text-left border-collapse" id="parentTable">
             <thead>
-                <tr class="bg-slate-50/50 border-b border-slate-100">
-                    <th class="px-8 py-5 text-xs font-black text-slate-400 uppercase tracking-[0.2em]">Nxënësi</th>
-                    <th class="px-8 py-5 text-xs font-black text-slate-400 uppercase tracking-[0.2em]">Prindi</th>
-                    <th class="px-8 py-5 text-xs font-black text-slate-400 uppercase tracking-[0.2em]">Telefoni</th>
-                    <th class="px-8 py-5 text-xs font-black text-slate-400 uppercase tracking-[0.2em]">E-mail</th>
-                    <th class="px-8 py-5 text-right text-xs font-black text-slate-400 uppercase tracking-[0.2em]">Veprime</th>
+                <tr class="bg-slate-50/50 border-b border-slate-200">
+                    <th class="px-8 py-5 text-[11px] font-black text-slate-400 uppercase tracking-[0.2em]">Nxënësi</th>
+                    <th class="px-8 py-5 text-[11px] font-black text-slate-400 uppercase tracking-[0.2em]">Prindi</th>
+                    <th class="px-8 py-5 text-[11px] font-black text-slate-400 uppercase tracking-[0.2em]">Telefoni</th>
+                    <th class="px-8 py-5 text-[11px] font-black text-slate-400 uppercase tracking-[0.2em]">E-mail</th>
+                    <th class="px-8 py-5 text-right text-[11px] font-black text-slate-400 uppercase tracking-[0.2em]">Veprime</th>
                 </tr>
             </thead>
-            <tbody class="divide-y divide-slate-50">
+            <tbody class="divide-y divide-slate-100">
                 <?php if (empty($results)): ?>
                     <tr>
-                        <td colspan="5" class="px-8 py-20 text-center text-slate-400 italic">
-                            <div class="flex flex-col items-center gap-2">
-                                <span class="text-3xl">👥</span>
-                                <span>Nuk u gjet asnjë lidhje prind-nxënës për këtë klasë.</span>
-                            </div>
+                        <td colspan="5" class="px-8 py-20 text-center text-slate-400 italic font-medium">
+                            Nuk u gjet asnjë lidhje prind-nxënës.
                         </td>
                     </tr>
                 <?php else: ?>
                     <?php foreach ($results as $row): ?>
-                        <tr class="hover:bg-blue-50/30 transition-colors group">
-                            <td class="px-8 py-5">
-                                <span class="font-bold text-slate-900"><?= htmlspecialchars($row['student_name']) ?></span>
-                            </td>
-                            
-                            <td class="px-8 py-5">
-                                <span class="font-semibold text-slate-700">
-                                    <?= htmlspecialchars($row['parent_first_name'] . ' ' . $row['parent_last_name']) ?>
-                                </span>
-                            </td>
-
+                        <tr class="hover:bg-indigo-50/30 transition-colors group parent-row">
+                            <td class="px-8 py-5 font-bold text-slate-900 searchable-data"><?= htmlspecialchars($row['student_name']) ?></td>
+                            <td class="px-8 py-5 text-slate-600 font-semibold searchable-data"><?= htmlspecialchars($row['parent_name']) ?></td>
                             <td class="px-8 py-5">
                                 <?php if (!empty($row['parent_phone'])): ?>
-                                    <a href="tel:<?= $row['parent_phone'] ?>" class="text-sm text-slate-600 hover:text-blue-600 font-bold flex items-center gap-2">
-                                        <span class="text-slate-300">📞</span> <?= htmlspecialchars($row['parent_phone']) ?>
+                                    <a href="tel:<?= $row['parent_phone'] ?>" class="text-sm text-slate-900 font-bold hover:text-indigo-600 transition flex items-center gap-2">
+                                        <span class="opacity-30">📞</span> <?= htmlspecialchars($row['parent_phone']) ?>
                                     </a>
                                 <?php else: ?>
-                                    <span class="text-xs text-slate-300 italic italic">Nuk ka numër</span>
+                                    <span class="text-[10px] font-black text-slate-300 uppercase tracking-widest bg-slate-50 px-2 py-1 rounded">Mungon</span>
                                 <?php endif; ?>
                             </td>
-
                             <td class="px-8 py-5">
                                 <?php if (!empty($row['parent_email'])): ?>
-                                    <a href="mailto:<?= $row['parent_email'] ?>" class="text-sm text-slate-600 hover:text-blue-600 font-medium flex items-center gap-2">
-                                        <span class="text-slate-300">✉️</span> <?= htmlspecialchars($row['parent_email']) ?>
+                                    <a href="mailto:<?= $row['parent_email'] ?>" class="text-sm text-indigo-600 font-medium hover:underline flex items-center gap-2">
+                                        <span class="opacity-30 text-slate-900">✉️</span> <?= htmlspecialchars($row['parent_email']) ?>
                                     </a>
                                 <?php else: ?>
-                                    <span class="text-xs text-slate-300 italic italic">Pa email</span>
+                                    <span class="text-[10px] font-black text-slate-300 uppercase tracking-widest bg-slate-50 px-2 py-1 rounded">Pa Email</span>
                                 <?php endif; ?>
                             </td>
-
                             <td class="px-8 py-5 text-right">
-                                <div class="flex justify-end gap-2 opacity-0 group-hover:opacity-100 transition-all transform translate-x-2 group-hover:translate-x-0">
-                                    <a href="tel:<?= $row['parent_phone'] ?>" class="p-2.5 bg-emerald-50 text-emerald-600 rounded-xl hover:bg-emerald-600 hover:text-white transition shadow-sm">
-                                        <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.5"><path d="M3 5a2 2 0 012-2h3.28a1 1 0 01.948.684l1.498 4.493a1 1 0 01-.502 1.21l-2.257 1.13a11.042 11.042 0 005.516 5.516l1.13-2.257a1 1 0 011.21-.502l4.493 1.498a1 1 0 01.684.949V19a2 2 0 01-2 2h-1C9.716 21 3 14.284 3 6V5z" /></svg>
-                                    </a>
+                                <div class="flex justify-end gap-3 opacity-0 group-hover:opacity-100 transition-opacity">
+                                    <button class="p-2 bg-white border border-slate-100 rounded-lg shadow-sm hover:text-indigo-600 transition" title="Edito">✏️</button>
+                                    <button class="p-2 bg-white border border-slate-100 rounded-lg shadow-sm hover:text-rose-600 transition" title="Fshij">🗑️</button>
                                 </div>
                             </td>
                         </tr>
@@ -116,12 +144,26 @@ ob_start();
         </table>
     </div>
 
-    <div class="mt-8 px-6 py-4 bg-slate-900 rounded-2xl flex items-center justify-between shadow-lg shadow-slate-200">
-        <span class="text-slate-400 text-xs font-black uppercase tracking-widest">Statistikat e klasës</span>
-        <span class="text-white font-bold text-sm">Gjithsej: <?= count($results) ?> lidhje aktive</span>
+    <div class="flex justify-between items-center text-slate-400">
+        <p class="text-[10px] font-bold uppercase tracking-[0.2em]">Sistemi i Menaxhimit të Shkollës</p>
+        <p class="text-xs font-medium">Totali: <?= count($results) ?> nxënës</p>
     </div>
 </div>
+
+<script>
+    // Robust Live Search
+    document.getElementById('parentSearch').addEventListener('input', function(e) {
+        const term = e.target.value.toLowerCase().trim();
+        document.querySelectorAll('.parent-row').forEach(row => {
+            const content = Array.from(row.querySelectorAll('.searchable-data'))
+                                .map(el => el.textContent.toLowerCase())
+                                .join(' ');
+            row.style.display = content.includes(term) ? '' : 'none';
+        });
+    });
+</script>
 
 <?php
 $content = ob_get_clean();
 require_once __DIR__ . '/../index.php';
+?>
