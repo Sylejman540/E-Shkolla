@@ -197,6 +197,19 @@ function isAnyActive(array $paths) {
                         <li><a href="/E-Shkolla/schedule" class="block p-2 pl-6 text-xs font-medium <?= isActive('/schedule') ? 'text-blue-600 font-bold' : 'text-slate-500 hover:text-blue-600' ?>">Orari</a></li>
                     </ul>
                 </li>
+                
+                <li>
+                    <a href="/E-Shkolla/school-announcement"
+                    class="relative group flex items-center gap-x-3 rounded-xl p-3 text-sm font-semibold transition-all
+                    <?= isActive('/school-announcement') ? 'bg-blue-50 text-blue-600 active-indicator' : 'text-slate-500 hover:bg-slate-50 hover:text-blue-600' ?>">
+                        
+                        <svg class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+                            <path stroke-linecap="round" stroke-linejoin="round" d="M11 5.882V19.24a1.76 1.76 0 01-3.417.592l-2.147-6.15M18 13a3 3 0 100-6M5.436 13.683A4.001 4.001 0 017 6h1.832c4.1 0 7.625-1.234 9.168-3v14c-1.543-1.766-5.067-3-9.168-3H7a3.988 3.988 0 01-1.564-.317z" />
+                        </svg>
+
+                        <span x-show="!sidebarCollapsed" class="whitespace-nowrap">Komunikimi</span>
+                    </a>
+                </li>
 
                 <li>
                     <a href="/E-Shkolla/school-settings"
