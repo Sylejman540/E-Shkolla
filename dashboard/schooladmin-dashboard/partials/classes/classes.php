@@ -4,10 +4,12 @@ require_once __DIR__ . '/../../../../db.php';
 
 $schoolId = $_SESSION['user']['school_id'] ?? null;
 
+// --- PAGINATION LOGIC ---
 $limit = 10;
 $page  = isset($_GET['page']) && is_numeric($_GET['page']) ? (int)$_GET['page'] : 1;
 $offset = ($page - 1) * $limit;
 
+// Fetch Classes with Limit/Offset
 $stmt = $pdo->prepare("
     SELECT
         c.id,
@@ -18,14 +20,15 @@ $stmt = $pdo->prepare("
         u.name AS class_header_name
     FROM classes c
     LEFT JOIN users u ON u.id = c.class_header
-    WHERE c.school_id = ?
+    WHERE c.school_id = :school_id
     ORDER BY c.created_at DESC
+    LIMIT :limit OFFSET :offset
 ");
 
 $stmt->bindValue(':school_id', $schoolId, PDO::PARAM_INT);
 $stmt->bindValue(':limit', (int)$limit, PDO::PARAM_INT);
 $stmt->bindValue(':offset', (int)$offset, PDO::PARAM_INT);
-$stmt->execute([$schoolId]);
+$stmt->execute();
 $classes = $stmt->fetchAll(PDO::FETCH_ASSOC);
 
 // Total for pagination
@@ -44,25 +47,27 @@ if ($totalPages <= 7) {
     else { $range = [1, '...', $page - 1, $page, $page + 1, '...', $totalPages]; }
 }
 
-ob_start(); 
+// Check if request is AJAX
+$isAjax = !empty($_SERVER['HTTP_X_REQUESTED_WITH']) && strtolower($_SERVER['HTTP_X_REQUESTED_WITH']) == 'xmlhttprequest';
+
+if (!$isAjax) {
+    ob_start(); 
+}
 ?>
 
-<div class="px-4 sm:px-6 lg:px-8 py-8">
+<div id="classesTableContainer" class="px-4 sm:px-6 lg:px-8 py-8">
     <div class="sm:flex sm:items-center justify-between mb-8">
         <div>
             <h1 class="text-2xl font-bold tracking-tight text-slate-900 dark:text-white">Klasat e Shkollës</h1>
             <p class="mt-1 text-sm text-slate-500 dark:text-slate-400">Menaxhoni vitet akademike, klasat dhe kapacitetin e nxënësve.</p>
         </div>
         <div class="flex gap-3 md:mt-0 mt-4">
-        <div class="mt-4 sm:mt-0">
             <button type="button" id="addClassBtn" class="inline-flex items-center gap-2 rounded-xl bg-indigo-600 px-5 py-2.5 text-sm font-semibold text-white shadow-sm hover:bg-indigo-500 transition-all active:scale-95">
                 <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"/>
                 </svg>
                 Shto Klasë
             </button>
-        </div>
-        <div class="flex gap-3 md:mt-0 mt-4">
             <a href="/E-Shkolla/classes-csv"
             class="inline-flex items-center gap-2 rounded-xl bg-slate-900 dark:bg-gray-800 px-5 py-2.5 text-sm font-semibold text-white shadow-sm hover:bg-slate-700 transition-all active:scale-95">
                 <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -71,7 +76,6 @@ ob_start();
                 </svg>
                 Import CSV
             </a>
-        </div>
         </div>
     </div>
 
@@ -84,16 +88,6 @@ ob_start();
             </div>
         </div>
     </div>
-
-    <?php if (isset($_SESSION['success'])): ?>
-    <script>
-        // This calls the JavaScript function we defined in schedule.php
-        window.addEventListener('DOMContentLoaded', (event) => {
-            showToast("<?= addslashes($_SESSION['success']) ?>", "success");
-        });
-    </script>
-    <?php unset($_SESSION['success']); ?>
-    <?php endif; ?>
 
     <div class="bg-white dark:bg-gray-900 rounded-2xl border border-slate-200 dark:border-white/10 shadow-sm overflow-hidden">
         <div class="overflow-x-auto">
@@ -129,11 +123,9 @@ ob_start();
                             </span>
                         </td>
                         <td class="px-4 py-3 text-sm text-gray-700">
-                            <?php if (!empty($row['class_header_name'])): ?>
-                                <?= htmlspecialchars($row['class_header_name'], ENT_QUOTES, 'UTF-8') ?>
-                            <?php else: ?>
-                                <span class="italic text-gray-400">I pacaktuar</span>
-                            <?php endif; ?>
+                            <span data-original="<?= htmlspecialchars($row['class_header_name'] ?? 'I pacaktuar') ?>">
+                                <?= !empty($row['class_header_name']) ? htmlspecialchars($row['class_header_name']) : '<span class="italic text-gray-400">I pacaktuar</span>' ?>
+                            </span>
                         </td>
                         <td class="px-6 py-4 text-center">
                             <button class="status-toggle px-3 py-1 rounded-full text-[10px] font-bold uppercase tracking-wider transition-all <?= $row['status'] === 'active' ? 'bg-green-100 text-green-700 dark:bg-green-500/20 dark:text-green-400' : 'bg-red-100 text-red-600 dark:bg-red-500/20 dark:text-red-400' ?>" 
@@ -157,17 +149,17 @@ ob_start();
         <?php if ($totalPages > 1): ?>
         <div class="px-6 py-4 bg-slate-50 dark:bg-white/5 border-t border-slate-200 dark:border-white/10 flex items-center justify-center">
             <nav class="flex items-center gap-1">
-                <a href="?page=<?= max(1, $page - 1) ?>" class="p-2 rounded-lg hover:bg-slate-200 dark:hover:bg-gray-800 transition <?= $page <= 1 ? 'pointer-events-none opacity-30' : '' ?>">
+                <a href="?page=<?= max(1, $page - 1) ?>" class="ajax-page-link p-2 rounded-lg hover:bg-slate-200 dark:hover:bg-gray-800 transition <?= $page <= 1 ? 'pointer-events-none opacity-30' : '' ?>">
                     <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 19l-7-7 7-7"/></svg>
                 </a>
                 <?php foreach ($range as $p): ?>
                     <?php if ($p === '...'): ?>
                         <span class="px-3 py-1 text-slate-400">...</span>
                     <?php else: ?>
-                        <a href="?page=<?= $p ?>" class="px-3.5 py-1.5 rounded-lg text-sm font-semibold transition-all <?= $p == $page ? 'bg-indigo-600 text-white shadow-md' : 'text-slate-600 dark:text-slate-400 hover:bg-slate-200 dark:hover:bg-gray-800' ?>"><?= $p ?></a>
+                        <a href="?page=<?= $p ?>" class="ajax-page-link px-3.5 py-1.5 rounded-lg text-sm font-semibold transition-all <?= $p == $page ? 'bg-indigo-600 text-white shadow-md' : 'text-slate-600 dark:text-slate-400 hover:bg-slate-200 dark:hover:bg-gray-800' ?>"><?= $p ?></a>
                     <?php endif; ?>
                 <?php endforeach; ?>
-                <a href="?page=<?= min($totalPages, $page + 1) ?>" class="p-2 rounded-lg hover:bg-slate-200 dark:hover:bg-gray-800 transition <?= $page >= $totalPages ? 'pointer-events-none opacity-30' : '' ?>">
+                <a href="?page=<?= min($totalPages, $page + 1) ?>" class="ajax-page-link p-2 rounded-lg hover:bg-slate-200 dark:hover:bg-gray-800 transition <?= $page >= $totalPages ? 'pointer-events-none opacity-30' : '' ?>">
                     <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"/></svg>
                 </a>
             </nav>
@@ -175,6 +167,8 @@ ob_start();
         <?php endif; ?>
     </div>
 </div>
+
+<?php if ($isAjax) { exit; } ?>
 
 <div id="statusModal" class="hidden fixed inset-0 z-[100] flex items-center justify-center p-4">
     <div class="absolute inset-0 bg-slate-900/60 backdrop-blur-sm"></div>
@@ -198,6 +192,31 @@ ob_start();
 <script>
 const API_URL = '/E-Shkolla/dashboard/schooladmin-dashboard/partials/classes/update-inline.php';
 let pendingStatusChange = null;
+
+// --- AJAX PAGINATION ---
+document.addEventListener('click', e => {
+    const link = e.target.closest('.ajax-page-link');
+    if (link) {
+        e.preventDefault();
+        loadTablePage(link.getAttribute('href'));
+    }
+});
+
+async function loadTablePage(url) {
+    const container = document.getElementById('classesTableContainer');
+    container.style.opacity = '0.5';
+    try {
+        const response = await fetch(url, { headers: { 'X-Requested-With': 'XMLHttpRequest' } });
+        const html = await response.text();
+        container.innerHTML = html;
+        window.history.pushState({}, '', url);
+        filterClasses(); // Maintain search filter if active
+    } catch (err) {
+        showToast('Gabim gjatë ngarkimit të faqes!', 'error');
+    } finally {
+        container.style.opacity = '1';
+    }
+}
 
 // --- TOAST NOTIFICATIONS ---
 function showToast(message, type = 'success') {
@@ -287,22 +306,20 @@ function filterClasses() {
     });
 }
 
-const btn = document.getElementById('addClassBtn');
-const form = document.getElementById('addClassForm');
-const cancel = document.getElementById('cancel');
-
-btn?.addEventListener('click', () => {
- form.classList.remove('hidden');
- form.scrollIntoView({ behavior: 'smooth', block: 'start' });
-});
-
-cancel?.addEventListener('click', () => {
- form.classList.add('hidden');
+// Open Add Form
+document.addEventListener('click', e => {
+    if(e.target.id === 'addClassBtn') {
+        const form = document.getElementById('addClassForm');
+        form.classList.remove('hidden');
+        form.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    }
 });
 
 </script>
 
 <?php 
-$content = ob_get_clean(); 
-require_once __DIR__ . '/../../index.php'; 
+if (!$isAjax) {
+    $content = ob_get_clean(); 
+    require_once __DIR__ . '/../../index.php'; 
+}
 ?>
