@@ -4,7 +4,12 @@ require_once __DIR__ . '/../../../../db.php';
 
 $schoolId = $_SESSION['user']['school_id'] ?? null;
 
-// Fetch Subjects with Teacher details
+// --- PAGINATION LOGIC ---
+$limit = 10;
+$page  = isset($_GET['page']) && is_numeric($_GET['page']) ? (int)$_GET['page'] : 1;
+$offset = ($page - 1) * $limit;
+
+// Fetch Subjects with Teacher details and Limit
 $stmt = $pdo->prepare("
     SELECT 
         s.id,
@@ -14,16 +19,41 @@ $stmt = $pdo->prepare("
         t.user_id AS teacher_user_id
     FROM subjects s
     LEFT JOIN teachers t ON s.user_id = t.user_id AND s.school_id = t.school_id
-    WHERE s.school_id = ?
+    WHERE s.school_id = :school_id
     ORDER BY s.subject_name ASC
+    LIMIT :limit OFFSET :offset
 ");
-$stmt->execute([$schoolId]);
+$stmt->bindValue(':school_id', $schoolId, PDO::PARAM_INT);
+$stmt->bindValue(':limit', (int)$limit, PDO::PARAM_INT);
+$stmt->bindValue(':offset', (int)$offset, PDO::PARAM_INT);
+$stmt->execute();
 $subjects = $stmt->fetchAll(PDO::FETCH_ASSOC);
 
-ob_start(); 
+// Total for pagination
+$totalStmt = $pdo->prepare("SELECT COUNT(*) FROM subjects WHERE school_id = ?");
+$totalStmt->execute([$schoolId]);
+$totalRows = $totalStmt->fetchColumn();
+$totalPages = ceil($totalRows / $limit);
+
+// Sliding Pagination Range
+$range = [];
+if ($totalPages <= 7) {
+    $range = range(1, $totalPages);
+} else {
+    if ($page <= 4) { $range = [1, 2, 3, 4, 5, '...', $totalPages]; }
+    elseif ($page > $totalPages - 4) { $range = [1, '...', $totalPages - 4, $totalPages - 3, $totalPages - 2, $totalPages - 1, $totalPages]; }
+    else { $range = [1, '...', $page - 1, $page, $page + 1, '...', $totalPages]; }
+}
+
+// --- AJAX CHECK ---
+$isAjax = !empty($_SERVER['HTTP_X_REQUESTED_WITH']) && strtolower($_SERVER['HTTP_X_REQUESTED_WITH']) == 'xmlhttprequest';
+
+if (!$isAjax) {
+    ob_start(); 
+}
 ?>
 
-<div class="px-4 sm:px-6 lg:px-8 py-8">
+<div id="subjectTableContainer" class="px-4 sm:px-6 lg:px-8 py-8">
     <div class="sm:flex sm:items-center justify-between mb-8">
         <div>
             <h1 class="text-2xl font-bold tracking-tight text-slate-900 dark:text-white">Lëndët e Shkollës</h1>
@@ -49,7 +79,6 @@ ob_start();
 
     <?php if (isset($_SESSION['success'])): ?>
     <script>
-        // This calls the JavaScript function we defined in schedule.php
         window.addEventListener('DOMContentLoaded', (event) => {
             showToast("<?= addslashes($_SESSION['success']) ?>", "success");
         });
@@ -86,7 +115,6 @@ ob_start();
                                     </div>
                                     <span class="text-sm font-medium text-slate-600 dark:text-slate-300" data-original="<?= htmlspecialchars($row['teacher_display_name'] ?? 'I pacaktuar') ?>">
                                         <?= htmlspecialchars($row['teacher_display_name'] ?? 'I pacaktuar') ?>
-
                                     </span>
                                 </div>
                             </td>
@@ -112,8 +140,30 @@ ob_start();
                 </tbody>
             </table>
         </div>
+
+        <?php if ($totalPages > 1): ?>
+        <div class="px-6 py-4 bg-slate-50 dark:bg-white/5 border-t border-slate-200 dark:border-white/10 flex items-center justify-center">
+            <nav class="flex items-center gap-1">
+                <a href="?page=<?= max(1, $page - 1) ?>" class="pagination-link p-2 rounded-lg hover:bg-slate-200 dark:hover:bg-gray-800 transition <?= $page <= 1 ? 'pointer-events-none opacity-30' : '' ?>">
+                    <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 19l-7-7 7-7"/></svg>
+                </a>
+                <?php foreach ($range as $p): ?>
+                    <?php if ($p === '...'): ?>
+                        <span class="px-3 py-1 text-slate-400">...</span>
+                    <?php else: ?>
+                        <a href="?page=<?= $p ?>" class="pagination-link px-3.5 py-1.5 rounded-lg text-sm font-semibold transition-all <?= $p == $page ? 'bg-indigo-600 text-white shadow-md' : 'text-slate-600 dark:text-slate-400 hover:bg-slate-200 dark:hover:bg-gray-800' ?>"><?= $p ?></a>
+                    <?php endif; ?>
+                <?php endforeach; ?>
+                <a href="?page=<?= min($totalPages, $page + 1) ?>" class="pagination-link p-2 rounded-lg hover:bg-slate-200 dark:hover:bg-gray-800 transition <?= $page >= $totalPages ? 'pointer-events-none opacity-30' : '' ?>">
+                    <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"/></svg>
+                </a>
+            </nav>
+        </div>
+        <?php endif; ?>
     </div>
 </div>
+
+<?php if ($isAjax) { exit; } ?>
 
 <div id="statusModal" class="hidden fixed inset-0 z-[100] flex items-center justify-center p-4">
     <div class="absolute inset-0 bg-slate-900/60 backdrop-blur-sm"></div>
@@ -137,6 +187,31 @@ const API_SUBJECT = '/E-Shkolla/dashboard/schooladmin-dashboard/partials/subject
 const API_TEACHER = '/E-Shkolla/dashboard/schooladmin-dashboard/partials/teacher/update-inline.php';
 
 let pendingStatusChange = null;
+
+// --- AJAX PAGINATION ---
+document.addEventListener('click', function(e) {
+    const link = e.target.closest('.pagination-link');
+    if (link) {
+        e.preventDefault();
+        loadPage(link.getAttribute('href'));
+    }
+});
+
+async function loadPage(url) {
+    const container = document.getElementById('subjectTableContainer');
+    container.style.opacity = '0.5';
+    try {
+        const response = await fetch(url, { headers: { 'X-Requested-With': 'XMLHttpRequest' } });
+        const html = await response.text();
+        container.innerHTML = html;
+        window.history.pushState({}, '', url);
+        filterSubjects();
+    } catch (err) {
+        showToast('Gabim gjatë ngarkimit', 'error');
+    } finally {
+        container.style.opacity = '1';
+    }
+}
 
 // --- TOAST NOTIFICATIONS ---
 function showToast(message, type = 'success') {
@@ -240,6 +315,8 @@ function filterSubjects() {
 </script>
 
 <?php 
-$content = ob_get_clean(); 
-require_once __DIR__ . '/../../index.php'; 
+if (!$isAjax) {
+    $content = ob_get_clean(); 
+    require_once __DIR__ . '/../../index.php'; 
+}
 ?>
