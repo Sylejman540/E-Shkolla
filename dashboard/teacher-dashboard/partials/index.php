@@ -1,20 +1,37 @@
 <?php
-if(session_status() === PHP_SESSION_NONE){
+if (session_status() === PHP_SESSION_NONE) {
     session_start();
 }
 
-$current = $_SERVER['REQUEST_URI'];
+require_once __DIR__ . '/../../../db.php'; // Sigurohu që ky path është i saktë
+
+// Funksionet e navigimit
 function isActive($path) {
     return str_contains($_SERVER['REQUEST_URI'], $path);
 }
 
-function isAnyActive(array $paths) {
-    foreach ($paths as $path) {
-        if (str_contains($_SERVER['REQUEST_URI'], $path)) {
-            return true;
-        }
-    }
-    return false;
+// Logjika për emrin e mësuesit dhe njoftimet
+$teacherName = 'Profesor';
+$userNotifications = [];
+$schoolId = $_SESSION['user']['school_id'] ?? null;
+
+if (isset($_SESSION['user']) && $_SESSION['user']['role'] === 'teacher') {
+    // 1. Merr emrin real
+    $stmt = $pdo->prepare("SELECT name FROM teachers WHERE user_id = ?");
+    $stmt->execute([$_SESSION['user']['id']]);
+    $teacherName = $stmt->fetchColumn() ?: 'Profesor';
+
+    // 2. Merr njoftimet reale nga databaza
+    $annStmt = $pdo->prepare("
+        SELECT title, content, created_at 
+        FROM announcements 
+        WHERE school_id = ? 
+        AND (target_role = 'all' OR target_role = 'teacher')
+        AND (expires_at IS NULL OR expires_at >= CURDATE())
+        ORDER BY created_at DESC LIMIT 5
+    ");
+    $annStmt->execute([$schoolId]);
+    $userNotifications = $annStmt->fetchAll(PDO::FETCH_ASSOC);
 }
 ?>
 <!DOCTYPE html>
@@ -156,46 +173,59 @@ function isAnyActive(array $paths) {
         </button>
     </aside>
 
- <div :class="sidebarCollapsed ? 'lg:pl-20' : 'lg:pl-72'" class="min-h-screen custom-transition flex flex-col">
+<div :class="sidebarCollapsed ? 'lg:pl-20' : 'lg:pl-72'" class="min-h-screen custom-transition flex flex-col">
         
         <header class="sticky top-0 z-30 h-16 flex items-center justify-between bg-white/80 backdrop-blur-md border-b border-slate-100 px-4 lg:px-8">
             <button @click="mobileOpen = true" class="p-2 lg:hidden text-slate-600 hover:bg-slate-50 rounded-lg transition-colors">
                 <svg class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path d="M4 6h16M4 12h16M4 18h16"/></svg>
             </button>
-            <?php
-                $teacherName = 'Profesor';
 
-                if ($_SESSION['user']['role'] === 'teacher') {
-                    $stmt = $pdo->prepare("SELECT name FROM teachers WHERE user_id = ?");
-                    $stmt->execute([$_SESSION['user']['id']]);
-                    $teacherName = $stmt->fetchColumn() ?: 'Profesor';
-                }
-            ?>
             <div class="hidden lg:block">
-                <p class="text-slate-500">Mirëseerdhe, Prof. <?= htmlspecialchars($teacherName) ?></p>
-
+                <p class="text-sm font-medium text-slate-500 italic">Mirëseerdhe, Prof. <span class="text-slate-800 font-bold not-italic"><?= htmlspecialchars($teacherName) ?></span></p>
             </div>
 
-            <div class="flex items-center gap-2 lg:gap-4">
+            <div class="flex items-center gap-3">
                 <div class="relative" x-data="{ open: false }">
                     <button @click="open = !open" class="p-2 text-slate-400 hover:text-blue-600 relative transition-colors">
+                        <?php if (!empty($userNotifications)): ?>
                         <span class="absolute top-2 right-2 flex h-2 w-2">
                             <span class="animate-ping absolute inline-flex h-full w-full rounded-full bg-red-400 opacity-75"></span>
                             <span class="relative inline-flex rounded-full h-2 w-2 bg-red-500"></span>
                         </span>
+                        <?php endif; ?>
                         <svg class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.5"><path d="M15 17h5l-1.405-1.405A2.032 2.032 0 0118 14.158V11a6.002 6.002 0 00-4-5.659V5a2 2 0 10-4 0v.341C7.67 6.165 6 8.388 6 11v3.159c0 .538-.214 1.055-.595 1.436L4 17h5m6 0v1a3 3 0 11-6 0v-1m6 0H9"/></svg>
                     </button>
+                    
                     <div x-show="open" @click.away="open = false" x-transition x-cloak
-                         class="absolute right-0 mt-3 w-72 md:w-80 bg-white rounded-2xl shadow-2xl border border-slate-100 p-4">
-                        <h3 class="font-bold text-slate-800 mb-4">Njoftimet</h3>
-                        <div class="text-xs text-slate-500 text-center py-4 italic">Nuk ka njoftime të reja</div>
+                         class="absolute right-0 mt-3 w-80 bg-white rounded-2xl shadow-2xl border border-slate-100 overflow-hidden ring-1 ring-black/5">
+                        <div class="p-4 border-b border-slate-50 bg-slate-50/50 flex justify-between items-center">
+                            <h3 class="font-bold text-slate-800 text-sm">Njoftimet</h3>
+                            <span class="text-[10px] bg-blue-100 text-blue-600 px-2 py-0.5 rounded-full font-bold"><?= count($userNotifications) ?> Reja</span>
+                        </div>
+                        <div class="max-h-96 overflow-y-auto">
+                            <?php if (empty($userNotifications)): ?>
+                                <div class="p-8 text-center">
+                                    <p class="text-xs text-slate-400 italic font-medium">Nuk ka njoftime të reja për momentin.</p>
+                                </div>
+                            <?php else: ?>
+                                <?php foreach ($userNotifications as $n): ?>
+                                    <div class="p-4 border-b border-slate-50 hover:bg-slate-50 transition-colors cursor-pointer">
+                                        <div class="flex justify-between items-start mb-1">
+                                            <h4 class="text-xs font-bold text-slate-800 uppercase tracking-tight"><?= htmlspecialchars($n['title']) ?></h4>
+                                            <span class="text-[9px] text-slate-400 font-bold"><?= date('H:i', strtotime($n['created_at'])) ?></span>
+                                        </div>
+                                        <p class="text-[11px] text-slate-500 leading-relaxed line-clamp-2"><?= htmlspecialchars($n['content']) ?></p>
+                                    </div>
+                                <?php endforeach; ?>
+                            <?php endif; ?>
+                        </div>
                     </div>
                 </div>
 
-                <div class="flex items-center gap-3 pl-2 lg:pl-4 border-l border-slate-100">
-                    <span class="hidden md:block text-sm font-semibold text-slate-700"><?= htmlspecialchars($teacherName) ?></span>
-                    <div class="h-9 w-9 rounded-full bg-blue-600 flex items-center justify-center text-white text-sm font-bold shadow-sm">
-                        <?= strtoupper(substr(htmlspecialchars($teacherName) ?? 'M', 0, 1)) ?>
+                <div class="flex items-center gap-3 pl-3 border-l border-slate-100">
+                    <span class="hidden md:block text-xs font-bold text-slate-700"><?= htmlspecialchars($teacherName) ?></span>
+                    <div class="h-9 w-9 rounded-full bg-blue-600 flex items-center justify-center text-white text-sm font-black shadow-lg shadow-blue-200 uppercase">
+                        <?= substr($teacherName, 0, 1) ?>
                     </div>
                 </div>
             </div>
@@ -203,27 +233,34 @@ function isAnyActive(array $paths) {
 
         <main class="p-4 lg:p-8 flex-1">
             <div class="max-w-7xl mx-auto">
-                <?= $content ?? '<div class="bg-white p-8 rounded-3xl border border-slate-100 shadow-sm text-center">Dashboard content goes here.</div>' ?>
+                <?= $content ?? '<div class="bg-white p-12 rounded-[2.5rem] border border-slate-100 shadow-sm text-center">
+                    <div class="w-20 h-20 bg-blue-50 rounded-3xl flex items-center justify-center mx-auto mb-4">
+                        <svg class="w-10 h-10 text-blue-500" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path d="M13 10V3L4 14h7v7l9-11h-7z" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>
+                    </div>
+                    <h2 class="text-xl font-bold text-slate-800">Mirësevini në Dashboard</h2>
+                    <p class="text-slate-500 text-sm mt-2">Zgjidhni një opsion nga menuja për të filluar.</p>
+                </div>' ?>
             </div>
         </main>
     </div>
 
-    <div class="fixed bottom-4 left-4 right-4 md:left-auto md:right-8 md:bottom-8 z-[100] flex flex-col gap-3 md:w-80">
+    <div class="fixed bottom-6 right-6 z-[100] flex flex-col gap-3 w-full max-w-sm pointer-events-none">
         <template x-for="toast in toasts" :key="toast.id">
             <div x-show="toast.visible" 
-                 x-transition:enter="transition transform duration-300"
-                 x-transition:enter-start="translate-y-12 opacity-0"
-                 x-transition:leave="transition transform duration-200"
-                 x-transition:leave-end="opacity-0 scale-95"
-                 class="flex items-center p-4 bg-white rounded-2xl shadow-xl border border-slate-100 ring-1 ring-black/5">
-                <div :class="toast.type === 'success' ? 'bg-emerald-100 text-emerald-600' : 'bg-red-100 text-red-600'" class="p-2 rounded-xl mr-3">
-                    <svg x-show="toast.type === 'success'" class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.5"><path d="M5 13l4 4L19 7"/></svg>
-                    <svg x-show="toast.type === 'error'" class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.5"><path d="M6 18L18 6M6 6l12 12"/></svg>
+                 x-transition:enter="transition ease-out duration-300 transform"
+                 x-transition:enter-start="translate-y-4 opacity-0 scale-95"
+                 x-transition:leave="transition ease-in duration-200"
+                 x-transition:leave-end="opacity-0 scale-90"
+                 class="pointer-events-auto flex items-center p-4 bg-white rounded-2xl shadow-2xl border border-slate-100 ring-1 ring-black/5">
+                <div :class="toast.type === 'success' ? 'bg-emerald-100 text-emerald-600' : 'bg-rose-100 text-rose-600'" class="p-2 rounded-xl mr-4 shrink-0">
+                    <svg x-show="toast.type === 'success'" class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="3"><path d="M5 13l4 4L19 7"/></svg>
+                    <svg x-show="toast.type === 'error'" class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="3"><path d="M6 18L18 6M6 6l12 12"/></svg>
                 </div>
                 <p class="text-sm font-bold text-slate-700" x-text="toast.message"></p>
             </div>
         </template>
     </div>
+
 </div>
 </body>
 </html> 
