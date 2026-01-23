@@ -40,17 +40,21 @@ if ($totalPages <= 7) {
     else { $range = [1, '...', $page - 1, $page, $page + 1, '...', $totalPages]; }
 }
 
-ob_start(); 
+// --- NEW: AJAX CHECK ---
+$isAjax = !empty($_SERVER['HTTP_X_REQUESTED_WITH']) && strtolower($_SERVER['HTTP_X_REQUESTED_WITH']) == 'xmlhttprequest';
+
+if (!$isAjax) {
+    ob_start(); 
+}
 ?>
 
-<div class="px-4 sm:px-6 lg:px-8 py-8">
+<div id="teacherTableContainer" class="px-4 sm:px-6 lg:px-8 py-8">
     <div class="sm:flex sm:items-center justify-between mb-8">
         <div>
             <h1 class="text-2xl font-bold text-slate-900 dark:text-white">Mësuesit e Shkollës</h1>
             <p class="mt-1 text-sm text-slate-500 dark:text-slate-400">Menaxhoni stafin akademik dhe të dhënat e tyre.</p>
         </div>
         <div class="flex gap-3 md:mt-0 mt-4">
-            <!-- ADD TEACHER -->
             <button type="button" id="addTeacherBtn"
                 class="inline-flex items-center gap-2 rounded-xl bg-indigo-600 px-5 py-2.5 text-sm font-semibold text-white shadow-sm hover:bg-indigo-500 transition-all active:scale-95">
                 <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -59,7 +63,6 @@ ob_start();
                 Shto mësues
             </button>
 
-            <!-- IMPORT CSV -->
             <a href="/E-Shkolla/csv"
             class="inline-flex items-center gap-2 rounded-xl bg-slate-900 dark:bg-gray-800 px-5 py-2.5 text-sm font-semibold text-white shadow-sm hover:bg-slate-700 transition-all active:scale-95">
                 <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -83,7 +86,6 @@ ob_start();
 
     <?php if (isset($_SESSION['success'])): ?>
         <script>
-            // This calls the JavaScript function we defined in schedule.php
             window.addEventListener('DOMContentLoaded', (event) => {
                 showToast("<?= addslashes($_SESSION['success']) ?>", "success");
             });
@@ -110,14 +112,10 @@ ob_start();
                             <div class="flex items-center gap-3">
                                 <?php
                                 $photo = $row['profile_photo'];
-                                if (
-                                    !$photo ||
-                                    !file_exists($_SERVER['DOCUMENT_ROOT'] . '/E-Shkolla/' . $photo)
-                                ) {
+                                if (!$photo || !file_exists($_SERVER['DOCUMENT_ROOT'] . '/E-Shkolla/' . $photo)) {
                                     $photo = 'uploads/teachers/default-avatar.png';
                                 }
                                 ?>
-
                                 <img src="/E-Shkolla/<?= htmlspecialchars($photo, ENT_QUOTES, 'UTF-8') ?>" alt="<?= htmlspecialchars($row['name'] ?? 'Teacher', ENT_QUOTES, 'UTF-8') ?>" class="w-10 h-10 flex-shrink-0 rounded-full object-cover ring-2 ring-white dark:ring-gray-800 shadow-sm"/>
                                 <span contenteditable class="editable block text-sm font-semibold text-slate-900 dark:text-white outline-none truncate" data-id="<?= $row['user_id'] ?>" data-field="name" data-original="<?= htmlspecialchars($row['name']) ?>"><?= htmlspecialchars($row['name']) ?></span>
                             </div>
@@ -152,17 +150,17 @@ ob_start();
         <?php if ($totalPages > 1): ?>
         <div class="px-6 py-4 bg-slate-50 dark:bg-white/5 border-t border-slate-200 dark:border-white/10 flex items-center justify-center">
             <nav class="flex items-center gap-1">
-                <a href="?page=<?= max(1, $page - 1) ?>" class="p-2 rounded-lg hover:bg-slate-200 dark:hover:bg-gray-800 transition <?= $page <= 1 ? 'pointer-events-none opacity-30' : '' ?>">
+                <a href="?page=<?= max(1, $page - 1) ?>" class="pagination-link p-2 rounded-lg hover:bg-slate-200 dark:hover:bg-gray-800 transition <?= $page <= 1 ? 'pointer-events-none opacity-30' : '' ?>">
                     <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 19l-7-7 7-7"/></svg>
                 </a>
                 <?php foreach ($range as $p): ?>
                     <?php if ($p === '...'): ?>
                         <span class="px-3 py-1 text-slate-400">...</span>
                     <?php else: ?>
-                        <a href="?page=<?= $p ?>" class="px-3.5 py-1.5 rounded-lg text-sm font-semibold transition-all <?= $p == $page ? 'bg-indigo-600 text-white shadow-md' : 'text-slate-600 dark:text-slate-400 hover:bg-slate-200 dark:hover:bg-gray-800' ?>"><?= $p ?></a>
+                        <a href="?page=<?= $p ?>" class="pagination-link px-3.5 py-1.5 rounded-lg text-sm font-semibold transition-all <?= $p == $page ? 'bg-indigo-600 text-white shadow-md' : 'text-slate-600 dark:text-slate-400 hover:bg-slate-200 dark:hover:bg-gray-800' ?>"><?= $p ?></a>
                     <?php endif; ?>
                 <?php endforeach; ?>
-                <a href="?page=<?= min($totalPages, $page + 1) ?>" class="p-2 rounded-lg hover:bg-slate-200 dark:hover:bg-gray-800 transition <?= $page >= $totalPages ? 'pointer-events-none opacity-30' : '' ?>">
+                <a href="?page=<?= min($totalPages, $page + 1) ?>" class="pagination-link p-2 rounded-lg hover:bg-slate-200 dark:hover:bg-gray-800 transition <?= $page >= $totalPages ? 'pointer-events-none opacity-30' : '' ?>">
                     <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"/></svg>
                 </a>
             </nav>
@@ -170,6 +168,11 @@ ob_start();
         <?php endif; ?>
     </div>
 </div>
+
+<?php 
+// EXIT IF AJAX REQUEST TO PREVENT LOADING FOOTER/TEMPLATE TWICE
+if ($isAjax) { exit; } 
+?>
 
 <div id="statusModal" class="hidden fixed inset-0 z-[100] flex items-center justify-center p-4">
     <div class="absolute inset-0 bg-slate-900/60 backdrop-blur-sm"></div>
@@ -193,6 +196,41 @@ ob_start();
 <script>
 const API_URL = '/E-Shkolla/dashboard/schooladmin-dashboard/partials/teacher/update-inline.php';
 let pendingStatusChange = null;
+
+// --- AJAX PAGINATION HANDLER ---
+document.addEventListener('click', function(e) {
+    const link = e.target.closest('.pagination-link');
+    if (link) {
+        e.preventDefault();
+        const url = link.getAttribute('href');
+        loadPage(url);
+    }
+});
+
+async function loadPage(url) {
+    const container = document.getElementById('teacherTableContainer');
+    container.style.opacity = '0.5'; // Visual feedback
+    
+    try {
+        const response = await fetch(url, {
+            headers: { 'X-Requested-With': 'XMLHttpRequest' }
+        });
+        const html = await response.text();
+        
+        // Replace container content
+        container.innerHTML = html;
+        
+        // Update URL bar without refresh
+        window.history.pushState({}, '', url);
+        
+        // If there was text in search, re-filter the new content
+        filterTeachers();
+    } catch (err) {
+        showToast('Gabim gjatë ngarkimit', 'error');
+    } finally {
+        container.style.opacity = '1';
+    }
+}
 
 // Toast Logic
 function showToast(message, type = 'success') {
@@ -275,7 +313,6 @@ function filterTeachers() {
         row.querySelectorAll('[data-original]').forEach(el => {
             const txt = el.getAttribute('data-original') || '';
 
-            // ⛔ Skip SELECT elements (gender)
             if (el.tagName === 'SELECT') {
                 if (txt.toLowerCase().includes(filter) || filter === '') {
                     match = true;
@@ -283,7 +320,6 @@ function filterTeachers() {
                 return;
             }
 
-            // ✅ Safe to modify text elements
             if (filter === '') {
                 el.textContent = txt;
                 match = true;
@@ -317,4 +353,10 @@ cancel?.addEventListener('click', () => {
 });
 </script>
 
-<?php $content = ob_get_clean(); require_once __DIR__ . '/../../index.php'; ?>
+<?php 
+// ONLY WRAP IN INDEX IF NOT AJAX
+if (!$isAjax) {
+    $content = ob_get_clean(); 
+    require_once __DIR__ . '/../../index.php'; 
+}
+?>
