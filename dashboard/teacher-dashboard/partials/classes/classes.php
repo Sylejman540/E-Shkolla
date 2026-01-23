@@ -1,20 +1,10 @@
 <?php
-/* =====================================================
-   SESSION & DB
-===================================================== */
 if (session_status() === PHP_SESSION_NONE) {
     session_start();
 }
 
 require_once __DIR__ . '/../../../../db.php';
 
-/*
-|--------------------------------------------------------------------------
-| IMPORTANT IDS (THIS IS THE FIX)
-|--------------------------------------------------------------------------
-| classes.class_header  -> users.id
-| teacher_class.teacher_id -> teachers.id
-*/
 $userId    = $_SESSION['user']['id'] ?? null;          // users.id
 $teacherId = $_SESSION['user']['teacher_id'] ?? null; // teachers.id
 $schoolId  = $_SESSION['user']['school_id'] ?? null;
@@ -23,76 +13,34 @@ if (!$userId || !$teacherId || !$schoolId) {
     die('Invalid session.');
 }
 
-/* =====================================================
-   1. GET PINNED (HEADER / KUJDESTAR) CLASS
-   SOURCE: classes (class_header = users.id)
-===================================================== */
+/* 1. GET PINNED (HEAD TEACHER) CLASS */
 $headerStmt = $pdo->prepare("
-    SELECT 
-        id AS class_id,
-        grade AS class_name,
-        max_students
+    SELECT id AS class_id, grade AS class_name, max_students
     FROM classes
-    WHERE class_header = ?
-      AND school_id = ?
-      AND status = 'active'
+    WHERE class_header = ? AND school_id = ? AND status = 'active'
     LIMIT 1
 ");
 $headerStmt->execute([$userId, $schoolId]);
-
 $pinnedClass = $headerStmt->fetch(PDO::FETCH_ASSOC);
 
-/* =====================================================
-   2. PAGINATION (ONLY SUBJECT CLASSES)
-   SOURCE: teacher_class (teacher_id = teachers.id)
-===================================================== */
-$limit  = 10;
-$page   = isset($_GET['page']) && is_numeric($_GET['page']) ? (int)$_GET['page'] : 1;
-$page   = max(1, $page);
-$offset = ($page - 1) * $limit;
-
-$totalStmt = $pdo->prepare("
-    SELECT COUNT(*)
-    FROM teacher_class tc
-    INNER JOIN classes c ON c.id = tc.class_id
-    WHERE tc.teacher_id = ?
-      AND c.school_id = ?
-      AND c.status = 'active'
-");
-$totalStmt->execute([$teacherId, $schoolId]);
-
-$totalItems = (int)$totalStmt->fetchColumn();
-$totalPages = (int)ceil($totalItems / $limit);
-
-/* =====================================================
-   3. GET ALL REGULAR CLASSES
-   SOURCE: teacher_class
-===================================================== */
+/* 2. GET SUBJECT CLASSES */
 $stmt = $pdo->prepare("
     SELECT 
-        tc.class_id,
-        tc.subject_id,
-        c.grade AS class_name,
-        c.max_students,
+        tc.class_id, tc.subject_id,
+        c.grade AS class_name, c.max_students,
         s.subject_name
     FROM teacher_class tc
     INNER JOIN classes  c ON c.id = tc.class_id
     INNER JOIN subjects s ON s.id = tc.subject_id
-    WHERE tc.teacher_id = ?
-      AND c.school_id = ?
-      AND c.status = 'active'
+    WHERE tc.teacher_id = ? AND c.school_id = ? AND c.status = 'active'
     ORDER BY c.grade ASC, s.subject_name ASC
-    LIMIT $limit OFFSET $offset
 ");
 $stmt->execute([$teacherId, $schoolId]);
-
 $classes = $stmt->fetchAll(PDO::FETCH_ASSOC);
 
-/* =====================================================
-   4. RENDER
-===================================================== */
 ob_start();
 ?>
+
 
 <div class="space-y-8">
     <div class="md:flex md:items-center md:justify-between">
@@ -105,6 +53,27 @@ ob_start();
                 class="block w-full md:w-80 px-4 py-2 border border-slate-200 rounded-xl focus:ring-2 focus:ring-blue-500 outline-none text-sm transition-all">
         </div>
     </div>
+
+        <?php if ($pinnedClass): ?>
+    <section>
+        <h2 class="text-xs font-bold text-slate-400 uppercase tracking-[0.2em] mb-4">Klasa në Kujdestari</h2>
+        <div class="bg-indigo-600 rounded-lg p-6 text-white flex flex-col md:flex-row items-center justify-between shadow-lg shadow-indigo-100">
+            <div class="flex items-center gap-5">
+                <div class="h-14 w-14 bg-white/20 rounded-md flex items-center justify-center text-xl font-black">
+                    <?= htmlspecialchars($pinnedClass['class_name']) ?>
+                </div>
+                <div>
+                    <div class="text-lg font-bold">Klasa <?= htmlspecialchars($pinnedClass['class_name']) ?></div>
+                    <div class="text-indigo-100 text-sm italic">Statusi: Kujdestar i Klasës</div>
+                </div>
+            </div>
+            <a href="/E-Shkolla/teacher-parents?class_id=<?= (int)$pinnedClass['class_id'] ?>" 
+               class="mt-4 md:mt-0 px-6 py-2 bg-white text-indigo-600 text-sm font-bold rounded hover:bg-indigo-50 transition shadow-sm">
+                SHIKO KONTAKTET E PRINDËRVE
+            </a>
+        </div>
+    </section>
+    <?php endif; ?>
 
     <div class="bg-white border border-slate-100 shadow-sm rounded-2xl overflow-hidden">
         <div class="overflow-x-auto">
