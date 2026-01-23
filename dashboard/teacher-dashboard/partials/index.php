@@ -3,11 +3,14 @@ if (session_status() === PHP_SESSION_NONE) {
     session_start();
 }
 
-require_once __DIR__ . '/../../../db.php'; // Sigurohu që ky path është i saktë
+require_once __DIR__ . '/../../../db.php'; 
 
-// Funksionet e navigimit
+/**
+ * Checks if the current URL matches the path.
+ */
 function isActive($path) {
-    return str_contains($_SERVER['REQUEST_URI'], $path);
+    $uri = $_SERVER['REQUEST_URI'];
+    return (str_ends_with($uri, $path) || str_contains($uri, $path . '/'));
 }
 
 // Logjika për emrin e mësuesit dhe njoftimet
@@ -46,134 +49,141 @@ if (isset($_SESSION['user']) && $_SESSION['user']['role'] === 'teacher') {
     <style>
         [x-cloak] { display: none !important; }
         .custom-transition { transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1); }
+        
+        /* The blue indicator for active links */
         .active-indicator::before {
             content: '';
             position: absolute;
-            left: -12px;
+            left: -16px;
             top: 20%;
             height: 60%;
             width: 4px;
             background-color: #2563eb;
             border-radius: 0 4px 4px 0;
         }
+        
+        /* Custom scrollbar for the nav */
+        nav::-webkit-scrollbar { width: 4px; }
+        nav::-webkit-scrollbar-thumb { background: #e2e8f0; border-radius: 10px; }
     </style>
 </head>
-<body class="h-full font-sans antialiased"
-      x-data="{ sidebarCollapsed: false, mobileOpen: false }">
+<body class="h-full font-sans antialiased text-slate-900"
+      x-data="{ 
+        sidebarCollapsed: false, 
+        mobileOpen: false,
+        toasts: []
+      }">
 
-    <div
-        x-show="mobileOpen"
-        x-cloak
-        x-transition.opacity
-        @click="mobileOpen = false"
-        class="fixed inset-0 z-40 bg-slate-900/40 backdrop-blur-sm lg:hidden">
+    <div x-show="mobileOpen" x-cloak x-transition.opacity 
+         @click="mobileOpen = false"
+         class="fixed inset-0 z-40 bg-slate-900/40 backdrop-blur-sm lg:hidden">
     </div>
 
-    <aside
-        class="fixed inset-y-0 left-0 z-50 flex flex-col bg-white shadow-[4px_0_24px_rgba(0,0,0,0.02)] border-r border-slate-100 custom-transition"
-        :class="[
-            sidebarCollapsed ? 'w-20' : 'w-72',
-            mobileOpen ? 'translate-x-0' : '-translate-x-full lg:translate-x-0'
-        ]">
+    <aside class="fixed inset-y-0 left-0 z-50 flex flex-col bg-white shadow-[4px_0_24px_rgba(0,0,0,0.02)] border-r border-slate-100 custom-transition"
+           :class="[sidebarCollapsed ? 'w-20' : 'w-72', mobileOpen ? 'translate-x-0' : '-translate-x-full lg:translate-x-0']">
 
-        <a href="/E-Shkolla/teacher-dashboard" class="flex h-20 shrink-0 items-center px-5 overflow-hidden border-b border-slate-50">
-            <img src="/E-Shkolla/images/icon.png" class="h-10 w-auto min-w-[40px]" alt="Logo">
-            <div x-show="!sidebarCollapsed" x-transition class="ml-3 whitespace-nowrap">
-              <h1 class="text-xl font-bold tracking-tight text-slate-800">E-Shkolla</h1>
-              <p class="text-[10px] font-bold uppercase tracking-widest text-blue-600">Mësues</p>
+        <a href="/E-Shkolla/teacher-dashboard" class="flex h-20 shrink-0 items-center px-6 overflow-hidden border-b border-slate-50">
+            <img src="/E-Shkolla/images/icon.png" class="h-9 w-auto min-w-[36px]" alt="Logo">
+            <div x-show="!sidebarCollapsed" x-transition.opacity class="ml-3 whitespace-nowrap">
+                <h1 class="text-lg font-bold tracking-tight text-slate-800 leading-none">E-Shkolla</h1>
+                <p class="text-[10px] font-bold uppercase tracking-widest text-blue-600 mt-1">Mësues</p>
             </div>
         </a>
 
         <nav class="flex flex-1 flex-col overflow-y-auto px-4 py-6">
-            <ul role="list" class="flex flex-1 flex-col gap-y-2">
+            <ul role="list" class="flex flex-1 flex-col gap-y-1.5">
+                
                 <li>
                     <a href="/E-Shkolla/teacher-dashboard"
-                    class="relative group flex items-center gap-x-3 rounded-xl p-3 text-sm font-semibold transition-all
-                    <?= isActive('/teacher-dashboard') ? 'bg-blue-50 text-blue-600 active-indicator' : 'text-slate-500 hover:bg-slate-50 hover:text-blue-600' ?>">
-                        <svg class="h-6 w-6 shrink-0" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor">
-                            <path stroke-linecap="round" stroke-linejoin="round" d="M3.75 6A2.25 2.25 0 0 1 6 3.75h2.25A2.25 2.25 0 0 1 10.5 6v2.25a2.25 2.25 0 0 1-2.25 2.25H6a2.25 2.25 0 0 1-2.25-2.25V6ZM3.75 15.75A2.25 2.25 0 0 1 6 13.5h2.25a2.25 2.25 0 0 1 2.25 2.25V18a2.25 2.25 0 0 1-2.25 2.25H6A2.25 2.25 0 0 1 3.75 18v-2.25ZM13.5 6a2.25 2.25 0 0 1 2.25-2.25H18A2.25 2.25 0 0 1 20.25 6v2.25A2.25 2.25 0 0 1 18 10.5h-2.25a2.25 2.25 0 0 1-2.25-2.25V6ZM13.5 15.75a2.25 2.25 0 0 1 2.25-2.25H18a2.25 2.25 0 0 1 2.25 2.25V18A2.25 2.25 0 0 1 18 20.25h-2.25A2.25 2.25 0 0 1 13.5 18v-2.25Z" />
+                       class="relative group flex items-center gap-x-3 rounded-xl p-3 text-sm font-semibold transition-all
+                       <?= isActive('/teacher-dashboard') ? 'bg-blue-50 text-blue-600 active-indicator' : 'text-slate-500 hover:bg-slate-50 hover:text-blue-600' ?>">
+                        <svg class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+                            <path stroke-linecap="round" stroke-linejoin="round" d="M4 6a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2H6a2 2 0 01-2-2V6zM14 6a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2h-2a2 2 0 01-2-2V6zM4 16a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2H6a2 2 0 01-2-2v-2zM14 16a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2h-2a2 2 0 01-2-2v-2z" />
                         </svg>
-                        <span x-show="!sidebarCollapsed || mobileOpen" class="whitespace-nowrap">Dashboard</span>
+                        <span x-show="!sidebarCollapsed" class="whitespace-nowrap">Dashboard</span>
                     </a>
                 </li>
 
                 <li>
                     <a href="/E-Shkolla/teacher-classes"
-                    class="relative group flex items-center gap-x-3 rounded-xl p-3 text-sm font-semibold transition-all
-                    <?= isActive('/teacher-classes') ? 'bg-blue-50 text-blue-600 active-indicator' : 'text-slate-500 hover:bg-slate-50 hover:text-blue-600' ?>">
-                        <svg class="h-6 w-6 shrink-0" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor">
+                       class="relative group flex items-center gap-x-3 rounded-xl p-3 text-sm font-semibold transition-all
+                       <?= isActive('/teacher-classes') ? 'bg-blue-50 text-blue-600 active-indicator' : 'text-slate-500 hover:bg-slate-50 hover:text-blue-600' ?>">
+                        <svg class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
                             <path stroke-linecap="round" stroke-linejoin="round" d="M12 21v-8.25M15.75 21v-8.25M8.25 21v-8.25M3 9l9-6 9 6m-1.5 12V10.332A48.36 48.36 0 0 0 12 9.75c-2.551 0-5.056.2-7.5.582V21M3 21h18M12 6.75h.008v.008H12V6.75Z" />
                         </svg>
-                        <span x-show="!sidebarCollapsed || mobileOpen" class="whitespace-nowrap">Klasat e mia</span>
+                        <span x-show="!sidebarCollapsed" class="whitespace-nowrap">Klasat e mia</span>
                     </a>
                 </li>
 
                 <li>
                     <a href="/E-Shkolla/teacher-schedule"
-                    class="relative group flex items-center gap-x-3 rounded-xl p-3 text-sm font-semibold transition-all
-                    <?= isActive('/teacher-schedule') ? 'bg-blue-50 text-blue-600 active-indicator' : 'text-slate-500 hover:bg-slate-50 hover:text-blue-600' ?>">
-                        <svg class="h-6 w-6 shrink-0" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor">
+                       class="relative group flex items-center gap-x-3 rounded-xl p-3 text-sm font-semibold transition-all
+                       <?= isActive('/teacher-schedule') ? 'bg-blue-50 text-blue-600 active-indicator' : 'text-slate-500 hover:bg-slate-50 hover:text-blue-600' ?>">
+                        <svg class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
                             <path stroke-linecap="round" stroke-linejoin="round" d="M6.75 3v2.25M17.25 3v2.25M3 18.75V7.5a2.25 2.25 0 0 1 2.25-2.25h13.5A2.25 2.25 0 0 1 21 7.5v11.25m-18 0A2.25 2.25 0 0 0 5.25 21h13.5A2.25 2.25 0 0 0 21 18.75m-18 0v-7.5A2.25 2.25 0 0 1 5.25 9h13.5A2.25 2.25 0 0 1 21 11.25v7.5m-9-6h.008v.008H12v-.008ZM12 15h.008v.008H12V15Zm0 2.25h.008v.008H12v-.008ZM9.75 15h.008v.008H9.75V15Zm0 2.25h.008v.008H9.75v-.008ZM7.5 15h.008v.008H7.5V15Zm0 2.25h.008v.008H7.5v-.008Zm6.75-4.5h.008v.008h-.008v-.008Zm0 2.25h.008v.008h-.008V15Zm0 2.25h.008v.008h-.008v-.008Zm2.25-4.5h.008v.008H16.5v-.008Zm0 2.25h.008v.008H16.5V15Z" />
                         </svg>
-                        <span x-show="!sidebarCollapsed || mobileOpen" class="whitespace-nowrap">Orari</span>
+                        <span x-show="!sidebarCollapsed" class="whitespace-nowrap">Orari</span>
                     </a>
                 </li>
 
-                <h3 class="px-3 text-xs font-bold uppercase tracking-wider text-slate-400 mb-2">
-                    Menaxhimi i Klasës
-                </h3>
+                <div x-show="!sidebarCollapsed" class="px-3 mt-4 mb-2">
+                    <h3 class="text-[10px] font-bold uppercase tracking-widest text-slate-400">Menaxhimi</h3>
+                </div>
 
                 <li>
                     <a href="/E-Shkolla/teacher-parents"
-                    class="relative group flex items-center gap-x-3 rounded-xl p-3 text-sm font-semibold transition-all
-                    <?= isActive('/teacher-parents') ? 'bg-blue-50 text-blue-600 active-indicator' : 'text-slate-500 hover:bg-slate-50 hover:text-blue-600' ?>">
-                        <svg class="h-6 w-6 shrink-0" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor">
+                       class="relative group flex items-center gap-x-3 rounded-xl p-3 text-sm font-semibold transition-all
+                       <?= isActive('/teacher-parents') ? 'bg-blue-50 text-blue-600 active-indicator' : 'text-slate-500 hover:bg-slate-50 hover:text-blue-600' ?>">
+                        <svg class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
                             <path stroke-linecap="round" stroke-linejoin="round" d="M18 18.72a9.094 9.094 0 0 0 3.741-.479 3 3 0 0 0-4.682-2.72m.94 3.198.001.031c0 .225-.012.447-.037.666A11.944 11.944 0 0 1 12 21c-2.17 0-4.207-.576-5.963-1.584A6.062 6.062 0 0 1 6 18.719m12 0a5.971 5.971 0 0 0-.941-3.197m0 0A5.995 5.995 0 0 0 12 12.75a5.995 5.995 0 0 0-5.058 2.772m0 0a3 3 0 0 0-4.681 2.72 8.986 8.986 0 0 0 3.74.477m.94-3.197a5.971 5.971 0 0 0-.94 3.197M15 6.75a3 3 0 1 1-6 0 3 3 0 0 1 6 0Zm6 3a2.25 2.25 0 1 1-4.5 0 2.25 2.25 0 0 1 4.5 0Zm-13.5 0a2.25 2.25 0 1 1-4.5 0 2.25 2.25 0 0 1 4.5 0Z" />
                         </svg>
-                        <span x-show="!sidebarCollapsed || mobileOpen" class="whitespace-nowrap">Prindërit</span>
+                        <span x-show="!sidebarCollapsed" class="whitespace-nowrap">Prindërit</span>
                     </a>
                 </li>
 
                 <li>
                     <a href="/E-Shkolla/teacher-notices"
-                    class="relative group flex items-center gap-x-3 rounded-xl p-3 text-sm font-semibold transition-all
-                    <?= isActive('/teacher-notices') ? 'bg-blue-50 text-blue-600 active-indicator' : 'text-slate-500 hover:bg-slate-50 hover:text-blue-600' ?>">
-                        <svg class="h-6 w-6 shrink-0" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor">
+                       class="relative group flex items-center gap-x-3 rounded-xl p-3 text-sm font-semibold transition-all
+                       <?= isActive('/teacher-notices') ? 'bg-blue-50 text-blue-600 active-indicator' : 'text-slate-500 hover:bg-slate-50 hover:text-blue-600' ?>">
+                        <svg class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
                             <path stroke-linecap="round" stroke-linejoin="round" d="M14.857 17.082a23.848 23.848 0 0 0 5.454-1.31A8.967 8.967 0 0 1 18 9.75V9A6 6 0 0 0 6 9v.75a8.967 8.967 0 0 1-2.312 6.022c1.733.64 3.56 1.085 5.455 1.31m5.714 0a24.255 24.255 0 0 1-5.714 0m5.714 0a3 3 0 1 1-5.714 0M3.124 7.5A8.969 8.969 0 0 1 5.292 3m13.416 0a8.969 8.969 0 0 1 2.168 4.5" />
                         </svg>
-                        <span x-show="!sidebarCollapsed || mobileOpen" class="whitespace-nowrap">Njoftimet</span>
+                        <span x-show="!sidebarCollapsed" class="whitespace-nowrap">Njoftimet</span>
                     </a>
                 </li>
 
                 <li>
                     <a href="/E-Shkolla/teacher-settings"
-                    class="relative group flex items-center gap-x-3 rounded-xl p-3 text-sm font-semibold transition-all
-                    <?= isActive('/teacher-settings') ? 'bg-blue-50 text-blue-600 active-indicator' : 'text-slate-500 hover:bg-slate-50 hover:text-blue-600' ?>">
-                        <svg class="h-6 w-6 shrink-0" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor">
-                            <path stroke-linecap="round" stroke-linejoin="round" d="M10.343 3.94c.09-.542.56-.94 1.11-.94h1.093c.55 0 1.02.398 1.11.94l.149.894c.07.424.384.764.78.93.398.164.855.142 1.205-.108l.737-.527a1.125 1.125 0 0 1 1.45.12l.773.774a1.125 1.125 0 0 1 .12 1.45l-.527.737c-.25.35-.272.806-.107 1.204.165.397.505.71.93.78l.894.15c.542.09.94.56.94 1.109v1.094c0 .55-.398 1.02-.94 1.11l-.894.149c-.424.07-.764.383-.929.78-.165.398-.143.854.107 1.204l.527.738a1.125 1.125 0 0 1-.12 1.45l-.774.773a1.125 1.125 0 0 1-1.45.12l-.737-.527c-.35-.25-.806-.272-1.203-.107-.397.165-.71.505-.781.929l-.149.894c-.09.542-.56.94-1.11.94h-1.094c-.55 0-1.019-.398-1.11-.94l-.148-.894c-.071-.424-.384-.764-.781-.93-.398-.164-.854-.142-1.204.108l-.738.527a1.125 1.125 0 0 1-1.45-.12l-.773-.774a1.125 1.125 0 0 1-.12-1.45l.527-.737c.25-.35.273-.806.108-1.204-.165-.397-.505-.71-.93-.78l-.894-.15c-.542-.09-.94-.56-.94-1.109v-1.094c0-.55.398-1.02.94-1.11l.894-.149c.424-.07.765-.383.93-.78.165-.398.143-.854-.108-1.204l-.526-.738a1.125 1.125 0 0 1 .12-1.45l.773-.773a1.125 1.125 0 0 1 1.45-.12l.737.526c.351.25.807.272 1.204.108.397-.165.71-.505.78-.929l.15-.894Z" />
-                            <path stroke-linecap="round" stroke-linejoin="round" d="M15 12a3 3 0 1 1-6 0 3 3 0 0 1 6 0Z" />
+                       class="relative group flex items-center gap-x-3 rounded-xl p-3 text-sm font-semibold transition-all
+                       <?= isActive('/teacher-settings') ? 'bg-blue-50 text-blue-600 active-indicator' : 'text-slate-500 hover:bg-slate-50 hover:text-blue-600' ?>">
+                        <svg class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+                            <path stroke-linecap="round" stroke-linejoin="round" d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z" />
                         </svg>
-                        <span x-show="!sidebarCollapsed || mobileOpen" class="whitespace-nowrap">Cilësimet</span>
+                        <span x-show="!sidebarCollapsed" class="whitespace-nowrap">Cilësimet</span>
                     </a>
                 </li>
 
-                <li class="mt-auto">
-                    <a href="/E-Shkolla/logout" class="group flex items-center gap-x-3 rounded-xl bg-red-50/50 p-3 text-sm font-semibold text-red-600 hover:bg-red-100 transition-all">
-                        <svg class="h-6 w-6 shrink-0 custom-transition group-hover:scale-110" fill="none" viewBox="0 0 24 24" stroke-width="1.8" stroke="currentColor">
-                            <path stroke-linecap="round" stroke-linejoin="round" d="M15.75 9V5.25A2.25 2.25 0 0013.5 3h-6a2.25 2.25 0 00-2.25 2.25v13.5A2.25 2.25 0 007.5 21h6a2.25 2.25 0 002.25-2.25V15m3 0l3-3m0 0l-3-3m3 3H9" />
-                        </svg>
-                        <span x-show="!sidebarCollapsed" x-transition.opacity class="whitespace-nowrap">Çkyçu nga Sistemi</span>
-                    </a>
-                </li>
+                <div class="mt-auto space-y-1">
+                    <li>
+                        <a href="/E-Shkolla/logout" class="group flex items-center gap-x-3 rounded-xl bg-red-50/50 p-3 text-sm font-semibold text-red-600 hover:bg-red-50 transition-all">
+                            <svg class="h-5 w-5 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+                                <path stroke-linecap="round" stroke-linejoin="round" d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1" />
+                            </svg>
+                            <span x-show="!sidebarCollapsed" x-transition.opacity class="whitespace-nowrap">Çkyçu</span>
+                        </a>
+                    </li>
+                </div>
             </ul>
         </nav>
 
-        <button @click="sidebarCollapsed = !sidebarCollapsed" class="hidden lg:flex items-center justify-center h-12 border-t border-slate-100 text-slate-400 hover:text-slate-600">
-            <svg :class="sidebarCollapsed ? 'rotate-180' : ''" class="h-5 w-5 transition-transform" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path d="M11 19l-7-7 7-7m8 14l-7-7 7-7" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>
+        <button @click="sidebarCollapsed = !sidebarCollapsed" class="hidden lg:flex items-center justify-center h-12 border-t border-slate-50 text-slate-400 hover:text-blue-600 transition-colors">
+            <svg :class="sidebarCollapsed ? 'rotate-180' : ''" class="h-5 w-5 transition-transform duration-300" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+                <path stroke-linecap="round" stroke-linejoin="round" d="M11 19l-7-7 7-7m8 14l-7-7 7-7" />
+            </svg>
         </button>
     </aside>
 
-<div :class="sidebarCollapsed ? 'lg:pl-20' : 'lg:pl-72'" class="min-h-screen custom-transition flex flex-col">
+    <div :class="sidebarCollapsed ? 'lg:pl-20' : 'lg:pl-72'" class="min-h-screen custom-transition flex flex-col">
         
         <header class="sticky top-0 z-30 h-16 flex items-center justify-between bg-white/80 backdrop-blur-md border-b border-slate-100 px-4 lg:px-8">
             <button @click="mobileOpen = true" class="p-2 lg:hidden text-slate-600 hover:bg-slate-50 rounded-lg transition-colors">
@@ -205,7 +215,7 @@ if (isset($_SESSION['user']) && $_SESSION['user']['role'] === 'teacher') {
                         <div class="max-h-96 overflow-y-auto">
                             <?php if (empty($userNotifications)): ?>
                                 <div class="p-8 text-center">
-                                    <p class="text-xs text-slate-400 italic font-medium">Nuk ka njoftime të reja për momentin.</p>
+                                    <p class="text-xs text-slate-400 italic font-medium">Nuk ka njoftime të reja.</p>
                                 </div>
                             <?php else: ?>
                                 <?php foreach ($userNotifications as $n): ?>
@@ -231,15 +241,9 @@ if (isset($_SESSION['user']) && $_SESSION['user']['role'] === 'teacher') {
             </div>
         </header>
 
-        <main class="p-4 lg:p-8 flex-1">
+        <main class="p-4 lg:p-10 flex-1">
             <div class="max-w-7xl mx-auto">
-                <?= $content ?? '<div class="bg-white p-12 rounded-[2.5rem] border border-slate-100 shadow-sm text-center">
-                    <div class="w-20 h-20 bg-blue-50 rounded-3xl flex items-center justify-center mx-auto mb-4">
-                        <svg class="w-10 h-10 text-blue-500" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path d="M13 10V3L4 14h7v7l9-11h-7z" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>
-                    </div>
-                    <h2 class="text-xl font-bold text-slate-800">Mirësevini në Dashboard</h2>
-                    <p class="text-slate-500 text-sm mt-2">Zgjidhni një opsion nga menuja për të filluar.</p>
-                </div>' ?>
+                <?= $content ?? '<div class="flex flex-col items-center justify-center h-[60vh] text-slate-400"><p class="italic">Zgjidhni një opsion nga menuja...</p></div>' ?>
             </div>
         </main>
     </div>
@@ -261,6 +265,5 @@ if (isset($_SESSION['user']) && $_SESSION['user']['role'] === 'teacher') {
         </template>
     </div>
 
-</div>
 </body>
-</html> 
+</html>
