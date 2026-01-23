@@ -255,29 +255,6 @@ function isAnyActive(array $paths) {
 
     <div :class="sidebarCollapsed ? 'lg:pl-20' : 'lg:pl-72'" class="min-h-screen custom-transition flex flex-col">
         
-        <header class="sticky top-0 z-30 h-16 flex items-center justify-end bg-white/80 backdrop-blur-md border-b border-slate-100 px-4 lg:px-8">
-            <button @click="mobileOpen = true" class="p-2 lg:hidden text-slate-600 hover:bg-slate-50 rounded-lg transition-colors">
-                <svg class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path d="M4 6h16M4 12h16M4 18h16"/></svg>
-            </button>
-            <?php
-                $teacherName = 'Profesor';
-
-                if ($_SESSION['user']['role'] === 'teacher') {
-                    $stmt = $pdo->prepare("SELECT name FROM teachers WHERE user_id = ?");
-                    $stmt->execute([$_SESSION['user']['id']]);
-                    $teacherName = $stmt->fetchColumn() ?: 'Profesor';
-                }
-            ?>
-
-            <div class="flex items-center gap-2 lg:gap-4">
-                <div class="flex items-center gap-3 pl-2 lg:pl-4 border-l border-slate-100">
-                    <span class="hidden md:block text-sm font-semibold text-slate-700"><?= htmlspecialchars($teacherName) ?></span>
-                    <div class="h-9 w-9 rounded-full bg-blue-600 flex items-center justify-center text-white text-sm font-bold shadow-sm">
-                        <?= strtoupper(substr(htmlspecialchars($teacherName) ?? 'M', 0, 1)) ?>
-                    </div>
-                </div>
-            </div>
-        </header>
 
         <main class="p-6 lg:p-10 pt-24 lg:pt-10 flex-1">
             <?= $content ?? '<div class="flex flex-col items-center justify-center h-full text-slate-400"><p class="italic">Së shpejti...</p></div>' ?>
