@@ -9,4 +9,4 @@ if ($id && $schoolId) {
     $stmt = $pdo->prepare("DELETE FROM announcements WHERE id = ? AND school_id = ?");
     $stmt->execute([$id, $schoolId]);
 }
-header("Location: /E-Shkolla/school-announcement");
+header("Location: /E-Shkolla/teacher-notices");
