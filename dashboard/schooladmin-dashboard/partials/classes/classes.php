@@ -122,15 +122,15 @@ if (!$isAjax) {
                                 <?= htmlspecialchars($row['max_students']) ?>
                             </span>
                         </td>
-<td class="px-6 py-4 whitespace-nowrap">
-    <span contenteditable 
-          class="editable block text-sm text-slate-600 dark:text-slate-300 outline-none font-medium truncate px-1 rounded hover:bg-indigo-50 dark:hover:bg-indigo-900/30 transition" 
-          data-id="<?= $row['id'] ?>" 
-          data-field="class_header" 
-          data-original="<?= htmlspecialchars($row['class_header_name'] ?? 'I pacaktuar') ?>">
-        <?= !empty($row['class_header_name']) ? htmlspecialchars($row['class_header_name']) : 'I pacaktuar' ?>
-    </span>
-</td>
+                        <td class="px-6 py-4 whitespace-nowrap">
+                            <span contenteditable 
+                                class="editable block text-sm text-slate-600 dark:text-slate-300 outline-none font-medium truncate px-1 rounded hover:bg-indigo-50 dark:hover:bg-indigo-900/30 transition" 
+                                data-id="<?= $row['id'] ?>" 
+                                data-field="class_header" 
+                                data-original="<?= htmlspecialchars($row['class_header_name'] ?? 'I pacaktuar') ?>">
+                                <?= !empty($row['class_header_name']) ? htmlspecialchars($row['class_header_name']) : 'I pacaktuar' ?>
+                            </span>
+                        </td>
                         <td class="px-6 py-4 text-center">
                             <button class="status-toggle px-3 py-1 rounded-full text-[10px] font-bold uppercase tracking-wider transition-all <?= $row['status'] === 'active' ? 'bg-green-100 text-green-700 dark:bg-green-500/20 dark:text-green-400' : 'bg-red-100 text-red-600 dark:bg-red-500/20 dark:text-red-400' ?>" 
                                     data-id="<?= $row['id'] ?>" data-field="status" data-value="<?= $row['status'] ?>" data-original="<?= $row['status'] ?>">
