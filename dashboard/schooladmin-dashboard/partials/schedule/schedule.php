@@ -39,7 +39,7 @@ ob_start();
     <div class="flex flex-col lg:flex-row justify-between items-start lg:items-center mb-6 bg-white p-4 md:p-6 rounded-2xl shadow-sm border border-slate-200 gap-4">
         <div>
             <h1 class="text-xl md:text-2xl font-extrabold text-slate-800 tracking-tight flex items-center gap-2">
-                <span class="truncate">Menaxhimi i Orarit</span>
+                📅 <span class="truncate">Menaxhimi i Orarit</span>
             </h1>
             <p class="text-xs md:text-sm text-slate-500 font-medium">Organizoni planin mësimor javor</p>
         </div>
