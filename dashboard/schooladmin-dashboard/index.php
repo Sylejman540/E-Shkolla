@@ -255,10 +255,42 @@ function isAnyActive(array $paths) {
 
     <div :class="sidebarCollapsed ? 'lg:pl-20' : 'lg:pl-72'" class="min-h-screen custom-transition flex flex-col">
         
+        <header class="sticky top-0 z-30 h-16 flex items-center justify-between bg-white/80 backdrop-blur-md border-b border-slate-100 px-4 lg:px-8">
+                    <a href="/E-Shkolla/school-admin-dashboard" class="flex h-20 shrink-0 items-center overflow-hidden border-b border-slate-50">
+            <img src="/E-Shkolla/images/icon.png" class="h-9 w-auto min-w-[36px]" alt="Logo">
+            <div x-show="!sidebarCollapsed" x-transition.opacity class="ml-3 whitespace-nowrap">
+                <h1 class="text-lg font-bold tracking-tight text-slate-800 leading-none">E-Shkolla</h1>
+                <p class="text-[10px] font-bold uppercase tracking-widest text-blue-600 mt-1">School Admin</p>
+            </div>
+        </a>
+        
+            <button @click="mobileOpen = true" class="p-2 lg:hidden text-slate-600 hover:bg-slate-50 rounded-lg transition-colors">
+                <svg class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path d="M4 6h16M4 12h16M4 18h16"/></svg>
+            </button>
+        </header>
 
-        <main class="p-6 lg:p-10 pt-24 lg:pt-10 flex-1">
-            <?= $content ?? '<div class="flex flex-col items-center justify-center h-full text-slate-400"><p class="italic">Së shpejti...</p></div>' ?>
+        <main class="p-4 lg:p-10 flex-1">
+            <div class="max-w-7xl mx-auto">
+                <?= $content ?? '<div class="flex flex-col items-center justify-center h-[60vh] text-slate-400"><p class="italic">Zgjidhni një opsion nga menuja...</p></div>' ?>
+            </div>
         </main>
+    </div>
+
+    <div class="fixed bottom-6 right-6 z-[100] flex flex-col gap-3 w-full max-w-sm pointer-events-none">
+        <template x-for="toast in toasts" :key="toast.id">
+            <div x-show="toast.visible" 
+                 x-transition:enter="transition ease-out duration-300 transform"
+                 x-transition:enter-start="translate-y-4 opacity-0 scale-95"
+                 x-transition:leave="transition ease-in duration-200"
+                 x-transition:leave-end="opacity-0 scale-90"
+                 class="pointer-events-auto flex items-center p-4 bg-white rounded-2xl shadow-2xl border border-slate-100 ring-1 ring-black/5">
+                <div :class="toast.type === 'success' ? 'bg-emerald-100 text-emerald-600' : 'bg-rose-100 text-rose-600'" class="p-2 rounded-xl mr-4 shrink-0">
+                    <svg x-show="toast.type === 'success'" class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="3"><path d="M5 13l4 4L19 7"/></svg>
+                    <svg x-show="toast.type === 'error'" class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="3"><path d="M6 18L18 6M6 6l12 12"/></svg>
+                </div>
+                <p class="text-sm font-bold text-slate-700" x-text="toast.message"></p>
+            </div>
+        </template>
     </div>
 
 </body>
