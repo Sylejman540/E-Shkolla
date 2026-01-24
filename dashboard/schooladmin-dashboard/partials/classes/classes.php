@@ -316,11 +316,26 @@ function filterClasses() {
 }
 
 // Open Add Form
-document.addEventListener('click', e => {
-    if(e.target.id === 'addClassBtn') {
-        const form = document.getElementById('addClassForm');
+// --- IMPROVED ADD TEACHER LOGIC (Using Event Delegation) ---
+document.addEventListener('click', (e) => {
+    // Check if the clicked element is the button or an icon inside the button
+    const btn = e.target.closest('#addClassBtn');
+    const form = document.getElementById('addClassForm');
+
+    if (btn) {
         form.classList.remove('hidden');
         form.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    }
+});
+
+// For the cancel button (usually inside the form, which isn't replaced, 
+// but it's safer to delegate this too)
+document.addEventListener('click', (e) => {
+    const cancelBtn = e.target.closest('#cancel');
+    const form = document.getElementById('addClassForm');
+    
+    if (cancelBtn) {
+        form.classList.add('hidden');
     }
 });
 
