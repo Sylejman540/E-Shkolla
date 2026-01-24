@@ -2,87 +2,35 @@
 if (session_status() === PHP_SESSION_NONE) session_start();
 require_once __DIR__ . '/../../../../db.php';
 
-/* =========================
-   AUTH
-========================= */
-if (!isset($_SESSION['user']) || $_SESSION['user']['role'] !== 'school_admin') {
-    http_response_code(403);
-    exit('Unauthorized');
-}
-
-$schoolId = (int)$_SESSION['user']['school_id'];
-$userId   = (int)$_SESSION['user']['id'];
-
-/* =========================
-   HANDLE INSERT
-/* =========================
-   HANDLE INSERT
-========================= */
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
-    $classId  = (int)($_POST['class_id'] ?? 0);
-    $day      = $_POST['day'] ?? '';
-    $period   = (int)($_POST['period_number'] ?? 0);
-    $subject  = (int)($_POST['subject_id'] ?? 0);
-    $teacher  = (int)($_POST['teacher_id'] ?? 0);
+    $school_id = (int)$_POST['school_id'];
+    $class_id  = (int)$_POST['class_id'];
+    $teacher_id = (int)$_POST['teacher_id'];
+    $subject_id = (int)($_POST['subject_id'] ?? 0);
+    $day = $_POST['day'];
+    $period = (int)$_POST['period_number'];
 
-    if (!$classId || !$day || !$period || !$subject || !$teacher) {
-        $_SESSION['msg'] = ['type' => 'error', 'text' => 'Ju lutem plotësoni të gjitha fushat.'];
-        header('Location: ' . $_SERVER['HTTP_REFERER']);
+    // If subject_id is 0 or empty, stop the execution
+    if ($subject_id <= 0) {
+        $_SESSION['msg'] = ['type' => 'error', 'text' => 'Gabim: Lënda nuk është zgjedhur!'];
+        header("Location: " . $_SERVER['HTTP_REFERER']);
         exit;
     }
 
-    // Check if slot is taken (Same class, same day, same period)
-    $checkSlot = $pdo->prepare("SELECT id FROM class_schedule WHERE school_id=? AND class_id=? AND day=? AND period_number=? LIMIT 1");
-    $checkSlot->execute([$schoolId, $classId, $day, $period]);
+    try {
+        $sql = "INSERT INTO schedule (school_id, class_id, teacher_id, subject_id, day, period_number) 
+                VALUES (?, ?, ?, ?, ?, ?)";
+        $stmt = $pdo->prepare($sql);
+        $stmt->execute([$school_id, $class_id, $teacher_id, $subject_id, $day, $period]);
 
-    // NEW: Check if teacher is busy elsewhere (Same teacher, same day, same period)
-    $checkTeacher = $pdo->prepare("SELECT id FROM class_schedule WHERE school_id=? AND teacher_id=? AND day=? AND period_number=? LIMIT 1");
-    $checkTeacher->execute([$schoolId, $teacher, $day, $period]);
-
-    if ($checkSlot->fetch()) {
-        $_SESSION['msg'] = ['type' => 'error', 'text' => 'Ky orar (klasa, dita, ora) është i zënë.'];
-    } elseif ($checkTeacher->fetch()) {
-        $_SESSION['msg'] = ['type' => 'error', 'text' => 'Mësimdhënësi është i zënë në një klasë tjetër gjatë kësaj ore.'];
-    } else {
-        /* INSERT */
-        $stmt = $pdo->prepare("INSERT INTO class_schedule (school_id, user_id, class_id, day, period_number, subject_id, teacher_id) VALUES (?,?,?,?,?,?,?)");
-        $stmt->execute([$schoolId, $userId, $classId, $day, $period, $subject, $teacher]);
         $_SESSION['msg'] = ['type' => 'success', 'text' => 'Orari u ruajt me sukses!'];
+    } catch (PDOException $e) {
+        $_SESSION['msg'] = ['type' => 'error', 'text' => 'Gabim në bazën e të dhënave: ' . $e->getMessage()];
     }
 
-    header('Location: ' . $_SERVER['HTTP_REFERER']);
+    header("Location: " . $_SERVER['HTTP_REFERER']);
     exit;
 }
-
-/* =========================
-   FETCH DATA FOR FORM
-========================= */
-$days = [
-    'monday'    => 'E Hënë',
-    'tuesday'   => 'E Martë',
-    'wednesday' => 'E Mërkurë',
-    'thursday'  => 'E Enjte',
-    'friday'    => 'E Premte'
-];
-
-$periods = [
-    1 => 'Ora 1',
-    2 => 'Ora 2',
-    3 => 'Ora 3',
-    4 => 'Ora 4',
-    5 => 'Ora 5',
-    6 => 'Ora 6',
-    7 => 'Ora 7'
-];
-
-$stmtClasses = $pdo->prepare("SELECT id, grade FROM classes WHERE school_id=?");
-$stmtClasses->execute([$schoolId]);
-
-$stmtSubjects = $pdo->prepare("SELECT id, subject_name FROM subjects WHERE school_id=?");
-$stmtSubjects->execute([$schoolId]);
-
-$stmtTeachers = $pdo->prepare("SELECT id, name FROM teachers WHERE school_id=?");
-$stmtTeachers->execute([$schoolId]);
 ?>
 
 <!-- =========================
