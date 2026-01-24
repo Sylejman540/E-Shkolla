@@ -2,32 +2,32 @@
 if (session_status() === PHP_SESSION_NONE) session_start();
 require_once __DIR__ . '/../../../../db.php';
 
-$userId = (int) ($_SESSION['user']['id'] ?? 0);
-$schoolId = (int) ($_SESSION['user']['school_id'] ?? 0);
+/* =========================
+   SESSION & BASIC CHECK
+========================= */
+$userId   = (int)($_SESSION['user']['id'] ?? 0);
+$schoolId = (int)($_SESSION['user']['school_id'] ?? 0);
 
-// 1. Get actual teacher_id
-$tStmt = $pdo->prepare("SELECT id FROM teachers WHERE user_id = ?");
-$tStmt->execute([$userId]);
-$teacherId = (int) $tStmt->fetchColumn();
-
-if (!$teacherId || !$schoolId) {
+if (!$userId || !$schoolId) {
     die('Gabim: Sesioni ka skaduar.');
 }
 
-$todayEng = strtolower(date('l'));
-$currentTime = date('H:i:s');
+/* =========================
+   GET TEACHER ID
+========================= */
+$tStmt = $pdo->prepare("SELECT id FROM teachers WHERE user_id = ?");
+$tStmt->execute([$userId]);
+$teacherId = (int)$tStmt->fetchColumn();
 
-// 2. Fetch Schedule
-$stmt = $pdo->prepare("
-    SELECT cs.*, c.grade AS class_name, s.name AS subject_name
-    FROM class_schedule cs
-    JOIN classes c ON cs.class_id = c.id
-    JOIN subjects s ON cs.subject_id = s.id
-    WHERE cs.teacher_id = ? AND cs.school_id = ?
-    ORDER BY cs.start_time ASC
-");
-$stmt->execute([$teacherId, $schoolId]);
-$scheduleItems = $stmt->fetchAll(PDO::FETCH_ASSOC);
+if (!$teacherId) {
+    die('Gabim: Mësimdhënësi nuk u gjet.');
+}
+
+/* =========================
+   TIME & DAY SETUP
+========================= */
+$todayEng    = strtolower(date('l')); // monday, tuesday...
+$currentTime = date('H:i');
 
 $dayMap = [
     'monday'    => 'E Hënë',
@@ -37,56 +37,133 @@ $dayMap = [
     'friday'    => 'E Premte',
 ];
 
-// 3. Logic for Weekly Load & Busiest Day
-$totalHours = 0;
+/* =========================
+   PERIOD TIMES (FIXED)
+========================= */
+$periodTimes = [
+    1 => ['08:00', '08:45'],
+    2 => ['08:50', '09:35'],
+    3 => ['09:40', '10:25'],
+    4 => ['10:30', '11:15'],
+    5 => ['11:20', '12:05'],
+    6 => ['12:10', '12:55'],
+    7 => ['13:00', '13:45'],
+];
+
+/* =========================
+   FETCH SCHEDULE
+========================= */
+$stmt = $pdo->prepare("
+    SELECT 
+        cs.id,
+        cs.day,
+        cs.period_number,
+        cs.status,
+        c.grade      AS class_name,
+        s.subject_name
+    FROM class_schedule cs
+    JOIN classes  c ON c.id = cs.class_id
+    JOIN subjects s ON s.id = cs.subject_id
+    WHERE cs.teacher_id = ? 
+      AND cs.school_id  = ?
+    ORDER BY 
+        FIELD(cs.day,'monday','tuesday','wednesday','thursday','friday'),
+        cs.period_number ASC
+");
+$stmt->execute([$teacherId, $schoolId]);
+$scheduleItems = $stmt->fetchAll(PDO::FETCH_ASSOC);
+
+/* =========================
+   TOTAL CLASSES (FIX)
+========================= */
 $totalClasses = count($scheduleItems);
-$dayCounts = [];
+
+/* =========================
+   WEEKLY LOAD + TODAY + BUSIEST DAY
+========================= */
+$totalHours   = 0;
+$dayCounts    = [];
 $todayClasses = [];
 
 foreach ($scheduleItems as $item) {
-    // Calculate total hours
-    $start = strtotime($item['start_time']);
-    $end = strtotime($item['end_time']);
-    $totalHours += ($end - $start) / 3600;
 
-    // Count lessons per day
-    $d = strtolower($item['day']);
-    $dayCounts[$d] = ($dayCounts[$d] ?? 0) + 1;
+    $day    = strtolower($item['day']);
+    $period = (int)$item['period_number'];
 
-    // Filter today's classes and determine status
-    if ($d === $todayEng) {
-        $status = 'upcoming';
-        if ($currentTime >= $item['start_time'] && $currentTime <= $item['end_time']) {
+    if (!isset($periodTimes[$period])) continue;
+
+    [$startTime, $endTime] = $periodTimes[$period];
+
+    /* ----- HOURS ----- */
+    $totalHours += (strtotime($endTime) - strtotime($startTime)) / 3600;
+
+    /* ----- DAY COUNT ----- */
+    $dayCounts[$day] = ($dayCounts[$day] ?? 0) + 1;
+
+    /* ----- TODAY STATUS ----- */
+    if ($day === $todayEng) {
+
+        if ($currentTime >= $startTime && $currentTime <= $endTime) {
             $status = 'ongoing';
-        } elseif ($currentTime > $item['end_time']) {
+        } elseif ($currentTime > $endTime) {
             $status = 'completed';
+        } else {
+            $status = 'upcoming';
         }
-        $item['status'] = $status;
+
+        $item['status']     = $status;
+        $item['start_time'] = $startTime;
+        $item['end_time']   = $endTime;
+
         $todayClasses[] = $item;
     }
 }
 
-$busiestDayKey = !empty($dayCounts) ? array_search(max($dayCounts), $dayCounts) : null;
+/* =========================
+   BUSIEST DAY
+========================= */
+$busiestDayKey   = !empty($dayCounts) ? array_search(max($dayCounts), $dayCounts) : null;
 $busiestDayLabel = $busiestDayKey ? $dayMap[$busiestDayKey] : 'N/A';
-$busiestCount = $dayCounts[$busiestDayKey] ?? 0;
+$busiestCount    = $busiestDayKey ? $dayCounts[$busiestDayKey] : 0;
 
-function getSubjectStyle($subject) {
-    $subject = mb_strtolower($subject);
-    if (str_contains($subject, 'matematik')) return ['bg' => 'bg-orange-50', 'border' => 'border-orange-500', 'text' => 'text-orange-700', 'icon' => '📐'];
-    if (str_contains($subject, 'gjuh')) return ['bg' => 'bg-blue-50', 'border' => 'border-blue-500', 'text' => 'text-blue-700', 'icon' => '📘'];
-    if (str_contains($subject, 'biologji') || str_contains($subject, 'kimi')) return ['bg' => 'bg-green-50', 'border' => 'border-green-500', 'text' => 'text-green-700', 'icon' => '🧪'];
-    if (str_contains($subject, 'fizik')) return ['bg' => 'bg-purple-50', 'border' => 'border-purple-500', 'text' => 'text-purple-700', 'icon' => '⚛️'];
-    return ['bg' => 'bg-slate-50', 'border' => 'border-slate-400', 'text' => 'text-slate-700', 'icon' => '📝'];
-}
-
+/* =========================
+   GROUP BY DAY + BLOCK
+========================= */
 $grouped = [];
+
 foreach ($scheduleItems as $item) {
-    $hour = (int)date('H', strtotime($item['start_time']));
-    $block = ($hour < 12) ? 'Mëngjes' : (($hour < 17) ? 'Pasdite' : 'Mbrëmje');
+    $period = (int)$item['period_number'];
+    [$start] = $periodTimes[$period];
+
+    $hour  = (int)date('H', strtotime($start));
+    $block = ($hour < 12) ? 'Mëngjes' : 'Pasdite';
+
+    $item['start_time'] = $start;
+    $item['end_time']   = $periodTimes[$period][1];
+
     $grouped[strtolower($item['day'])][$block][] = $item;
 }
 
+/* =========================
+   SUBJECT STYLE HELPER
+========================= */
+function getSubjectStyle($subject) {
+    $s = mb_strtolower($subject);
+
+    if (str_contains($s, 'matematik')) return ['bg'=>'bg-orange-50','border'=>'border-orange-500','text'=>'text-orange-700','icon'=>'📐'];
+    if (str_contains($s, 'gjuh'))      return ['bg'=>'bg-blue-50','border'=>'border-blue-500','text'=>'text-blue-700','icon'=>'📘'];
+    if (str_contains($s, 'biologji') || str_contains($s, 'kimi'))
+        return ['bg'=>'bg-green-50','border'=>'border-green-500','text'=>'text-green-700','icon'=>'🧪'];
+    if (str_contains($s, 'fizik'))      return ['bg'=>'bg-purple-50','border'=>'border-purple-500','text'=>'text-purple-700','icon'=>'⚛️'];
+
+    return ['bg'=>'bg-slate-50','border'=>'border-slate-400','text'=>'text-slate-700','icon'=>'📝'];
+}
+
+/* =========================
+   READY FOR VIEW
+========================= */
 ob_start();
+
 ?>
 
 <div class="space-y-6 max-w-full overflow-hidden pb-10">
