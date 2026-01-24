@@ -1,155 +1,143 @@
-<?php 
-if (session_status() === PHP_SESSION_NONE) { session_start(); }
+<?php
+if (session_status() === PHP_SESSION_NONE) session_start();
 require_once __DIR__ . '/../../../../db.php';
 
-$schoolId = $_SESSION['user']['school_id'] ?? null;
-if (!$schoolId) die("Aksesi i ndaluar.");
+if (!isset($_SESSION['user']) || $_SESSION['user']['role'] !== 'school_admin') {
+    header('Location: /login.php'); exit;
+}
 
-// --- LOGJIKA E PAGINIMIT ---
-$limit = 10; 
-$page = isset($_GET['p']) ? (int)$_GET['p'] : 1;
-$offset = ($page - 1) * $limit;
+$schoolId = (int)$_SESSION['user']['school_id'];
 
-$countStmt = $pdo->prepare("SELECT COUNT(*) FROM classes WHERE school_id = ?");
-$countStmt->execute([$schoolId]);
-$totalRows = $countStmt->fetchColumn();
-$totalPages = ceil($totalRows / $limit);
+/* Fetch data for selects */
+$classes  = $pdo->prepare("SELECT id, grade FROM classes WHERE school_id=?");
+$subjects = $pdo->prepare("SELECT id, subject_name FROM subjects WHERE school_id=?");
+$teachers = $pdo->prepare("SELECT id, name FROM teachers WHERE school_id=?");
 
-$stmt = $pdo->prepare("SELECT * FROM classes WHERE school_id = ? ORDER BY grade ASC LIMIT $limit OFFSET $offset");
-$stmt->execute([$schoolId]);
-$classes = $stmt->fetchAll(PDO::FETCH_ASSOC);
+$classes->execute([$schoolId]);
+$subjects->execute([$schoolId]);
+$teachers->execute([$schoolId]);
 
-ob_start(); 
+$classes  = $classes->fetchAll(PDO::FETCH_ASSOC);
+$subjects = $subjects->fetchAll(PDO::FETCH_ASSOC);
+$teachers = $teachers->fetchAll(PDO::FETCH_ASSOC);
+
+$classId = (int)($_GET['class_id'] ?? 0);
+
+$days = [
+    'monday'=>'E Hënë','tuesday'=>'E Martë','wednesday'=>'E Mërkurë',
+    'thursday'=>'E Enjte','friday'=>'E Premte'
+];
+
+$periods = [1=>'Ora 1',2=>'Ora 2',3=>'Ora 3',4=>'Ora 4',5=>'Ora 5',6=>'Ora 6',7=>'Ora 7'];
+
+ob_start();
 ?>
-
-<div class="px-6 py-8 bg-white dark:bg-gray-900 min-h-screen">
-    <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-8">
-        <div>
-            <h1 class="text-2xl font-semibold text-slate-800 dark:text-white tracking-tight">Orari i Mësimit</h1>
-            <p class="text-sm text-slate-500 mt-1">Menaxhimi i orarit javor për klasat.</p>
-        </div>
-        <button id="addScheduleBtn" type="button" class="inline-flex items-center justify-center gap-2 rounded-xl bg-indigo-600 px-5 py-2.5 text-sm font-medium text-white hover:bg-indigo-700 transition-all shadow-sm active:scale-95">
-            <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path d="M12 4v16m8-8H4" stroke-width="2" stroke-linecap="round"/></svg>
-            Shto Orë të Re
-        </button>
-    </div>
-
-    <div class="bg-white dark:bg-slate-900 rounded-2xl border border-slate-200 dark:border-white/10 shadow-sm overflow-hidden">
-        <table class="w-full text-left border-collapse table-fixed">
-            <thead>
-                <tr class="bg-slate-50/50 dark:bg-white/5 border-b border-slate-200 dark:border-white/10">
-                    <th class="w-[70%] px-6 py-4 text-[11px] font-semibold uppercase text-slate-400 tracking-wider">Klasa</th>
-                    <th class="w-[30%] px-6 py-4 text-[11px] font-semibold uppercase text-slate-400 tracking-wider text-right">Veprimet</th>
-                </tr>
-            </thead>
-            <tbody class="divide-y divide-slate-100 dark:divide-white/5">
-                <?php foreach($classes as $row): ?>
-                <tr class="hover:bg-slate-50/30 dark:hover:bg-white/[0.02] transition-colors group">
-                    <td class="px-6 py-4">
-                        <div class="flex items-center gap-4">
-                            <div class="h-10 w-10 flex items-center justify-center rounded-xl bg-indigo-50 dark:bg-indigo-500/10 text-indigo-600 dark:text-indigo-400 text-sm font-bold border border-indigo-100/50 dark:border-indigo-500/20">
-                                <?= htmlspecialchars($row['grade']) ?>
-                            </div>
-                            <span class="text-sm font-medium text-slate-700 dark:text-slate-200">Klasa <?= htmlspecialchars($row['grade']) ?></span>
-                        </div>
-                    </td>
-                    <td class="px-6 py-4 text-right">
-                        <button onclick="toggleSchedule(<?= $row['id'] ?>)" class="text-sm font-semibold text-indigo-600 dark:text-indigo-400 hover:text-indigo-800 inline-flex items-center gap-2">
-                            <span>Shiko Orarin</span>
-                            <svg id="icon-<?= $row['id'] ?>" class="w-4 h-4 transition-transform duration-300" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path d="M19 9l-7 7-7-7" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"/></svg>
-                        </button>
-                    </td>
-                </tr>
-                <tr id="sched-row-<?= $row['id'] ?>" class="hidden">
-                    <td colspan="2" class="p-0 bg-slate-50/30 dark:bg-black/10">
-                        <div id="grid-container-<?= $row['id'] ?>" class="p-6 border-t border-slate-200 dark:border-white/5">
-                            <div class="flex flex-col items-center py-4 text-slate-400 gap-2">
-                                <div class="animate-spin h-5 w-5 border-2 border-indigo-500 border-t-transparent rounded-full"></div>
-                                <span class="text-[10px] font-medium uppercase italic">Duke ngarkuar...</span>
-                            </div>
-                        </div>
-                    </td>
-                </tr>
-                <?php endforeach; ?>
-            </tbody>
-        </table>
-
-        <?php if ($totalPages > 1): ?>
-        <div class="px-6 py-4 bg-slate-50/50 dark:bg-white/5 border-t border-slate-200 dark:border-white/10 flex items-center justify-between">
-            <p class="text-xs text-slate-500 font-medium">Faqja <?= $page ?> nga <?= $totalPages ?></p>
-            <div class="inline-flex gap-2">
-                <a href="?p=<?= max(1, $page - 1) ?>" class="p-2 rounded-lg border border-slate-200 dark:border-white/10 text-slate-600 <?= $page <= 1 ? 'opacity-30 pointer-events-none' : 'hover:bg-white' ?>"><svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path d="M15 19l-7-7 7-7" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg></a>
-                <a href="?p=<?= min($totalPages, $page + 1) ?>" class="p-2 rounded-lg border border-slate-200 dark:border-white/10 text-slate-600 <?= $page >= $totalPages ? 'opacity-30 pointer-events-none' : 'hover:bg-white' ?>"><svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path d="M9 5l7 7-7 7" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg></a>
-            </div>
-        </div>
-        <?php endif; ?>
-    </div>
-</div>
-
-<div id="toast-container" class="fixed bottom-5 right-5 z-[110]"></div>
-
-<?php 
-// Përfshijmë formën këtu në fund
-require_once 'form.php'; 
-?>
-
-<script>
-// 1. Logjika e Modalit (Fix i bllokimit)
-document.addEventListener('DOMContentLoaded', () => {
-    const addBtn = document.getElementById('addScheduleBtn');
-    const modal = document.getElementById('addScheduleForm');
-    const cancelBtn = document.getElementById('closeModal');
-
-    if (addBtn && modal) {
-        addBtn.addEventListener('click', (e) => {
-            e.preventDefault();
-            modal.classList.remove('hidden');
-            modal.classList.add('flex');
-            document.body.style.overflow = 'hidden';
-        });
-    }
-
-    if (cancelBtn) {
-        cancelBtn.addEventListener('click', () => {
-            modal.classList.add('hidden');
-            modal.classList.remove('flex');
-            document.body.style.overflow = 'auto';
-        });
-    }
-});
-
-// 2. Logjika e Orarit (Expand/Collapse)
-async function toggleSchedule(classId) {
-    const row = document.getElementById(`sched-row-${classId}`);
-    const container = document.getElementById(`grid-container-${classId}`);
-    const icon = document.getElementById(`icon-${classId}`);
+<style>
+    :root { --primary: #2563eb; --bg: #f8fafc; --border: #e2e8f0; }
+    .schedule-container { font-family: 'Inter', sans-serif; background: var(--bg); padding: 20px; border-radius: 12px; }
     
-    if (row.classList.contains('hidden')) {
-        row.classList.remove('hidden');
-        icon.classList.add('rotate-180');
-        try {
-            const res = await fetch(`/E-Shkolla/dashboard/schooladmin-dashboard/partials/schedule/get-schedule-grid.php?class_id=${classId}`);
-            container.innerHTML = await res.text();
-        } catch (err) {
-            container.innerHTML = `<p class="text-xs text-red-500">Gabim gjatë ngarkimit.</p>`;
-        }
-    } else {
-        row.classList.add('hidden');
-        icon.classList.remove('rotate-180');
-    }
-}
+    /* Toolbar/Header */
+    .toolbar { display: flex; justify-content: space-between; align-items: center; margin-bottom: 2rem; background: white; padding: 1rem; border-radius: 8px; box-shadow: 0 1px 3px rgba(0,0,0,0.1); }
+    select, button { padding: 0.6rem 1rem; border: 1px solid var(--border); border-radius: 6px; font-size: 0.9rem; }
+    button { background: var(--primary); color: white; border: none; cursor: pointer; font-weight: 600; }
+    button:hover { opacity: 0.9; }
 
-// 3. Toast Function
-function showToast(msg) {
-    const container = document.getElementById('toast-container');
-    const toast = document.createElement('div');
-    toast.className = "bg-slate-800 text-white px-6 py-3 rounded-xl shadow-lg text-sm font-medium mb-3 transition-all duration-300 transform translate-y-10";
-    toast.textContent = msg;
-    container.appendChild(toast);
-    setTimeout(() => toast.classList.remove('translate-y-10'), 10);
-    setTimeout(() => { toast.style.opacity = '0'; setTimeout(() => toast.remove(), 500); }, 3000);
-}
-</script>
+    /* Form Design */
+    .entry-form { display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 10px; background: #fff; padding: 1.5rem; border-radius: 8px; margin-bottom: 2rem; border: 1px solid var(--border); }
+
+    /* Table Design */
+    .timetable { width: 100%; border-collapse: separate; border-spacing: 0; background: white; border-radius: 8px; overflow: hidden; border: 1px solid var(--border); table-layout: fixed; }
+    .timetable th { background: #f1f5f9; padding: 1rem; color: #475569; font-weight: 600; text-align: center; border-bottom: 2px solid var(--border); }
+    .timetable td { height: 100px; padding: 0.5rem; border-bottom: 1px solid var(--border); border-right: 1px solid var(--border); vertical-align: top; }
+    .timetable td:first-child { background: #f1f5f9; font-weight: 600; width: 80px; text-align: center; vertical-align: middle; }
+    
+    /* Lesson Card */
+    .lesson-card { background: #eff6ff; border-left: 4px solid var(--primary); padding: 8px; border-radius: 4px; height: 100%; box-sizing: border-box; }
+    .lesson-card b { display: block; color: #1e40af; font-size: 0.85rem; margin-bottom: 4px; }
+    .lesson-card span { font-size: 0.75rem; color: #64748b; }
+</style>
+
+<div class="schedule-container">
+    <div class="toolbar">
+        <h2 style="margin:0;">📅 Orari Javor</h2>
+        <form method="GET" id="classSelector">
+            <select name="class_id" onchange="this.form.submit()" style="min-width: 200px;">
+                <option value="">Zgjedh klasën...</option>
+                <?php foreach ($classes as $c): ?>
+                    <option value="<?= $c['id'] ?>" <?= $classId===$c['id']?'selected':'' ?>>
+                        Klasa <?= htmlspecialchars($c['grade']) ?>
+                    </option>
+                <?php endforeach; ?>
+            </select>
+        </form>
+    </div>
+
+    <?php if ($classId): ?>
+    <form method="POST" action="/E-Shkolla/dashboard/schooladmin-dashboard/partials/schedule/form.php" class="entry-form">
+        <input type="hidden" name="class_id" value="<?= $classId ?>">
+        
+        <select name="day" required>
+            <option value="">Dita</option>
+            <?php foreach ($days as $k=>$v): ?><option value="<?= $k ?>"><?= $v ?></option><?php endforeach; ?>
+        </select>
+
+        <select name="period_number" required>
+            <option value="">Ora</option>
+            <?php foreach ($periods as $k=>$v): ?><option value="<?= $k ?>"><?= $v ?></option><?php endforeach; ?>
+        </select>
+
+        <select name="subject_id" required>
+            <option value="">Lënda</option>
+            <?php foreach ($subjects as $s): ?><option value="<?= $s['id'] ?>"><?= $s['subject_name'] ?></option><?php endforeach; ?>
+        </select>
+
+        <select name="teacher_id" required>
+            <option value="">Mësimdhënësi</option>
+            <?php foreach ($teachers as $t): ?><option value="<?= $t['id'] ?>"><?= $t['name'] ?></option><?php endforeach; ?>
+        </select>
+
+        <button type="submit">➕ Shto në Orar</button>
+    </form>
+
+    <table class="timetable">
+        <thead>
+            <tr>
+                <th></th>
+                <?php foreach ($days as $d): ?><th><?= $d ?></th><?php endforeach; ?>
+            </tr>
+        </thead>
+        <tbody>
+            <?php foreach ($periods as $pKey=>$pLabel): ?>
+            <tr>
+                <td><?= $pKey ?></td>
+                <?php foreach ($days as $dayKey=>$dayLabel): ?>
+                    <td data-day="<?= $dayKey ?>" data-period="<?= $pKey ?>"></td>
+                <?php endforeach; ?>
+            </tr>
+            <?php endforeach; ?>
+        </tbody>
+    </table>
+
+    <script>
+    fetch(`get-schedule-grid.php?class_id=<?= $classId ?>&school_id=<?= $schoolId ?>`)
+    .then(r=>r.json())
+    .then(data=>{
+        Object.values(data.grid).forEach(day=>{
+            Object.values(day).forEach(e=>{
+                const cell = document.querySelector(`[data-day="${e.day}"][data-period="${e.period_number}"]`);
+                if(cell) {
+                    cell.innerHTML = `
+                        <div class="lesson-card">
+                            <b>${e.subject_name}</b>
+                            <span>👤 ${e.teacher_name}</span>
+                        </div>`;
+                }
+            });
+        });
+    });
+    </script>
+    <?php endif; ?>
+</div>
 
 <?php 
 $content = ob_get_clean(); 

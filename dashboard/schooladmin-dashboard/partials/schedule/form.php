@@ -1,28 +1,32 @@
 <?php
-if (session_status() === PHP_SESSION_NONE) { session_start(); }
+if (session_status() === PHP_SESSION_NONE) session_start();
 require_once __DIR__ . '/../../../../db.php';
 
-if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['add_schedule'])) {
-    $schoolId = $_SESSION['user']['school_id'] ?? null;
-    $user_id = $_SESSION['user']['id'] ?? null;
-    
-    $day = $_POST['day'];
-    $start_time = $_POST['start_time'];
-    $end_time = $_POST['end_time'];
-    $status = $_POST['status'] ?? 'active';
-    $subjectId = $_POST['subject_id'];
-    $teacherId = $_POST['teacher_id'];    
-    $classId = $_POST['class_id'];
+if ($_SESSION['user']['role'] !== 'school_admin') { http_response_code(403); exit; }
 
-    $stmt = $pdo->prepare("INSERT INTO class_schedule (school_id, user_id, class_id, day, start_time, end_time, subject_id, teacher_id, status) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)");
-    
-    if ($stmt->execute([$schoolId, $user_id, $classId, $day, $start_time, $end_time, $subjectId, $teacherId, $status])) {
-        $_SESSION['success'] = "Orari u shtua me sukses!";
-    }
-    
-    header("Location: " . $_SERVER['HTTP_REFERER']); 
-    exit;
-}
+$stmt = $pdo->prepare("
+INSERT INTO class_schedule
+(school_id,user_id,class_id,day,period_number,subject_id,teacher_id,status)
+VALUES (?,?,?,?,?,?,?,?)
+");
+
+try {
+    $stmt->execute([
+        $_SESSION['user']['school_id'],
+        $_SESSION['user']['id'],
+        $_POST['class_id'],
+        $_POST['day'],
+        $_POST['period_number'],
+        $_POST['subject_id'],
+        $_POST['teacher_id'],
+        'active'
+    ]);
+} catch (PDOException $e) {}
+
+header('Location: ' . $_SERVER['HTTP_REFERER']);
+exit;
+
+
 ?>
 
 <div id="addScheduleForm" class="hidden fixed inset-0 z-[100] flex items-center justify-center bg-slate-900/40 backdrop-blur-sm p-4 overflow-y-auto">
