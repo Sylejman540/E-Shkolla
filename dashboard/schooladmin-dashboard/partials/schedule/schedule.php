@@ -42,6 +42,10 @@ ob_start();
                 📅 <span class="truncate">Menaxhimi i Orarit</span>
             </h1>
             <p class="text-xs md:text-sm text-slate-500 font-medium">Organizoni planin mësimor javor</p>
+            <a href="/E-Shkolla/schedule-csv" class="mt-4 inline-flex items-center gap-2 rounded-xl bg-slate-900 px-5 py-2.5 text-sm font-semibold text-white shadow-sm hover:bg-slate-700 transition-all active:scale-95">
+                <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a2 2 0 002 2h12a2 2 0 002-2v-1M12 12v7m0 0l-3-3m3 3l3-3M12 3v9"/></svg>
+                Import CSV
+            </a>
         </div>
 
         <form method="GET" class="w-full lg:w-auto">
@@ -71,10 +75,6 @@ ob_start();
     <div class="bg-white p-4 md:p-6 rounded-2xl shadow-sm border border-slate-200 mb-8">
         <div class="flex justify-between items-center mb-4">
             <h3 class="text-[10px] font-bold text-slate-400 uppercase tracking-widest">Shto në orar</h3>
-            <a href="/E-Shkolla/schedule-csv" class="inline-flex items-center gap-2 rounded-xl bg-slate-900 px-5 py-2.5 text-sm font-semibold text-white shadow-sm hover:bg-slate-700 transition-all active:scale-95">
-                <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a2 2 0 002 2h12a2 2 0 002-2v-1M12 12v7m0 0l-3-3m3 3l3-3M12 3v9"/></svg>
-                Import CSV
-            </a>
         </div>
         <form method="POST" action="/E-Shkolla/dashboard/schooladmin-dashboard/partials/schedule/form.php"
               class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-3">

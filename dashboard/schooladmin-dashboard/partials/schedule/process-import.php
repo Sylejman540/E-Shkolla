@@ -1,84 +1,51 @@
 <?php
+// Disable error reporting to browser to prevent HTML output
+error_reporting(0);
+ini_set('display_errors', 0);
+
 if (session_status() === PHP_SESSION_NONE) session_start();
 require_once __DIR__ . '/../../../../db.php';
 
-/* AUTH */
-if (!isset($_SESSION['user']) || $_SESSION['user']['role'] !== 'school_admin') {
-    http_response_code(403);
-    echo json_encode(['error' => 'Unauthorized']);
-    exit;
-}
+header('Content-Type: application/json');
 
-$schoolId = (int)$_SESSION['user']['school_id'];
-$userId   = (int)$_SESSION['user']['id'];
+try {
+    $input = file_get_contents('php://input');
+    $data = json_decode($input, true);
 
-$data = json_decode(file_get_contents('php://input'), true);
-if (!is_array($data)) {
-    http_response_code(400);
-    echo json_encode(['error' => 'Invalid payload']);
-    exit;
-}
-
-$inserted = 0;
-$skipped  = 0;
-
-$checkTeacher = $pdo->prepare("
-    SELECT id FROM class_schedule
-    WHERE school_id=? AND teacher_id=? AND day=? AND period_number=?
-");
-
-$checkClass = $pdo->prepare("
-    SELECT id FROM class_schedule
-    WHERE school_id=? AND class_id=? AND day=? AND period_number=?
-");
-
-$insert = $pdo->prepare("
-    INSERT INTO class_schedule
-    (school_id, user_id, class_id, day, period_number, subject_id, teacher_id)
-    VALUES (?,?,?,?,?,?,?)
-");
-
-foreach ($data as $row) {
-    $classId  = (int)$row['class_id'];
-    $day      = trim($row['day']);
-    $period   = (int)$row['period_number'];
-    $subject  = (int)$row['subject_id'];
-    $teacher  = (int)$row['teacher_id'];
-
-    if (!$classId || !$day || !$period || !$subject || !$teacher) {
-        $skipped++;
-        continue;
+    if (!$data) {
+        throw new Exception('Te dhenat jane bosh ose format i gabuar.');
     }
 
-    // teacher busy?
-    $checkTeacher->execute([$schoolId, $teacher, $day, $period]);
-    if ($checkTeacher->fetch()) {
-        $skipped++;
-        continue;
+    $pdo->beginTransaction();
+
+    // Prepare queries
+    $getSubject = $pdo->prepare("SELECT subject_id FROM teacher_subjects WHERE teacher_id = ? LIMIT 1");
+    $insert = $pdo->prepare("INSERT INTO schedule (school_id, class_id, day, period_number, teacher_id, subject_id) VALUES (?, ?, ?, ?, ?, ?)");
+
+    $imported = 0;
+    foreach ($data as $row) {
+        // 1. Get the subject for this teacher
+        $getSubject->execute([$row['teacher_id']]);
+        $subjectId = $getSubject->fetchColumn();
+
+        if ($subjectId) {
+            $insert->execute([
+                $_SESSION['user']['school_id'],
+                $row['class_id'],
+                $row['day'],
+                $row['period_number'],
+                $row['teacher_id'],
+                $subjectId
+            ]);
+            $imported++;
+        }
     }
 
-    // class busy?
-    $checkClass->execute([$schoolId, $classId, $day, $period]);
-    if ($checkClass->fetch()) {
-        $skipped++;
-        continue;
-    }
+    $pdo->commit();
+    echo json_encode(['success' => true, 'imported' => $imported]);
 
-    $insert->execute([
-        $schoolId,
-        $userId,
-        $classId,
-        $day,
-        $period,
-        $subject,
-        $teacher
-    ]);
-
-    $inserted++;
+} catch (Exception $e) {
+    if ($pdo->inTransaction()) $pdo->rollBack();
+    echo json_encode(['success' => false, 'error' => $e->getMessage()]);
 }
-
-echo json_encode([
-    'status'   => 'success',
-    'imported' => $inserted,
-    'skipped'  => $skipped
-]);
+exit;
