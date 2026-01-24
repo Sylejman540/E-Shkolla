@@ -86,60 +86,60 @@ if (!$isAjax) { ob_start(); }
     <div class="bg-white dark:bg-gray-900 w-full max-w-lg rounded-3xl p-6 md:p-8 border border-slate-200 dark:border-white/10 shadow-2xl">
         <h2 class="text-xl font-bold mb-6 text-slate-900 dark:text-white">Krijo Njoftim</h2>
         <form action="/E-Shkolla/dashboard/schooladmin-dashboard/partials/announcement/save-announcement.php" method="POST">
-    <div class="grid grid-cols-1 gap-x-6 gap-y-6 sm:grid-cols-6 border-b border-gray-900/10 pb-8 dark:border-white/10">
-        
-        <div class="sm:col-span-6">
-            <label class="block text-sm font-medium text-gray-900 dark:text-white">Titulli i njoftimit</label>
-            <input type="text" name="title" required placeholder="p.sh. Pushim zyrtar" 
-                class="mt-2 border block w-full rounded-md bg-white px-3 py-1.5 text-gray-900 focus:outline-indigo-600 dark:bg-white/5 dark:text-white" />
-        </div>
+            <div class="grid grid-cols-1 gap-x-6 gap-y-6 sm:grid-cols-6 border-b border-gray-900/10 pb-8 dark:border-white/10">
+                
+                <div class="sm:col-span-6">
+                    <label class="block text-sm font-medium text-gray-900 dark:text-white">Titulli i njoftimit</label>
+                    <input type="text" name="title" required placeholder="p.sh. Pushim zyrtar" 
+                        class="mt-2 border block w-full rounded-md bg-white px-3 py-1.5 text-gray-900 focus:outline-indigo-600 dark:bg-white/5 dark:text-white" />
+                </div>
 
-        <div class="sm:col-span-3">
-            <label class="block text-sm font-medium text-gray-900 dark:text-white">Kush e sheh?</label>
-            <select name="target_role" id="roleSel" onchange="toggleCls()" 
-                class="mt-2 border block w-full rounded-md bg-white p-[7px] text-sm dark:bg-gray-800 dark:text-white">
-                <option value="all">Të gjithë</option>
-                <option value="teacher">Mësuesit</option>
-                <option value="student">Nxënësit</option>
-            </select>
-        </div>
+                <div class="sm:col-span-3">
+                    <label class="block text-sm font-medium text-gray-900 dark:text-white">Kush e sheh?</label>
+                    <select name="target_role" id="roleSel" onchange="toggleCls()" 
+                        class="mt-2 border block w-full rounded-md bg-white p-[7px] text-sm dark:bg-gray-800 dark:text-white">
+                        <option value="all">Të gjithë</option>
+                        <option value="teacher">Mësuesit</option>
+                        <option value="student">Nxënësit</option>
+                    </select>
+                </div>
 
-        <div class="sm:col-span-3">
-            <label class="block text-sm font-medium text-gray-900 dark:text-white">Data e Skadimit</label>
-            <input type="date" name="expires_at" 
-                class="mt-2 border block w-full rounded-md bg-white px-3 py-1.5 text-gray-900 focus:outline-indigo-600 dark:bg-white/5 dark:text-white" />
-        </div>
+                <div class="sm:col-span-3">
+                    <label class="block text-sm font-medium text-gray-900 dark:text-white">Data e Skadimit</label>
+                    <input type="date" name="expires_at" 
+                        class="mt-2 border block w-full rounded-md bg-white px-3 py-1.5 text-gray-900 focus:outline-indigo-600 dark:bg-white/5 dark:text-white" />
+                </div>
 
-        <div id="classSelectDiv" class="hidden sm:col-span-6 animate-in slide-in-from-top-2 duration-200">
-            <label class="block text-sm font-medium text-gray-900 dark:text-white">Përzgjidh Klasën Specifike</label>
-            <select name="class_id" 
-                class="mt-2 border block w-full rounded-md bg-white p-[7px] text-sm dark:bg-gray-800 dark:text-white">
-                <option value="">Të gjitha klasat (Gjithë nxënësit)</option>
-                <?php foreach($classes as $c): ?>
-                    <option value="<?= $c['id'] ?>"><?= htmlspecialchars($c['grade']) ?></option>
-                <?php endforeach; ?>
-            </select>
-        </div>
+                <div id="classSelectDiv" class="hidden sm:col-span-6 animate-in slide-in-from-top-2 duration-200">
+                    <label class="block text-sm font-medium text-gray-900 dark:text-white">Përzgjidh Klasën Specifike</label>
+                    <select name="class_id" 
+                        class="mt-2 border block w-full rounded-md bg-white p-[7px] text-sm dark:bg-gray-800 dark:text-white">
+                        <option value="">Të gjitha klasat (Gjithë nxënësit)</option>
+                        <?php foreach($classes as $c): ?>
+                            <option value="<?= $c['id'] ?>"><?= htmlspecialchars($c['grade']) ?></option>
+                        <?php endforeach; ?>
+                    </select>
+                </div>
 
-        <div class="sm:col-span-6">
-            <label class="block text-sm font-medium text-gray-900 dark:text-white">Mesazhi</label>
-            <textarea name="message" rows="4" required placeholder="Shkruani detajet e njoftimit këtu..." 
-                class="mt-2 border block w-full rounded-md bg-white px-3 py-1.5 text-gray-900 focus:outline-indigo-600 dark:bg-white/5 dark:text-white"></textarea>
-        </div>
-    </div>
+                <div class="sm:col-span-6">
+                    <label class="block text-sm font-medium text-gray-900 dark:text-white">Mesazhi</label>
+                    <textarea name="message" rows="4" required placeholder="Shkruani detajet e njoftimit këtu..." 
+                        class="mt-2 border block w-full rounded-md bg-white px-3 py-1.5 text-gray-900 focus:outline-indigo-600 dark:bg-white/5 dark:text-white"></textarea>
+                </div>
+            </div>
 
-    <div class="mt-6 flex justify-end gap-x-4">
-        <button type="button" 
-            onclick="document.getElementById('announcementModal').classList.add('hidden')" 
-            class="text-sm font-semibold text-gray-700 hover:text-gray-900 dark:text-gray-300">
-            Anulo
-        </button>
-        <button type="submit" 
-            class="rounded-md bg-indigo-600 px-6 py-2 text-sm font-semibold text-white shadow hover:bg-indigo-500 focus-visible:outline-indigo-600 active:scale-95 transition">
-            Dërgo Njoftimin
-        </button>
-    </div>
-</form>
+            <div class="mt-6 flex justify-end gap-x-4">
+                <button type="button" 
+                    onclick="document.getElementById('announcementModal').classList.add('hidden')" 
+                    class="text-sm font-semibold text-gray-700 hover:text-gray-900 dark:text-gray-300">
+                    Anulo
+                </button>
+                <button type="submit" 
+                    class="rounded-md bg-indigo-600 px-6 py-2 text-sm font-semibold text-white shadow hover:bg-indigo-500 focus-visible:outline-indigo-600 active:scale-95 transition">
+                    Dërgo Njoftimin
+                </button>
+            </div>
+        </form>
     </div>
 </div>
 
