@@ -147,64 +147,27 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
   background-size: 400% 400%;
   animation: gradientShift 12s ease infinite;
 }
-
 </style>
 <body class="h-full bg-gray-50 dark:bg-gray-950">
 
 <div class="flex min-h-full">
-
 
   <div class="flex w-full flex-col justify-center px-6 py-12 lg:w-1/2 lg:px-16">
     <div class="mx-auto w-full max-w-md">
 
       <div class="mb-10">
         <div class="mb-6 flex items-center">
-          
           <div class="flex h-20 w-20 items-center justify-center">
             <img src="images/icon.png" alt="E-Shkolla Logo" class="h-20 w-20 object-contain">
           </div>
-
           <div class="leading-tight">
-            <h1 class="text-lg font-bold text-gray-900 dark:text-white">
-              E-Shkolla
-            </h1>
-            <p class="text-xs text-gray-500 dark:text-gray-400">
-              Sistemi i Menaxhimit Shkollor
-            </p>
+            <h1 class="text-lg font-bold text-gray-900 dark:text-white">E-Shkolla</h1>
+            <p class="text-xs text-gray-500 dark:text-gray-400">Sistemi i Menaxhimit Shkollor</p>
           </div>
         </div>
-
-        <h2 class="text-2xl font-semibold text-gray-900 dark:text-white">
-          Kyçu në llogarinë tënde
-        </h2>
-
-        <p class="mt-2 text-sm text-gray-600 dark:text-gray-400">
-          Qasje e sigurt në panelin shkollor
-        </p>
+        <h2 class="text-2xl font-semibold text-gray-900 dark:text-white">Kyçu në llogarinë tënde</h2>
+        <p class="mt-2 text-sm text-gray-600 dark:text-gray-400">Qasje e sigurt në panelin shkollor</p>
       </div>
-
-      <?php if (!empty($_SESSION['logout_success'])): ?>
-        <div id="logout-alert" class="mb-6 flex items-start gap-3 rounded-lg border border-green-200 bg-green-50 px-4 py-3 text-sm text-green-800">
-          <svg class="mt-0.5 h-5 w-5 text-green-600" fill="currentColor" viewBox="0 0 20 20">
-            <path fill-rule="evenodd"
-              d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z"
-              clip-rule="evenodd"/>
-          </svg>
-          <div>
-            <p class="font-medium">Jeni çkyçur me sukses</p>
-            <p class="text-xs text-green-700">Faleminderit që përdorët sistemin E-Shkolla.</p>
-          </div>
-        </div>
-      <?php unset($_SESSION['logout_success']); endif; ?>
-
-      <?php if ($error): ?>
-        <div class="mb-6 rounded-lg border border-red-200 bg-red-50 p-4 text-sm text-red-800">
-          <?= htmlspecialchars($error) ?>
-          <p class="mt-1 text-xs text-red-700">
-            Nëse problemi vazhdon, kontakto administratorin e shkollës.
-          </p>
-        </div>
-      <?php endif; ?>
 
       <form method="POST" class="space-y-5">
         <input type="hidden" name="csrf_token" value="<?= htmlspecialchars($_SESSION['csrf_token']) ?>">
@@ -213,57 +176,47 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
           <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
             Adresa e email-it
           </label>
-          <input type="email" name="email" required value="<?= htmlspecialchars($_POST['email'] ?? '') ?>" class="w-full rounded-lg border border-gray-300 bg-white px-4 py-2.5 text-gray-900 focus:border-blue-500 focus:ring-2 focus:ring-blue-500/20" placeholder="nxenesi@shkolla.edu">
-          <p class="mt-1 text-xs text-gray-500">
-            Përdor email-in e shkollës
-          </p>
+          <input type="email" name="email" required 
+            value="<?= htmlspecialchars($_POST['email'] ?? '') ?>" 
+            class="w-full rounded-lg border border-gray-300 bg-white px-4 py-2.5 text-gray-900 outline-none transition focus:border-blue-500 focus:ring-2 focus:ring-blue-500/20 dark:bg-gray-900 dark:border-gray-700 dark:text-white" 
+            placeholder="emri@email.com">
+          <p class="mt-1 text-xs text-gray-500">Përdor email-in që ke të regjistruar në shkollë</p>
         </div>
 
         <div>
-          <label for="password" class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
-            Fjalëkalimi
-          </label>
-
+          <label for="password" class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">Fjalëkalimi</label>
           <div class="relative">
-            <input id="password" type="password" name="password" required autocomplete="current-password" placeholder="Shkruaj fjalëkalimin" class="block w-full rounded-lg border border-gray-300 dark:border-gray-700 bg-white dark:bg-gray-900 px-4 py-2.5 pr-11 text-gray-900 dark:text-white outline-none transition focus:border-blue-500 focus:ring-2 focus:ring-blue-500/10">
+            <input id="password" type="password" name="password" required autocomplete="current-password" 
+              placeholder="Shkruaj fjalëkalimin" 
+              class="block w-full rounded-lg border border-gray-300 bg-white px-4 py-2.5 pr-11 text-gray-900 outline-none transition focus:border-blue-500 focus:ring-2 focus:ring-blue-500/20 dark:bg-gray-900 dark:border-gray-700 dark:text-white">
 
-            <button type="button" id="togglePassword" class="absolute inset-y-0 right-0 flex items-center px-3" aria-label="Shfaq ose fshih fjalëkalimin">
-              <svg id="eyeIcon" xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none" viewBox="0 0 24 24" style="stroke: black !important;">
-                <path style="stroke: black !important;" stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5"
-                  d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z"/>
-                <path style="stroke: black !important;" stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5"
-                  d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"/>
+            <button type="button" id="togglePassword" class="absolute inset-y-0 right-0 flex items-center px-3 text-gray-500 hover:text-blue-600 dark:text-gray-400" aria-label="Shfaq ose fshih fjalëkalimin">
+              <svg id="eyeIcon" xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z"/>
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"/>
               </svg>
             </button>
           </div>
         </div>
 
-
         <button type="submit" class="w-full rounded-lg bg-blue-600 py-2.5 text-sm font-semibold text-white hover:bg-blue-700 transition">Kyçu</button>
       </form>
-      <div class="mt-8 text-center text-xs text-gray-500">
-        Të dhënat janë të enkriptuara dhe të mbrojtura
-      </div>
+      <div class="mt-8 text-center text-xs text-gray-500">Të dhënat janë të enkriptuara dhe të mbrojtura</div>
     </div>
   </div>
 
   <div class="relative hidden lg:block w-1/2 overflow-hidden">
-    <img src="https://images.pexels.com/photos/4145192/pexels-photo-4145192.jpeg" alt="Nxënës në klasë duke mësuar" class="absolute inset-0 h-full w-full object-cover">
-
+    <img src="https://images.pexels.com/photos/4145192/pexels-photo-4145192.jpeg" alt="Nxënës" class="absolute inset-0 h-full w-full object-cover">
     <div class="absolute inset-0 bg-gradient-to-br from-blue-800 to-purple-700 opacity-60 animate-gradient-bg"></div>
-
     <div class="relative z-10 flex h-full flex-col items-center justify-center text-center px-8 text-white">
-      <div>
-        <img src="images/icon.png" alt="E-Shkolla Logo" class="h-20 w-20 object-contain">
-      </div>
+      <img src="images/icon.png" alt="Logo" class="h-20 w-20 object-contain mb-4">
       <h3 class="text-2xl font-semibold mb-2">Platformë për Arsimin Digjital</h3>
-      <p class="max-w-sm text-sm text-blue-100">
-        E-Shkolla ndihmon mësuesit, nxënësit dhe prindërit të bashkëpunojnë në një ambient modern dhe të sigurt shkollor.
-      </p>
+      <p class="max-w-sm text-sm text-blue-100">E-Shkolla ndihmon mësuesit, nxënësit dhe prindërit të bashkëpunojnë.</p>
     </div>
   </div>
 
 </div>
+
 <script>
   const toggleBtn = document.getElementById('togglePassword');
   const passwordInput = document.getElementById('password');
@@ -273,20 +226,17 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     const isPassword = passwordInput.type === 'password';
     passwordInput.type = isPassword ? 'text' : 'password';
 
-    // We hard-code the style into every path to kill the white line forever
     if (isPassword) {
+      // "Eye off" icon path
       eyeIcon.innerHTML = `
-        <path style="stroke: black !important;" stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5"
-          d="M13.875 18.825A10.05 10.05 0 0112 19c-4.478 0-8.268-2.943-9.542-7a9.956 9.956 0 012.362-4.162M6.423 6.423A9.956 9.956 0 0112 5c4.478 0 8.268 2.943 9.542 7a9.978 9.978 0 01-4.043 5.362M15 12a3 3 0 00-3-3"/>`;
+        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M13.875 18.825A10.05 10.05 0 0112 19c-4.478 0-8.268-2.943-9.542-7a9.956 9.956 0 012.362-4.162M6.423 6.423A9.956 9.956 0 0112 5c4.478 0 8.268 2.943 9.542 7a9.978 9.978 0 01-4.043 5.362M15 12a3 3 0 00-3-3M3 3l18 18" />`;
     } else {
+      // "Eye on" icon path
       eyeIcon.innerHTML = `
-        <path style="stroke: black !important;" stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5"
-          d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z"/>
-        <path style="stroke: black !important;" stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5"
-          d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"/>`;
+        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z"/>
+        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"/>`;
     }
   });
 </script>
 </body>
 </html>
-
