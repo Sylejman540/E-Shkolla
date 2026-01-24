@@ -31,7 +31,7 @@ function isAnyActive(array $paths) {
     <link rel="icon" href="/E-Shkolla/images/icon.png" type="image/png">
     <style>
         [x-cloak] { display: none !important; }
-        .custom-transition { transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1); }
+        .custom-transition { transition: all 0.8s cubic-bezier(0.4, 0, 0.2, 1); }
         
         /* The blue indicator for active links */
         .active-indicator::before {
