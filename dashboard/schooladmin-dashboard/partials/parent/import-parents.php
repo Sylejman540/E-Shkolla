@@ -13,24 +13,34 @@ ob_start();
 ?>
 
 <div class="px-4 sm:px-6 lg:px-8 py-8">
-    <div class="sm:flex sm:items-center justify-between mb-8">
-        <div>
-            <h1 class="text-2xl font-bold text-slate-900 dark:text-white">Importo Prindërit</h1>
-            <p class="mt-1 text-sm text-slate-500 dark:text-slate-400">Ngarkoni një skedar CSV për të shtuar prindërit në masë.</p>
-        </div>
-        <div class="flex gap-3">
-            <button onclick="toggleHelp()" class="inline-flex items-center gap-2 px-4 py-2 text-sm font-medium text-amber-700 bg-amber-50 border border-amber-200 rounded-xl hover:bg-amber-100 transition-all">
-                <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8.228 9c.549-1.165 2.03-2 3.772-2 2.21 0 4 1.343 4 3 0 1.4-1.278 2.575-3.006 2.907-.542.104-.994.54-.444 1.103m.499 3.103a1 1 0 110-2 1 1 0 010 2zV12 17h.01"></path></svg>
-                Ndihmë
-            </button>
-            <button onclick="downloadParentTemplate()" class="inline-flex items-center gap-2 px-4 py-2 text-sm font-medium text-emerald-700 bg-emerald-50 border border-emerald-200 rounded-xl hover:bg-emerald-100 transition-all">
-                <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4"></path></svg>
-                Shkarko Modelin
-            </button>
-            <a href="/E-Shkolla/parents" class="inline-flex items-center gap-2 px-4 py-2 text-sm font-medium text-slate-700 bg-white border border-slate-200 rounded-xl hover:bg-slate-50 dark:bg-gray-800 dark:text-slate-300 dark:border-white/10 transition-all">
-                Anulo
-            </a>
-        </div>
+<div class="flex flex-col lg:flex-row lg:items-center justify-between mb-8 gap-6">
+    <div>
+        <h1 class="text-2xl font-bold text-slate-900 dark:text-white tracking-tight">Importo Prindërit</h1>
+        <p class="mt-1 text-sm text-slate-500 dark:text-slate-400">Ngarkoni një skedar CSV për të shtuar prindërit në masë.</p>
+    </div>
+
+    <div class="flex flex-col sm:flex-row gap-3 w-full lg:w-auto">
+        <button onclick="toggleHelp()" 
+            class="inline-flex items-center justify-center gap-2 px-4 py-2.5 text-sm font-bold text-amber-700 bg-amber-50 border border-amber-200 rounded-xl hover:bg-amber-100 transition-all shadow-sm active:scale-95">
+            <svg class="w-5 h-5 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8.228 9c.549-1.165 2.03-2 3.772-2 2.21 0 4 1.343 4 3 0 1.4-1.278 2.575-3.006 2.907-.542.104-.994.54-.444 1.103m.499 3.103a1 1 0 110-2 1 1 0 010 2zV12 17h.01"></path>
+            </svg>
+            Ndihmë
+        </button>
+
+        <button onclick="downloadParentTemplate()" 
+            class="inline-flex items-center justify-center gap-2 px-4 py-2.5 text-sm font-bold text-emerald-700 bg-emerald-50 border border-emerald-200 rounded-xl hover:bg-emerald-100 transition-all shadow-sm active:scale-95">
+            <svg class="w-5 h-5 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4"></path>
+            </svg>
+            Shkarko Modelin
+        </button>
+
+        <a href="/E-Shkolla/parents" 
+            class="inline-flex items-center justify-center gap-2 px-4 py-2.5 text-sm font-bold text-slate-700 bg-white border border-slate-200 rounded-xl hover:bg-slate-50 dark:bg-gray-800 dark:text-slate-300 dark:border-white/10 transition-all shadow-sm active:scale-95">
+            Anulo
+        </a>
+    </div>
     </div>
 
     <div id="helpBox" class="hidden mb-6 p-6 bg-slate-800 text-white rounded-2xl shadow-xl border border-slate-700">
