@@ -2,16 +2,35 @@
 if (session_status() === PHP_SESSION_NONE) session_start();
 require_once __DIR__ . '/../../../../db.php';
 
-if ($_SESSION['user']['role']!=='schooladmin') exit;
+/* AUTH */
+if (!isset($_SESSION['user']) || $_SESSION['user']['role'] !== 'schooladmin') {
+    http_response_code(403);
+    exit('Unauthorized');
+}
 
-$d=json_decode(file_get_contents('php://input'),true);
+/* ACCEPT BOTH POST & GET (for now) */
+$id = (int)($_POST['id'] ?? $_GET['id'] ?? 0);
+$schoolId = (int)$_SESSION['user']['school_id'];
 
-$pdo->prepare("
-UPDATE class_schedule SET day=?, period_number=?
-WHERE id=? AND school_id=?
-")->execute([
-    $d['day'], $d['period'], $d['id'],
-    $_SESSION['user']['school_id']
-]);
+if ($id === 0) {
+    http_response_code(400);
+    exit('Invalid ID');
+}
 
-echo json_encode(['success'=>true]);
+/* DELETE */
+$stmt = $pdo->prepare("
+    DELETE FROM class_schedule
+    WHERE id = ? AND school_id = ?
+");
+
+$stmt->execute([$id, $schoolId]);
+
+/* AJAX SAFE */
+if (!empty($_SERVER['HTTP_X_REQUESTED_WITH'])) {
+    echo json_encode(['success' => true]);
+    exit;
+}
+
+/* FALLBACK REDIRECT */
+header('Location: ' . ($_SERVER['HTTP_REFERER'] ?? '/'));
+exit;

@@ -147,11 +147,36 @@ ob_start();
         });
     });
 
-    function deleteEntry(id) {
-        if(confirm('A jeni të sigurt?')) {
-            window.location.href = `/E-Shkolla/dashboard/schooladmin-dashboard/partials/schedule/delete-entry.php?id=${id}`;
+function deleteEntry(id) {
+    if (!confirm('A jeni të sigurt?')) return;
+
+    fetch('/E-Shkolla/dashboard/schooladmin-dashboard/partials/schedule/delete-entry.php', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+        body: `id=${id}`
+    })
+    .then(r => r.text()) // 👈 parse as text first
+    .then(text => {
+        try {
+            const res = JSON.parse(text);
+
+            if (res.success) {
+                location.reload();
+            } else {
+                alert(res.error || 'Fshirja dështoi');
+            }
+        } catch (e) {
+            console.error('Invalid JSON:', text);
+            alert('Server ktheu përgjigje të pavlefshme');
         }
-    }
+    })
+    .catch(err => {
+        console.error(err);
+        alert('Gabim gjatë fshirjes');
+    });
+}
+
+
     </script>
     <?php else: ?>
     <div class="flex flex-col items-center justify-center py-24 bg-white rounded-3xl border-2 border-dashed border-slate-200">
