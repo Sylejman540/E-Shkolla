@@ -89,6 +89,20 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             $stmtLink->execute([$schoolId, $teacher_id, (int)$cid, $subject_id]);
         }
 
+                // D. Link Teacher to MULTIPLE Classes
+        // D. Link Teacher to Subject (teacher_subjects)
+        $stmtLink = $pdo->prepare("
+            INSERT INTO teacher_subjects (school_id, teacher_id, subject_id)
+            VALUES (?, ?, ?)
+        ");
+
+        $stmtLink->execute([
+            $schoolId,
+            $teacher_id,
+            $subject_id
+        ]);
+
+
         $pdo->commit();
         $_SESSION['success'] = "Mësuesi u shtua me sukses!";
         unset($_SESSION['old']); 

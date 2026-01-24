@@ -1,170 +1,129 @@
 <?php
-declare(strict_types=1);
-
-/* ===============================
-   DEBUG (disable later in prod)
-================================ */
-error_reporting(E_ALL);
-ini_set('display_errors', 1);
-
-/* ===============================
-   JSON RESPONSE GUARANTEE
-================================ */
-header('Content-Type: application/json');
-
-/* ===============================
-   SESSION
-================================ */
 if (session_status() === PHP_SESSION_NONE) {
     session_start();
 }
 
-/* ===============================
-   DB CONNECTION
-================================ */
 require_once __DIR__ . '/../../../../db.php';
 
-/* ===============================
-   SAFETY NET FOR FATAL ERRORS
-================================ */
-register_shutdown_function(function () {
-    $error = error_get_last();
-    if ($error) {
-        echo json_encode([
-            'status'  => 'error',
-            'message' => 'Fatal error: ' . $error['message']
-        ]);
-    }
-});
+header('Content-Type: application/json');
 
-/* ===============================
-   AUTH CHECK
-================================ */
-$schoolId = $_SESSION['user']['school_id'] ?? null;
-if (!$schoolId) {
-    echo json_encode([
-        'status' => 'error',
-        'message' => 'Sesioni ka skaduar. Ju lutem kyçuni përsëri.'
-    ]);
+$user = $_SESSION['user'] ?? null;
+$schoolId = $user['school_id'] ?? null;
+
+if (!$user || $user['role'] !== 'school_admin' || !$schoolId) {
+    echo json_encode(['status' => 'error', 'message' => 'Unauthorized']);
     exit;
 }
 
-/* ===============================
-   READ JSON INPUT
-================================ */
-$raw = file_get_contents('php://input');
-$teachers = json_decode($raw, true);
+$rows = json_decode(file_get_contents('php://input'), true);
 
-if (!is_array($teachers)) {
-    echo json_encode([
-        'status' => 'error',
-        'message' => 'Të dhënat nuk janë valide (JSON i pavlefshëm).'
-    ]);
+if (!is_array($rows) || empty($rows)) {
+    echo json_encode(['status' => 'error', 'message' => 'No data']);
     exit;
 }
 
-/* ===============================
-   COUNTERS
-================================ */
 $imported = 0;
 $skipped  = 0;
 
-/* ===============================
-   PREPARED STATEMENTS
-================================ */
 try {
     $pdo->beginTransaction();
 
-    $stmtUser = $pdo->prepare("
-        INSERT INTO users (school_id, name, email, password, role, status)
-        VALUES (?, ?, ?, ?, 'teacher', ?)
-    ");
+    foreach ($rows as $row) {
 
-    $stmtTeacher = $pdo->prepare("
-        INSERT INTO teachers
-        (school_id, user_id, name, email, phone, gender, description, subject_name, status, profile_photo)
-        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
-    ");
+        $name        = trim($row['name'] ?? '');
+        $email       = strtolower(trim($row['email'] ?? ''));
+        $password    = $row['password'] ?: 'Teacher123!';
+        $phone       = trim($row['phone'] ?? '');
+        $gender      = $row['gender'] ?? 'other';
+        $status      = $row['status'] ?? 'active';
+        $subjectName = trim($row['subject'] ?? '');
+        $description = trim($row['description'] ?? '');
 
-    $stmtSubject = $pdo->prepare("
-        INSERT INTO subjects
-        (school_id, user_id, name, subject_name, description, status)
-        VALUES (?, ?, ?, ?, ?, ?)
-    ");
-
-    $stmtLink = $pdo->prepare("
-        INSERT INTO teacher_class
-        (school_id, teacher_id, class_id, subject_id)
-        VALUES (?, ?, ?, ?)
-    ");
-
-    foreach ($teachers as $row) {
-
-        /* Normalize keys */
-        $r = [];
-        foreach ($row as $k => $v) {
-            $r[strtolower(trim($k))] = trim((string)$v);
-        }
-
-        $name   = $r['name'] ?? '';
-        $email  = strtolower($r['email'] ?? '');
-        $phone  = $r['phone'] ?? '';
-        $class  = (int)($r['class_id'] ?? 0);
-        $gender = $r['gender'] ?? 'other';
-        $subj   = $r['subject'] ?? 'E pacaktuar';
-        $status = $r['status'] ?? 'active';
-        $desc   = $r['description'] ?? '';
-        $pass   = $r['password'] ?? 'Temp123!';
-        $photo  = $r['profile_photo'] ?? 'assets/img/default-avatar.png';
-
-        if (!$name || !$email || !$class) {
+        if (!$name || !$email || !$subjectName) {
             $skipped++;
             continue;
         }
 
-        /* Prevent duplicate users */
-        $chk = $pdo->prepare("SELECT id FROM users WHERE email = ?");
-        $chk->execute([$email]);
-        if ($chk->fetch()) {
+        // 1. Check if user already exists
+        $checkUser = $pdo->prepare("SELECT id FROM users WHERE email = ?");
+        $checkUser->execute([$email]);
+
+        if ($checkUser->fetch()) {
             $skipped++;
             continue;
         }
 
-        try {
-            /* User */
-            $stmtUser->execute([
+        // 2. Create user
+        $stmtUser = $pdo->prepare("
+            INSERT INTO users (school_id, name, email, password, role, status)
+            VALUES (?, ?, ?, ?, 'teacher', ?)
+        ");
+        $stmtUser->execute([
+            $schoolId,
+            $name,
+            $email,
+            password_hash($password, PASSWORD_DEFAULT),
+            $status
+        ]);
+
+        $userId = $pdo->lastInsertId();
+
+        // 3. Create teacher
+        $stmtTeacher = $pdo->prepare("
+            INSERT INTO teachers (school_id, user_id, name, email, phone, gender, subject_name, status)
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+        ");
+        $stmtTeacher->execute([
+            $schoolId,
+            $userId,
+            $name,
+            $email,
+            $phone,
+            $gender,
+            $subjectName,
+            $status
+        ]);
+
+        $teacherId = $pdo->lastInsertId();
+
+        // 4. Get or create subject
+        $stmtSubject = $pdo->prepare("
+            SELECT id FROM subjects
+            WHERE school_id = ? AND subject_name = ?
+            LIMIT 1
+        ");
+        $stmtSubject->execute([$schoolId, $subjectName]);
+        $subject = $stmtSubject->fetch(PDO::FETCH_ASSOC);
+
+        if ($subject) {
+            $subjectId = $subject['id'];
+        } else {
+            $stmtCreateSubject = $pdo->prepare("
+                INSERT INTO subjects (school_id, user_id, name, subject_name, description, status)
+                VALUES (?, ?, ?, ?, ?, 'active')
+            ");
+            $stmtCreateSubject->execute([
                 $schoolId,
+                $userId,
                 $name,
-                $email,
-                password_hash($pass, PASSWORD_DEFAULT),
-                $status
-            ]);
-            $userId = $pdo->lastInsertId();
-
-            /* Teacher */
-            $stmtTeacher->execute([
-                $schoolId, $userId, $name, $email,
-                $phone, $gender, $desc, $subj, $status, $photo
-            ]);
-            $teacherId = $pdo->lastInsertId();
-
-            /* Subject */
-            $stmtSubject->execute([
-                $schoolId, $userId, $name, $subj, $desc, $status
+                $subjectName,
+                $description
             ]);
             $subjectId = $pdo->lastInsertId();
-
-            /* Link */
-            $stmtLink->execute([
-                $schoolId, $teacherId, $class, $subjectId
-            ]);
-
-            $imported++;
-
-        } catch (Throwable $rowError) {
-            error_log('IMPORT ROW ERROR: ' . $rowError->getMessage());
-            $skipped++;
         }
+
+        // 5. Link teacher ↔ subject
+        $stmtLink = $pdo->prepare("
+            INSERT IGNORE INTO teacher_subjects (school_id, teacher_id, subject_id)
+            VALUES (?, ?, ?)
+        ");
+        $stmtLink->execute([
+            $schoolId,
+            $teacherId,
+            $subjectId
+        ]);
+
+        $imported++;
     }
 
     $pdo->commit();
@@ -172,8 +131,7 @@ try {
     echo json_encode([
         'status'   => 'success',
         'imported' => $imported,
-        'skipped'  => $skipped,
-        'message'  => 'Importimi përfundoi me sukses.'
+        'skipped'  => $skipped
     ]);
 
 } catch (Throwable $e) {
@@ -182,7 +140,7 @@ try {
     }
 
     echo json_encode([
-        'status' => 'error',
-        'message' => 'Gabim serveri: ' . $e->getMessage()
+        'status'  => 'error',
+        'message' => $e->getMessage()
     ]);
 }
