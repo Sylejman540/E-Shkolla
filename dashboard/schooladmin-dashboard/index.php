@@ -255,14 +255,14 @@ function isAnyActive(array $paths) {
 
     <div :class="sidebarCollapsed ? 'lg:pl-20' : 'lg:pl-72'" class="min-h-screen custom-transition flex flex-col">
         
-        <header class="sticky top-0 z-30 h-16 flex items-center justify-between bg-white/80 backdrop-blur-md border-b border-slate-100 px-4 lg:px-8">
-                    <a href="/E-Shkolla/school-admin-dashboard" class="flex h-20 shrink-0 items-center overflow-hidden border-b border-slate-50">
+        <header class="md:hidden sticky top-0 z-30 h-16 flex items-center justify-between bg-white/80 backdrop-blur-md border-b border-slate-100 px-4 lg:px-8">
+            <a href="/E-Shkolla/school-admin-dashboard" class="flex h-20 shrink-0 items-center overflow-hidden border-b border-slate-50">
             <img src="/E-Shkolla/images/icon.png" class="h-9 w-auto min-w-[36px]" alt="Logo">
             <div x-show="!sidebarCollapsed" x-transition.opacity class="ml-3 whitespace-nowrap">
                 <h1 class="text-lg font-bold tracking-tight text-slate-800 leading-none">E-Shkolla</h1>
                 <p class="text-[10px] font-bold uppercase tracking-widest text-blue-600 mt-1">School Admin</p>
             </div>
-        </a>
+            </a>
         
             <button @click="mobileOpen = true" class="p-2 lg:hidden text-slate-600 hover:bg-slate-50 rounded-lg transition-colors">
                 <svg class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path d="M4 6h16M4 12h16M4 18h16"/></svg>

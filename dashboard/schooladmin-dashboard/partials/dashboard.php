@@ -7,436 +7,181 @@ if (session_status() === PHP_SESSION_NONE) {
 
 if (!isset($_SESSION['user']) || $_SESSION['user']['role'] !== 'school_admin') {
     http_response_code(403);
-    exit('Unauthorized');
+    exit('I paautorizuar');
 }
 
 $schoolId = $_SESSION['user']['school_id'] ?? null;
-if (!$schoolId) {
-    die('School ID missing');
-}
+if (!$schoolId) die('ID e shkollës mungon');
 
 /* =====================================================
-   BASIC KPIs
+    1. BACKEND: MARRJA DHE PROCESIMI I TË DHËNAVE
 ===================================================== */
 
-// School name
+// Emri i Shkollës
 $stmt = $pdo->prepare("SELECT name FROM schools WHERE id = ?");
 $stmt->execute([$schoolId]);
-$schoolName = $stmt->fetchColumn() ?: 'Your School';
+$schoolName = $stmt->fetchColumn() ?: 'Paneli i Administratorit';
 
-// Totals
-$totalStudents = $pdo->prepare("SELECT COUNT(*) FROM students WHERE school_id = ?");
-$totalStudents->execute([$schoolId]);
-$totalStudents = (int) $totalStudents->fetchColumn();
-
-$totalTeachers = $pdo->prepare("SELECT COUNT(*) FROM teachers WHERE school_id = ?");
-$totalTeachers->execute([$schoolId]);
-$totalTeachers = (int) $totalTeachers->fetchColumn();
-
-$totalParents = $pdo->prepare("SELECT COUNT(*) FROM parents WHERE school_id = ?");
-$totalParents->execute([$schoolId]);
-$totalParents = (int) $totalParents->fetchColumn();
-
-$totalClasses = $pdo->prepare("SELECT COUNT(*) FROM classes WHERE school_id = ?");
-$totalClasses->execute([$schoolId]);
-$totalClasses = (int) $totalClasses->fetchColumn();
-
-/* =====================================================
-   STUDENT STATUS
-===================================================== */
-$stmt = $pdo->prepare("
-    SELECT status, COUNT(*) 
-    FROM students 
-    WHERE school_id = ?
-    GROUP BY status
-");
-$stmt->execute([$schoolId]);
-$studentsByStatus = $stmt->fetchAll(PDO::FETCH_KEY_PAIR);
-
-/* =====================================================
-   TODAY'S ATTENDANCE
-===================================================== */
-$today = date('Y-m-d');
-
-$stmt = $pdo->prepare("
-    SELECT
-        COUNT(DISTINCT a.student_id) AS total_students,
-        SUM(a.present) AS present,
-        SUM(a.missing) AS missing
-    FROM attendance a
-    JOIN students s ON s.student_id = a.student_id
-    WHERE s.school_id = ?
-    AND DATE(a.created_at) = ?
-");
-$stmt->execute([$schoolId, $today]);
-$attendanceToday = $stmt->fetch(PDO::FETCH_ASSOC);
-
-$presentToday = (int) ($attendanceToday['present'] ?? 0);
-$missingToday = (int) ($attendanceToday['missing'] ?? 0);
-$totalToday   = (int) ($attendanceToday['total_students'] ?? 0);
-
-/* =====================================================
-   MONTHLY ATTENDANCE
-===================================================== */
-$stmt = $pdo->prepare("
-    SELECT 'Present' AS label, SUM(a.present) AS total
-    FROM attendance a
-    JOIN students s ON s.student_id = a.student_id
-    WHERE s.school_id = ?
-    AND MONTH(a.created_at) = MONTH(CURDATE())
-    AND YEAR(a.created_at) = YEAR(CURDATE())
-
-    UNION ALL
-
-    SELECT 'Missing', SUM(a.missing)
-    FROM attendance a
-    JOIN students s ON s.student_id = a.student_id
-    WHERE s.school_id = ?
-    AND MONTH(a.created_at) = MONTH(CURDATE())
-    AND YEAR(a.created_at) = YEAR(CURDATE())
-");
-$stmt->execute([$schoolId, $schoolId]);
-$monthlyAttendanceData = $stmt->fetchAll(PDO::FETCH_KEY_PAIR);
-
-/* =====================================================
-   ATTENDANCE TREND (LAST 7 DAYS)
-===================================================== */
-$stmt = $pdo->prepare("
-    SELECT 
-        DATE(a.created_at) AS day,
-        SUM(a.present) AS present,
-        SUM(a.missing) AS missing,
-        COUNT(DISTINCT a.student_id) AS total_students
-    FROM attendance a
-    JOIN students s ON s.student_id = a.student_id
-    WHERE s.school_id = ?
-    AND a.created_at >= DATE_SUB(CURDATE(), INTERVAL 7 DAY)
-    GROUP BY DATE(a.created_at)
-    ORDER BY DATE(a.created_at)
-");
-$stmt->execute([$schoolId]);
-$trendRows = $stmt->fetchAll(PDO::FETCH_ASSOC);
-
-$attendanceDates = [];
-$presentTrend = [];
-$missingTrend = [];
-$attendanceRates = [];
-
-foreach ($trendRows as $row) {
-    $attendanceDates[] = date('D', strtotime($row['day']));
-    $presentTrend[] = (int) $row['present'];
-    $missingTrend[] = (int) $row['missing'];
-    $attendanceRates[] = $row['total_students'] > 0
-        ? round(($row['present'] / $row['total_students']) * 100)
-        : 0;
+// Totale për KPI-të
+$stats = [
+    'students' => $pdo->prepare("SELECT COUNT(*) FROM students WHERE school_id = ?"),
+    'teachers' => $pdo->prepare("SELECT COUNT(*) FROM teachers WHERE school_id = ?"),
+    'classes'  => $pdo->prepare("SELECT COUNT(*) FROM classes WHERE school_id = ?"),
+    'parents'  => $pdo->prepare("SELECT COUNT(*) FROM parents WHERE school_id = ?")
+];
+foreach ($stats as $key => $st) {
+    $st->execute([$schoolId]);
+    $counts[$key] = (int)$st->fetchColumn();
 }
 
-/* =====================================================
-   CLASS-WISE ATTENDANCE (TODAY)
-===================================================== */
+// A. Shpërndarja e Notave (30 ditët e fundit)
 $stmt = $pdo->prepare("
     SELECT 
-        c.grade AS class_name,
-        SUM(a.present) AS present,
-        SUM(a.missing) AS missing
-    FROM attendance a
-    JOIN classes c ON c.id = a.class_id
-    JOIN students s ON s.student_id = a.student_id
-    WHERE s.school_id = ?
-    AND DATE(a.created_at) = CURDATE()
-    GROUP BY c.id, c.grade
-    ORDER BY present DESC
-    LIMIT 5
-");
-$stmt->execute([$schoolId]);
-$classAttendanceData = $stmt->fetchAll(PDO::FETCH_ASSOC);
-
-/* =====================================================
-   GRADES DISTRIBUTION (LAST 30 DAYS)
-===================================================== */
-$stmt = $pdo->prepare("
-    SELECT 
-        CASE
-            WHEN g.grade >= 5 THEN '5'
-            WHEN g.grade >= 4 THEN '4'
-            WHEN g.grade >= 3 THEN '3'
-            WHEN g.grade >= 2 THEN '2'
-            ELSE '1'
-        END AS grade_range,
+        CASE 
+            WHEN g.grade >= 4.5 THEN '5' 
+            WHEN g.grade >= 3.5 THEN '4' 
+            WHEN g.grade >= 2.5 THEN '3' 
+            WHEN g.grade >= 1.5 THEN '2' 
+            ELSE '1' 
+        END AS label,
         COUNT(*) AS total
     FROM grades g
-    JOIN students s ON s.student_id = g.student_id
-    WHERE s.school_id = ?
-    AND g.created_at >= DATE_SUB(NOW(), INTERVAL 30 DAY)
-    GROUP BY grade_range
+    JOIN students s ON g.student_id = s.student_id
+    WHERE s.school_id = ? AND g.created_at >= DATE_SUB(NOW(), INTERVAL 30 DAY)
+    GROUP BY label ORDER BY label DESC
 ");
 $stmt->execute([$schoolId]);
-$gradesDistribution = $stmt->fetchAll(PDO::FETCH_KEY_PAIR);
+$gradeDist = $stmt->fetchAll(PDO::FETCH_KEY_PAIR);
 
-/* =====================================================
-   NEW CHARTS ADDED:
-   1. STUDENT STATUS DISTRIBUTION
-   2. TOP PERFORMING CLASSES BY ATTENDANCE (TODAY)
-===================================================== */
-
-// 1. Student Status Distribution
+// B. Trendi i Prezencës (7 Ditë)
 $stmt = $pdo->prepare("
-    SELECT 
-        COALESCE(status, 'Unknown') AS status,
-        COUNT(*) AS count
-    FROM students 
-    WHERE school_id = ?
-    GROUP BY status
-    ORDER BY count DESC
-");
-$stmt->execute([$schoolId]);
-$studentStatusData = $stmt->fetchAll(PDO::FETCH_ASSOC);
-
-$studentStatusLabels = [];
-$studentStatusValues = [];
-$studentStatusColors = [
-    'active' => '#10b981',
-    'inactive' => '#f59e0b',
-    'graduated' => '#6366f1',
-    'suspended' => '#ef4444',
-    'transferred' => '#8b5cf6',
-    'Unknown' => '#6b7280'
-];
-
-foreach ($studentStatusData as $row) {
-    $studentStatusLabels[] = ucfirst($row['status']);
-    $studentStatusValues[] = (int) $row['count'];
-}
-
-// 2. Top Performing Classes by Attendance (Today)
-$stmt = $pdo->prepare("
-    SELECT 
-        c.grade AS class_name,
-        COUNT(DISTINCT a.student_id) AS total_students,
-        SUM(a.present) AS present_count,
-        ROUND(
-            (SUM(a.present) * 100.0 / COUNT(DISTINCT a.student_id)), 
-            1
-        ) AS attendance_percentage
+    SELECT DATE(a.created_at) as day, 
+           ROUND((SUM(a.present) / COUNT(a.student_id)) * 100) as rate
     FROM attendance a
-    JOIN classes c ON c.id = a.class_id
     JOIN students s ON s.student_id = a.student_id
-    WHERE s.school_id = ?
-    AND DATE(a.created_at) = CURDATE()
-    AND c.grade IS NOT NULL
-    GROUP BY c.id, c.grade
-    HAVING total_students > 0
-    ORDER BY attendance_percentage DESC
-    LIMIT 6
+    WHERE s.school_id = ? AND a.created_at >= DATE_SUB(CURDATE(), INTERVAL 7 DAY)
+    GROUP BY day ORDER BY day ASC
 ");
 $stmt->execute([$schoolId]);
-$topClassesData = $stmt->fetchAll(PDO::FETCH_ASSOC);
+$trendData = $stmt->fetchAll(PDO::FETCH_ASSOC);
 
-$topClassLabels = [];
-$topClassPercentages = [];
-$topClassColors = [];
+// C. Prezenca sipas Klasave (Sot)
+$stmt = $pdo->prepare("
+    SELECT c.grade as class_name, 
+           ROUND((SUM(a.present) / COUNT(a.student_id)) * 100) as rate
+    FROM attendance a
+    JOIN classes c ON a.class_id = c.id
+    WHERE c.school_id = ? AND DATE(a.created_at) = CURDATE()
+    GROUP BY c.id LIMIT 8
+");
+$stmt->execute([$schoolId]);
+$classAttendance = $stmt->fetchAll(PDO::FETCH_ASSOC);
 
-// Generate colors based on performance
-foreach ($topClassesData as $row) {
-    $topClassLabels[] = $row['class_name'];
-    $topClassPercentages[] = (float) $row['attendance_percentage'];
-    
-    // Color coding based on attendance percentage
-    if ($row['attendance_percentage'] >= 90) {
-        $topClassColors[] = '#10b981'; // Green for excellent
-    } elseif ($row['attendance_percentage'] >= 75) {
-        $topClassColors[] = '#f59e0b'; // Yellow/Orange for good
-    } else {
-        $topClassColors[] = '#ef4444'; // Red for poor
-    }
-}
+// D. Statusi i Nxënësve
+$stmt = $pdo->prepare("SELECT status, COUNT(*) as count FROM students WHERE school_id = ? GROUP BY status");
+$stmt->execute([$schoolId]);
+$statusData = $stmt->fetchAll(PDO::FETCH_ASSOC);
 
 ob_start();
 ?>
 
-<!-- =======================
-     DASHBOARD HTML
-======================= -->
+<div class="p-6 bg-slate-50 min-h-screen font-sans">
+    
+    <div class="flex flex-col md:flex-row md:items-center justify-between mb-10 gap-4">
+        <div>
+            <h1 class="text-2xl font-bold text-slate-900 dark:text-white"><?= htmlspecialchars($schoolName) ?></h1>
+            <p class="mt-1 text-sm text-slate-500 dark:text-slate-400">Pasqyra e performancës së përgjithshme</p>
+        </div>
+    </div>
 
-<div class="px-4 sm:px-6 lg:px-8">
-
-    <h1 class="text-3xl font-bold text-slate-900 mb-8">
-        <?= htmlspecialchars($schoolName) ?> Dashboard
-    </h1>
-
-<div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 mb-8">
-        <?php
-        $stats = [
-            ['title' => 'Nxënës', 'count' => $totalStudents, 'color' => 'blue', 'icon' => 'M12 4.354a4 4 0 110 5.292M15 21H3v-1a6 6 0 0112 0v1zm0 0h6v-1a6 6 0 00-9-5.197M13 7a4 4 0 11-8 0 4 4 0 018 0z'],
-            ['title' => 'Mësues', 'count' => $totalTeachers, 'color' => 'emerald', 'icon' => 'M21 13.255A23.931 23.931 0 0112 15c-3.183 0-6.22-.62-9-1.745M16 6V4a2 2 0 00-2-2h-4a2 2 0 00-2 2v2m4 6h.01M5 20h14a2 2 0 002-2V8a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z'],
-            ['title' => 'Prindër', 'count' => $totalParents, 'color' => 'amber', 'icon' => 'M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0zm6 3a2 2 0 11-4 0 2 2 0 014 0zM7 10a2 2 0 11-4 0 2 2 0 014 0z'],
-            ['title' => 'Klasa', 'count' => $totalClasses, 'color' => 'purple', 'icon' => 'M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0h2m-2 0h-5m-9 0H3m2 0h5M9 7h1m-1 4h1m4-4h1m-1 4h1m-5 10v-5a1 1 0 011-1h2a1 1 0 011 1v5m-4 0h4'],
+    <div class="grid grid-cols-2 lg:grid-cols-4 gap-6 mb-10">
+        <?php 
+        $cards = [
+            ['Nxënës', $counts['students'], 'bg-indigo-600'],
+            ['Mësues', $counts['teachers'], 'bg-slate-800'],
+            ['Klasa', $counts['classes'], 'bg-emerald-500'],
+            ['Prindër', $counts['parents'], 'bg-amber-500']
         ];
-
-        foreach ($stats as $stat):
-        ?>
-        <div class="bg-white p-5 rounded-2xl border border-slate-200 shadow-sm flex items-center gap-4">
-            <div class="w-12 h-12 bg-<?= $stat['color'] ?>-50 rounded-xl flex items-center justify-center text-<?= $stat['color'] ?>-600 flex-shrink-0">
-                <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="<?= $stat['icon'] ?>"></path></svg>
-            </div>
-            <div>
-                <p class="text-sm font-medium text-slate-500"><?= $stat['title'] ?></p>
-                <p class="text-2xl font-bold text-slate-900"><?= number_format($stat['count']) ?></p>
+        foreach ($cards as $card): ?>
+        <div class="bg-white p-6 rounded-[28px] border border-slate-200/60 shadow-sm hover:shadow-md transition-shadow">
+            <p class="text-slate-400 text-[10px] font-black uppercase tracking-widest mb-2"><?= $card[0] ?></p>
+            <div class="flex items-center justify-between">
+                <span class="text-3xl font-black text-slate-900"><?= number_format($card[1]) ?></span>
+                <div class="w-1.5 h-8 <?= $card[2] ?> rounded-full"></div>
             </div>
         </div>
         <?php endforeach; ?>
     </div>
 
-    <!-- First Row of Charts -->
-    <div class="grid grid-cols-1 lg:grid-cols-2 gap-8 mb-8">
-        <div class="bg-white p-8 rounded-[32px] border">
-            <h2 class="font-bold mb-4">Today's Attendance</h2>
-            <div class="h-[260px]">
-                <canvas id="attendanceChart"></canvas>
-            </div>
-        </div>
-
-        <div class="bg-white p-8 rounded-[32px] border">
-            <h2 class="font-bold mb-4">Attendance Rate (7 Days)</h2>
-            <div class="h-[260px]">
-                <canvas id="attendanceRateChart"></canvas>
-            </div>
-        </div>
-    </div>
-
-    <!-- Second Row of Charts (NEWLY ADDED) -->
-    <div class="grid grid-cols-1 lg:grid-cols-2 gap-8 mb-8">
-        <!-- Student Status Distribution Chart -->
-        <div class="bg-white p-8 rounded-[32px] border">
-            <div class="flex justify-between items-center mb-4">
-                <h2 class="font-bold">Student Status Distribution</h2>
-                <span class="text-sm text-slate-500">Total: <?= $totalStudents ?> students</span>
-            </div>
-            <div class="h-[260px]">
-                <canvas id="studentStatusChart"></canvas>
-            </div>
-            <div class="mt-4 grid grid-cols-2 sm:grid-cols-3 gap-2">
-                <?php foreach ($studentStatusData as $status): ?>
-                    <div class="flex items-center text-sm">
-                        <div class="w-3 h-3 rounded-full mr-2" 
-                             style="background-color: <?= $studentStatusColors[strtolower($status['status'])] ?? '#6b7280' ?>"></div>
-                        <span class="text-slate-700"><?= ucfirst($status['status']) ?>:</span>
-                        <span class="font-bold ml-1"><?= $status['count'] ?></span>
+    <div class="grid grid-cols-1 lg:grid-cols-3 gap-8">
+        
+        <div class="lg:col-span-2 space-y-8">
+            
+            <div class="bg-white p-8 rounded-[32px] border border-slate-200/60 shadow-sm">
+                <div class="flex justify-between items-center mb-8">
+                    <div>
+                        <h2 class="text-xl font-bold text-slate-900 italic">Shpërndarja Akademike</h2>
+                        <p class="text-xs text-slate-400 font-medium uppercase tracking-tighter">Analiza e notave të muajit të fundit</p>
                     </div>
-                <?php endforeach; ?>
+                    <div class="h-2 w-12 bg-indigo-100 rounded-full"></div>
+                </div>
+                <div class="h-[320px]">
+                    <canvas id="gradeChart"></canvas>
+                </div>
+            </div>
+
+            <div class="bg-white p-8 rounded-[32px] border border-slate-200/60 shadow-sm">
+                <div class="flex items-center justify-between mb-8">
+                    <h2 class="text-xl font-bold text-slate-900">Pjesëmarrja sipas Klasave (Sot)</h2>
+                    <span class="px-3 py-1 bg-emerald-50 text-emerald-600 text-[10px] font-bold rounded-full">LIVE DATA</span>
+                </div>
+                <div class="h-[300px]">
+                    <canvas id="classAttendanceChart"></canvas>
+                </div>
             </div>
         </div>
 
-        <!-- Top Performing Classes Chart -->
-        <div class="bg-white p-8 rounded-[32px] border">
-            <div class="flex justify-between items-center mb-4">
-                <h2 class="font-bold">Top Classes by Attendance Today</h2>
-                <span class="text-sm text-slate-500"><?= date('M j, Y') ?></span>
-            </div>
-            <div class="h-[260px]">
-                <canvas id="topClassesChart"></canvas>
-            </div>
-            <?php if (!empty($topClassesData)): ?>
-                <div class="mt-4 grid grid-cols-2 sm:grid-cols-3 gap-3">
-                    <?php foreach ($topClassesData as $index => $class): ?>
-                        <div class="text-center p-2 bg-slate-50 rounded-lg">
-                            <div class="text-sm font-bold text-slate-900"><?= htmlspecialchars($class['class_name']) ?></div>
-                            <div class="text-lg font-black mt-1" style="color: <?= $topClassColors[$index] ?>">
-                                <?= $class['attendance_percentage'] ?>%
-                            </div>
-                            <div class="text-xs text-slate-500">
-                                <?= $class['present_count'] ?>/<?= $class['total_students'] ?> students
-                            </div>
+        <div class="space-y-8">
+            
+            <div class="bg-slate-900 text-white p-8 rounded-[40px] shadow-2xl relative overflow-hidden">
+                <div class="relative z-10">
+                    <div class="flex justify-between items-start mb-6">
+                        <div>
+                            <h2 class="text-slate-400 text-[10px] font-black uppercase tracking-[0.2em]">Pulsi i Prezencës</h2>
+                            <p class="text-5xl font-black mt-2"><?= end($trendData)['rate'] ?? 0 ?><span class="text-indigo-400">%</span></p>
                         </div>
+                        <div class="p-3 bg-white/5 rounded-2xl border border-white/10">
+                            <svg class="w-6 h-6 text-indigo-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 7h8m0 0v8m0-8l-8 8-4-4-6 6"/></svg>
+                        </div>
+                    </div>
+                    <div class="h-32">
+                        <canvas id="miniTrendChart"></canvas>
+                    </div>
+                    <p class="text-center text-[10px] text-slate-500 font-bold uppercase mt-6 tracking-widest">Trendi 7-Ditor</p>
+                </div>
+                <div class="absolute -right-16 -top-16 w-48 h-48 bg-indigo-600/20 rounded-full blur-[80px]"></div>
+            </div>
+
+            <div class="bg-white p-8 rounded-[32px] border border-slate-200/60 shadow-sm">
+                <h2 class="text-lg font-bold text-slate-900 mb-8">Statusi i Regjistrimit</h2>
+                <div class="h-[240px]">
+                    <canvas id="statusChart"></canvas>
+                </div>
+                <div class="mt-8 space-y-3">
+                    <?php 
+                    $colors = ['#6366f1', '#94a3b8', '#10b981', '#f59e0b'];
+                    foreach($statusData as $index => $row): ?>
+                    <div class="flex items-center justify-between text-sm">
+                        <div class="flex items-center gap-3">
+                            <div class="w-2.5 h-2.5 rounded-full" style="background-color: <?= $colors[$index % 4] ?>"></div>
+                            <span class="font-medium text-slate-600"><?= ucfirst($row['status']) ?></span>
+                        </div>
+                        <span class="font-bold text-slate-900"><?= $row['count'] ?></span>
+                    </div>
                     <?php endforeach; ?>
                 </div>
-            <?php else: ?>
-                <div class="mt-4 text-center text-slate-500 italic">
-                    No attendance data available for today
-                </div>
-            <?php endif; ?>
-        </div>
-    </div>
-
-    <!-- Additional Data Tables -->
-    <div class="grid grid-cols-1 lg:grid-cols-2 gap-8">
-        <!-- Grades Distribution -->
-        <div class="bg-white p-6 rounded-[24px] border">
-            <h3 class="font-bold mb-4">Grades Distribution (Last 30 Days)</h3>
-            <div class="space-y-3">
-                <?php 
-                $gradeLabels = ['5', '4', '3', '2', '1'];
-                $totalGrades = array_sum($gradesDistribution);
-                foreach ($gradeLabels as $grade): 
-                    $count = $gradesDistribution[$grade] ?? 0;
-                    $percentage = $totalGrades > 0 ? round(($count / $totalGrades) * 100) : 0;
-                ?>
-                    <div>
-                        <div class="flex justify-between text-sm mb-1">
-                            <span class="font-medium">Grade <?= $grade ?></span>
-                            <span><?= $percentage ?>% (<?= $count ?>)</span>
-                        </div>
-                        <div class="w-full bg-slate-200 rounded-full h-2">
-                            <div class="h-2 rounded-full" 
-                                 style="width: <?= $percentage ?>%; 
-                                        background-color: <?= 
-                                            $grade === '5' ? '#10b981' : 
-                                            ($grade === '4' ? '#f59e0b' : 
-                                            ($grade === '3' ? '#6366f1' : 
-                                            ($grade === '2' ? '#8b5cf6' : '#ef4444'))) ?>">
-                            </div>
-                        </div>
-                    </div>
-                <?php endforeach; ?>
             </div>
-        </div>
 
-        <!-- Class Attendance Today -->
-        <div class="bg-white p-6 rounded-[24px] border">
-            <h3 class="font-bold mb-4">Class Attendance Today</h3>
-            <div class="overflow-x-auto">
-                <table class="w-full">
-                    <thead>
-                        <tr class="text-left text-sm text-slate-500 border-b">
-                            <th class="pb-2">Class</th>
-                            <th class="pb-2">Present</th>
-                            <th class="pb-2">Missing</th>
-                            <th class="pb-2">Rate</th>
-                        </tr>
-                    </thead>
-                    <tbody>
-                        <?php if (!empty($classAttendanceData)): ?>
-                            <?php foreach ($classAttendanceData as $class): 
-                                $total = $class['present'] + $class['missing'];
-                                $rate = $total > 0 ? round(($class['present'] / $total) * 100) : 0;
-                            ?>
-                                <tr class="text-sm border-b border-slate-100 last:border-0">
-                                    <td class="py-3 font-medium"><?= htmlspecialchars($class['class_name']) ?></td>
-                                    <td class="py-3">
-                                        <span class="px-2 py-1 bg-green-100 text-green-800 rounded-full text-xs">
-                                            <?= $class['present'] ?>
-                                        </span>
-                                    </td>
-                                    <td class="py-3">
-                                        <span class="px-2 py-1 bg-red-100 text-red-800 rounded-full text-xs">
-                                            <?= $class['missing'] ?>
-                                        </span>
-                                    </td>
-                                    <td class="py-3 font-bold <?= $rate >= 90 ? 'text-green-600' : ($rate >= 75 ? 'text-yellow-600' : 'text-red-600') ?>">
-                                        <?= $rate ?>%
-                                    </td>
-                                </tr>
-                            <?php endforeach; ?>
-                        <?php else: ?>
-                            <tr>
-                                <td colspan="4" class="py-4 text-center text-slate-500 italic">
-                                    No attendance recorded today
-                                </td>
-                            </tr>
-                        <?php endif; ?>
-                    </tbody>
-                </table>
-            </div>
         </div>
     </div>
 </div>
@@ -446,167 +191,92 @@ $content = ob_get_clean();
 require_once __DIR__ . '/../index.php';
 ?>
 
-<!-- =======================
-     CHART.JS
-======================= -->
 <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
 <script>
-// Chart 1: Today's Attendance Doughnut
-new Chart(document.getElementById('attendanceChart'), {
-    type: 'doughnut',
-    data: {
-        labels: ['Present', 'Missing'],
-        datasets: [{
-            data: [<?= $presentToday ?>, <?= $missingToday ?>],
-            backgroundColor: ['#10b981', '#ef4444'],
-            cutout: '80%'
-        }]
-    },
-    options: { 
-        plugins: { 
-            legend: { display: false },
-            tooltip: {
-                callbacks: {
-                    label: function(context) {
-                        let label = context.label || '';
-                        if (label) label += ': ';
-                        if (context.parsed !== null) {
-                            label += context.parsed + ' students';
-                        }
-                        return label;
-                    }
-                }
-            }
-        }
-    }
-});
-
-// Chart 2: Attendance Rate Trend Line
-new Chart(document.getElementById('attendanceRateChart'), {
-    type: 'line',
-    data: {
-        labels: <?= json_encode($attendanceDates) ?>,
-        datasets: [{
-            data: <?= json_encode($attendanceRates) ?>,
-            borderColor: '#6366f1',
-            backgroundColor: 'rgba(99,102,241,0.15)',
-            fill: true,
-            tension: 0.4,
-            pointBackgroundColor: '#6366f1',
-            pointBorderColor: '#ffffff',
-            pointBorderWidth: 2
-        }]
-    },
-    options: {
-        scales: {
-            y: {
-                beginAtZero: true,
-                max: 100,
-                ticks: { 
-                    callback: v => v + '%',
-                    stepSize: 20
-                },
-                grid: {
-                    drawBorder: false
-                }
-            },
-            x: {
-                grid: {
-                    display: false
-                }
-            }
-        },
-        plugins: { 
-            legend: { display: false },
-            tooltip: {
-                callbacks: {
-                    label: function(context) {
-                        return context.parsed.y + '% attendance';
-                    }
-                }
-            }
-        }
-    }
-});
-
-// Chart 3: Student Status Distribution (NEW)
-new Chart(document.getElementById('studentStatusChart'), {
-    type: 'pie',
-    data: {
-        labels: <?= json_encode($studentStatusLabels) ?>,
-        datasets: [{
-            data: <?= json_encode($studentStatusValues) ?>,
-            backgroundColor: [
-                <?php foreach ($studentStatusLabels as $label): ?>
-                    '<?= $studentStatusColors[strtolower($label)] ?? '#6b7280' ?>',
-                <?php endforeach; ?>
-            ],
-            borderWidth: 2,
-            borderColor: '#ffffff'
-        }]
-    },
-    options: {
-        plugins: {
-            legend: { display: false },
-            tooltip: {
-                callbacks: {
-                    label: function(context) {
-                        let label = context.label || '';
-                        if (label) label += ': ';
-                        if (context.parsed !== null) {
-                            label += context.parsed + ' students';
-                        }
-                        return label;
-                    }
-                }
-            }
-        },
-        maintainAspectRatio: false
-    }
-});
-
-// Chart 4: Top Performing Classes Bar Chart (NEW)
-new Chart(document.getElementById('topClassesChart'), {
+// 1. Shpërndarja e Notave
+new Chart(document.getElementById('gradeChart'), {
     type: 'bar',
     data: {
-        labels: <?= json_encode($topClassLabels) ?>,
+        labels: ['Nota 5', 'Nota 4', 'Nota 3', 'Nota 2', 'Nota 1'],
         datasets: [{
-            data: <?= json_encode($topClassPercentages) ?>,
-            backgroundColor: <?= json_encode($topClassColors) ?>,
-            borderWidth: 0,
-            borderRadius: 8,
-            borderSkipped: false
+            data: [<?= $gradeDist['5']??0 ?>, <?= $gradeDist['4']??0 ?>, <?= $gradeDist['3']??0 ?>, <?= $gradeDist['2']??0 ?>, <?= $gradeDist['1']??0 ?>],
+            backgroundColor: '#6366f1',
+            borderRadius: 15,
+            barThickness: 45
         }]
     },
     options: {
+        maintainAspectRatio: false,
+        plugins: { legend: { display: false } },
         scales: {
-            y: {
-                beginAtZero: true,
-                max: 100,
-                ticks: {
-                    callback: v => v + '%',
-                    stepSize: 25
-                },
-                grid: {
-                    drawBorder: false
-                }
-            },
-            x: {
-                grid: {
-                    display: false
-                }
-            }
-        },
-        plugins: {
-            legend: { display: false },
-            tooltip: {
-                callbacks: {
-                    label: function(context) {
-                        return context.parsed.y + '% attendance';
-                    }
-                }
-            }
+            y: { grid: { color: '#f1f5f9', drawBorder: false }, ticks: { font: { size: 11, weight: 'bold' }, color: '#94a3b8' } },
+            x: { grid: { display: false } }
         }
+    }
+});
+
+// 2. Prezenca sipas Klasave (Dinamike)
+const classData = <?= json_encode($classAttendance) ?>;
+new Chart(document.getElementById('classAttendanceChart'), {
+    type: 'bar',
+    data: {
+        labels: classData.map(c => c.class_name),
+        datasets: [{
+            data: classData.map(c => c.rate),
+            // Ngjyra e kuqe nëse < 70%, e gjelbër nëse > 70%
+            backgroundColor: classData.map(c => c.rate < 70 ? '#ef4444' : '#10b981'),
+            borderRadius: 8,
+            barThickness: 35
+        }]
+    },
+    options: {
+        maintainAspectRatio: false,
+        plugins: { legend: { display: false } },
+        scales: {
+            y: { max: 100, beginAtZero: true, ticks: { callback: v => v + '%', font: { size: 10 } } },
+            x: { grid: { display: false }, ticks: { font: { weight: 'bold' } } }
+        }
+    }
+});
+
+// 3. Trendi Sparkline
+new Chart(document.getElementById('miniTrendChart'), {
+    type: 'line',
+    data: {
+        labels: <?= json_encode(array_column($trendData, 'day')) ?>,
+        datasets: [{
+            data: <?= json_encode(array_column($trendData, 'rate')) ?>,
+            borderColor: '#818cf8',
+            borderWidth: 4,
+            tension: 0.4,
+            pointRadius: 0,
+            fill: true,
+            backgroundColor: 'rgba(129, 140, 248, 0.1)'
+        }]
+    },
+    options: {
+        maintainAspectRatio: false,
+        plugins: { legend: { display: false } },
+        scales: { x: { display: false }, y: { display: false, min: 0, max: 105 } }
+    }
+});
+
+// 4. Statusi i Nxënësve
+new Chart(document.getElementById('statusChart'), {
+    type: 'doughnut',
+    data: {
+        labels: <?= json_encode(array_column($statusData, 'status')) ?>,
+        datasets: [{
+            data: <?= json_encode(array_column($statusData, 'count')) ?>,
+            backgroundColor: ['#6366f1', '#94a3b8', '#10b981', '#f59e0b'],
+            borderWidth: 0,
+            hoverOffset: 10
+        }]
+    },
+    options: {
+        cutout: '82%',
+        maintainAspectRatio: false,
+        plugins: { legend: { display: false } }
     }
 });
 </script>

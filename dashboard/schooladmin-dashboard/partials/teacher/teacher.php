@@ -344,17 +344,27 @@ function filterTeachers() {
 }
 
 
-const btn = document.getElementById('addTeacherBtn');
-const form = document.getElementById('addTeacherForm');
-const cancel = document.getElementById('cancel');
+// --- IMPROVED ADD TEACHER LOGIC (Using Event Delegation) ---
+document.addEventListener('click', (e) => {
+    // Check if the clicked element is the button or an icon inside the button
+    const btn = e.target.closest('#addTeacherBtn');
+    const form = document.getElementById('addTeacherForm');
 
-btn?.addEventListener('click', () => {
- form.classList.remove('hidden');
- form.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    if (btn) {
+        form.classList.remove('hidden');
+        form.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    }
 });
 
-cancel?.addEventListener('click', () => {
- form.classList.add('hidden');
+// For the cancel button (usually inside the form, which isn't replaced, 
+// but it's safer to delegate this too)
+document.addEventListener('click', (e) => {
+    const cancelBtn = e.target.closest('#cancel');
+    const form = document.getElementById('addTeacherForm');
+    
+    if (cancelBtn) {
+        form.classList.add('hidden');
+    }
 });
 </script>
 
