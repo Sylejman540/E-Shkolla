@@ -4,7 +4,6 @@ require_once __DIR__ . '/../../../../db.php';
 
 header('Content-Type: application/json');
 
-// Check for valid teacher ID
 $teacher_id = isset($_GET['teacher_id']) ? (int)$_GET['teacher_id'] : 0;
 
 if ($teacher_id <= 0) {
@@ -13,7 +12,9 @@ if ($teacher_id <= 0) {
 }
 
 try {
-    // We join 'subjects' with 'teacher_subjects' mapping table
+    // We use the exact field names from your screenshots:
+    // subjects table: subject_name
+    // teacher_subjects table: teacher_id, subject_id
     $stmt = $pdo->prepare("
         SELECT 
             s.id, 
@@ -27,11 +28,9 @@ try {
     $stmt->execute([$teacher_id]);
     $subjects = $stmt->fetchAll(PDO::FETCH_ASSOC);
 
-    // Return empty array if no results, otherwise the list
     echo json_encode($subjects ?: []);
 
 } catch (PDOException $e) {
-    // If the database query fails (e.g., column doesn't exist)
     http_response_code(500);
-    echo json_encode(['error' => $e->getMessage()]);
+    echo json_encode(['error' => 'Database error']);
 }

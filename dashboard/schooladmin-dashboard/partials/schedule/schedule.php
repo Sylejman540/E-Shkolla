@@ -13,7 +13,14 @@ $classId  = (int)($_GET['class_id'] ?? 0);
 
 /* FETCH DATA */
 $classesStmt  = $pdo->prepare("SELECT id, grade FROM classes WHERE school_id=? ORDER BY grade ASC");
-$teachersStmt = $pdo->prepare("SELECT id, name FROM users WHERE school_id=? AND role='teacher' ORDER BY name ASC");
+
+// Updated to match your 'users' table structure
+$teachersStmt = $pdo->prepare("
+    SELECT id, name 
+    FROM users 
+    WHERE school_id = ? AND role = 'teacher' 
+    ORDER BY name ASC
+");
 
 $classesStmt->execute([$schoolId]);
 $teachersStmt->execute([$schoolId]);
@@ -152,7 +159,6 @@ ob_start();
             });
         });
 
-    // 2. Auto-select logic
     const teacherSelect = document.getElementById('teacherSelect');
     const subjectSelect = document.getElementById('subjectSelect');
 
@@ -165,23 +171,30 @@ ob_start();
             subjectSelect.classList.remove('border-emerald-400', 'bg-emerald-50', 'border-2');
 
             fetch(`/E-Shkolla/dashboard/schooladmin-dashboard/partials/schedule/get-teacher-subjects.php?teacher_id=${teacherId}`)
-                .then(r => r.json())
+                .then(response => response.json())
                 .then(subjects => {
                     subjectSelect.innerHTML = '<option value="" disabled selected>Lënda</option>';
-                    if (!subjects.length) {
-                        subjectSelect.innerHTML = '<option value="" disabled>Asnjë lëndë</option>';
+
+                    if (!Array.isArray(subjects) || subjects.length === 0) {
+                        subjectSelect.innerHTML = '<option value="" disabled>Asnjë lëndë e caktuar</option>';
                         return;
                     }
+
                     subjects.forEach(s => {
                         const opt = document.createElement('option');
                         opt.value = s.id;
-                        opt.textContent = s.subject_name;
+                        opt.textContent = s.subject_name; 
                         subjectSelect.appendChild(opt);
                     });
+
                     if (subjects.length === 1) {
                         subjectSelect.value = subjects[0].id;
                         subjectSelect.classList.add('border-emerald-400', 'bg-emerald-50', 'border-2');
                     }
+                })
+                .catch(err => {
+                    console.error('Fetch Error:', err);
+                    subjectSelect.innerHTML = '<option value="" disabled>Gabim gjatë ngarkimit</option>';
                 });
         });
     }
