@@ -4,6 +4,11 @@ require_once __DIR__ . '/../../../../db.php';
 
 if (session_status() === PHP_SESSION_NONE) { session_start(); }
 
+if (!isset($_SESSION['user']) || $_SESSION['user']['role'] !== 'school_admin') {
+    http_response_code(403);
+    exit('Unauthorized');
+}
+
 $input = json_decode(file_get_contents('php://input'), true);
 $schoolId = $_SESSION['user']['school_id'] ?? null;
 

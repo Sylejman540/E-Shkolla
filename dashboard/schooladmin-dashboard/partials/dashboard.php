@@ -5,6 +5,11 @@ if (session_status() === PHP_SESSION_NONE) {
     session_start();
 }
 
+if (!isset($_SESSION['user']) || $_SESSION['user']['role'] !== 'school_admin') {
+    http_response_code(403);
+    exit('Unauthorized');
+}
+
 $schoolId = $_SESSION['user']['school_id'] ?? null;
 if (!$schoolId) {
     die('School ID missing');

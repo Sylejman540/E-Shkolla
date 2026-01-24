@@ -82,19 +82,23 @@ ob_start();
                 <?php foreach ($periods as $k=>$v): ?><option value="<?= $k ?>"><?= $v ?></option><?php endforeach; ?>
             </select>
 
-            <select name="subject_id" required class="p-3 bg-slate-50 border border-slate-200 rounded-xl text-sm outline-none focus:ring-2 focus:ring-indigo-500">
+            <select name="subject_id" id="subjectSelect" required
+                class="p-3 bg-slate-50 border border-slate-200 rounded-xl text-sm outline-none focus:ring-2 focus:ring-indigo-500">
                 <option value="" disabled selected>Lënda</option>
                 <?php foreach ($subjects as $s): ?>
                     <option value="<?= $s['id'] ?>"><?= htmlspecialchars($s['subject_name']) ?></option>
                 <?php endforeach; ?>
             </select>
 
-            <select name="teacher_id" required class="p-3 bg-slate-50 border border-slate-200 rounded-xl text-sm outline-none focus:ring-2 focus:ring-indigo-500">
+
+            <select name="teacher_id" id="teacherSelect" required
+                class="p-3 bg-slate-50 border border-slate-200 rounded-xl text-sm outline-none focus:ring-2 focus:ring-indigo-500">
                 <option value="" disabled selected>Mësimdhënësi</option>
                 <?php foreach ($teachers as $t): ?>
                     <option value="<?= $t['id'] ?>"><?= htmlspecialchars($t['name']) ?></option>
                 <?php endforeach; ?>
             </select>
+
 
             <button type="submit" class="bg-indigo-600 hover:bg-indigo-700 text-white rounded-xl font-bold py-3 text-sm transition-all active:scale-95 shadow-lg shadow-indigo-100 sm:col-span-2 lg:col-span-1">
                 Ruaj Orarin
@@ -172,7 +176,41 @@ function deleteEntry(id) {
         else alert(res.error || 'Gabim');
     });
 }
+
+const teacherSelect = document.getElementById('teacherSelect');
+const subjectSelect = document.getElementById('subjectSelect');
+
+teacherSelect.addEventListener('change', () => {
+    const teacherId = teacherSelect.value;
+    if (!teacherId) return;
+
+    fetch(`/E-Shkolla/dashboard/schooladmin-dashboard/partials/schedule/get-teacher-subjects.php?teacher_id=${teacherId}`)
+        .then(r => r.json())
+        .then(subjects => {
+            // Reset subject dropdown
+            subjectSelect.innerHTML = '<option value="" disabled selected>Lënda</option>';
+
+            subjects.forEach(s => {
+                const opt = document.createElement('option');
+                opt.value = s.id;
+                opt.textContent = s.subject_name;
+                subjectSelect.appendChild(opt);
+            });
+
+            // Auto-select if only one subject
+            if (subjects.length === 1) {
+                subjectSelect.value = subjects[0].id;
+            }
+        })
+        .catch(err => {
+            console.error(err);
+            alert('Gabim gjatë ngarkimit të lëndës');
+        });
+});
 </script>
+
+
+
 
 <?php else: ?>
     <div class="flex flex-col items-center justify-center bg-white p-12 md:p-20 rounded-3xl border-2 border-dashed border-slate-200">

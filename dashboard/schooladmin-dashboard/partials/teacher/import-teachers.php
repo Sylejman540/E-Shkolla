@@ -2,6 +2,11 @@
 if (session_status() === PHP_SESSION_NONE) { session_start(); }
 require_once __DIR__ . '/../../../../db.php'; 
 
+if (!isset($_SESSION['user']) || $_SESSION['user']['role'] !== 'school_admin') {
+    http_response_code(403);
+    exit('Unauthorized');
+}
+
 // Marrim klasat për t'i treguar te "Ndihmë"
 $school_id = $_SESSION['user']['school_id'] ?? 0;
 $stmtClasses = $pdo->prepare("SELECT id, grade FROM classes WHERE school_id = ?");

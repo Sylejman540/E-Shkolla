@@ -14,6 +14,11 @@ if (session_status() === PHP_SESSION_NONE) {
 
 require_once __DIR__ . '/../../../../db.php';
 
+if (!isset($_SESSION['user']) || $_SESSION['user']['role'] !== 'school_admin') {
+    http_response_code(403);
+    exit('Unauthorized');
+}
+
 /* ===============================
     SAFETY NET
 ================================ */
