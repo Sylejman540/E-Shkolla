@@ -54,30 +54,34 @@ ob_start();
             <p class="mt-1 text-sm text-slate-500 italic">Shtoni klasat e reja dhe caktoni kujdestarët përmes CSV.</p>
         </div>
 
-        <div class="flex gap-3 mt-4 sm:mt-0">
+        <div class="flex flex-col sm:flex-row gap-3 mt-4 sm:mt-0 w-full sm:w-auto">
             <button onclick="toggleHelp()"
-                class="inline-flex items-center gap-2 px-4 py-2 text-sm font-bold
-                       text-amber-700 bg-amber-50 border border-amber-200
-                       rounded-xl hover:bg-amber-100 transition-all shadow-sm">
-                <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path></svg>
-                ID e Mësuesve
+                class="inline-flex items-center justify-center gap-2 px-4 py-2.5 text-sm font-bold
+                    text-amber-700 bg-amber-50 border border-amber-200
+                    rounded-xl hover:bg-amber-100 transition-all shadow-sm active:scale-95">
+                <svg class="w-5 h-5 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path>
+                </svg>
+                <span>ID e Mësuesve</span>
             </button>
 
             <button onclick="downloadClassTemplate()"
-                class="inline-flex items-center gap-2 px-4 py-2 text-sm font-bold
-                       text-emerald-700 bg-emerald-50 border border-emerald-200
-                       rounded-xl hover:bg-emerald-100 transition-all shadow-sm">
-                <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4"></path></svg>
-                Modeli CSV
+                class="inline-flex items-center justify-center gap-2 px-4 py-2.5 text-sm font-bold
+                    text-emerald-700 bg-emerald-50 border border-emerald-200
+                    rounded-xl hover:bg-emerald-100 transition-all shadow-sm active:scale-95">
+                <svg class="w-5 h-5 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4"></path>
+                </svg>
+                <span>Modeli CSV</span>
             </button>
 
             <a href="/E-Shkolla/classes"
-               class="inline-flex items-center gap-2 px-4 py-2 text-sm font-bold
-                      text-slate-700 bg-white border border-slate-200
-                      rounded-xl hover:bg-slate-50 transition-all shadow-sm">
-                Anulo
+            class="inline-flex items-center justify-center gap-2 px-4 py-2.5 text-sm font-bold
+                    text-slate-700 bg-white border border-slate-200
+                    rounded-xl hover:bg-slate-50 transition-all shadow-sm active:scale-95">
+                <span>Anulo</span>
             </a>
-        </div>
+    </div>
     </div>
 
     <div id="helpBox" class="hidden mb-6 p-6 bg-slate-900 text-white rounded-[2rem] shadow-2xl border border-slate-800">
