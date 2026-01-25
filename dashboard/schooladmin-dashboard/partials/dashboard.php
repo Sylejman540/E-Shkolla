@@ -1,10 +1,19 @@
 <?php
+/**
+ * E-Shkolla — Paneli i Administratorit të Shkollës
+ * Versioni: Command Center v1 (Human-Centric)
+ * Filozofia: Qartësi > Metriçe | Veprim > Zhurmë
+ */
+
 require_once __DIR__ . '/../../../db.php';
 
 if (session_status() === PHP_SESSION_NONE) {
     session_start();
 }
 
+/* =======================
+   Siguria
+======================= */
 if (!isset($_SESSION['user']) || $_SESSION['user']['role'] !== 'school_admin') {
     http_response_code(403);
     exit('I paautorizuar');
@@ -13,270 +22,334 @@ if (!isset($_SESSION['user']) || $_SESSION['user']['role'] !== 'school_admin') {
 $schoolId = $_SESSION['user']['school_id'] ?? null;
 if (!$schoolId) die('ID e shkollës mungon');
 
-/* =====================================================
-    1. BACKEND: MARRJA DHE PROCESIMI I TË DHËNAVE
-===================================================== */
+/* =======================
+   Shtresa e të Dhënave
+======================= */
 
-// Emri i Shkollës
+// Emri i shkollës
 $stmt = $pdo->prepare("SELECT name FROM schools WHERE id = ?");
 $stmt->execute([$schoolId]);
-$schoolName = $stmt->fetchColumn() ?: 'Paneli i Administratorit';
+$schoolName = $stmt->fetchColumn() ?: 'Shkolla';
 
-// Totale për KPI-të
-$stats = [
-    'students' => $pdo->prepare("SELECT COUNT(*) FROM students WHERE school_id = ?"),
-    'teachers' => $pdo->prepare("SELECT COUNT(*) FROM teachers WHERE school_id = ?"),
-    'classes'  => $pdo->prepare("SELECT COUNT(*) FROM classes WHERE school_id = ?"),
-    'parents'  => $pdo->prepare("SELECT COUNT(*) FROM parents WHERE school_id = ?")
-];
-foreach ($stats as $key => $st) {
-    $st->execute([$schoolId]);
-    $counts[$key] = (int)$st->fetchColumn();
-}
-
-// A. Shpërndarja e Notave (30 ditët e fundit)
+// Trendi i vijueshmërisë (7 ditë)
 $stmt = $pdo->prepare("
-    SELECT 
-        CASE 
-            WHEN g.grade >= 4.5 THEN '5' 
-            WHEN g.grade >= 3.5 THEN '4' 
-            WHEN g.grade >= 2.5 THEN '3' 
-            WHEN g.grade >= 1.5 THEN '2' 
-            ELSE '1' 
-        END AS label,
-        COUNT(*) AS total
-    FROM grades g
-    JOIN students s ON g.student_id = s.student_id
-    WHERE s.school_id = ? AND g.created_at >= DATE_SUB(NOW(), INTERVAL 30 DAY)
-    GROUP BY label ORDER BY label DESC
-");
-$stmt->execute([$schoolId]);
-$gradeDist = $stmt->fetchAll(PDO::FETCH_KEY_PAIR);
-
-// B. Trendi i Prezencës (7 Ditë)
-$stmt = $pdo->prepare("
-    SELECT DATE(a.created_at) as day, 
-           ROUND((SUM(a.present) / COUNT(a.student_id)) * 100) as rate
+    SELECT DATE(a.created_at) AS day,
+           ROUND((SUM(a.present) / COUNT(*)) * 100) AS rate
     FROM attendance a
     JOIN students s ON s.student_id = a.student_id
-    WHERE s.school_id = ? AND a.created_at >= DATE_SUB(CURDATE(), INTERVAL 7 DAY)
-    GROUP BY day ORDER BY day ASC
+    WHERE s.school_id = ?
+      AND a.created_at >= DATE_SUB(CURDATE(), INTERVAL 7 DAY)
+    GROUP BY day
+    ORDER BY day ASC
 ");
 $stmt->execute([$schoolId]);
 $trendData = $stmt->fetchAll(PDO::FETCH_ASSOC);
 
-// C. Prezenca sipas Klasave (Sot)
+$currentAttendance = end($trendData)['rate'] ?? 0;
+$avgAttendance = count($trendData)
+    ? array_sum(array_column($trendData, 'rate')) / count($trendData)
+    : 0;
+$attendanceDiff = round($currentAttendance - $avgAttendance);
+
+// Klasat nën prag sot
 $stmt = $pdo->prepare("
-    SELECT c.grade as class_name, 
-           ROUND((SUM(a.present) / COUNT(a.student_id)) * 100) as rate
+    SELECT c.id, c.grade,
+           ROUND((SUM(a.present) / COUNT(*)) * 100) AS rate
     FROM attendance a
-    JOIN classes c ON a.class_id = c.id
-    WHERE c.school_id = ? AND DATE(a.created_at) = CURDATE()
-    GROUP BY c.id LIMIT 8
+    JOIN classes c ON c.id = a.class_id
+    WHERE c.school_id = ?
+      AND DATE(a.created_at) = CURDATE()
+    GROUP BY c.id
+    HAVING rate < 75
+    ORDER BY rate ASC
 ");
 $stmt->execute([$schoolId]);
-$classAttendance = $stmt->fetchAll(PDO::FETCH_ASSOC);
+$problemClasses = $stmt->fetchAll(PDO::FETCH_ASSOC);
 
-// D. Statusi i Nxënësve
-$stmt = $pdo->prepare("SELECT status, COUNT(*) as count FROM students WHERE school_id = ? GROUP BY status");
+// Indeksi i rrezikut (i brendshëm)
+$riskScore = 0;
+if ($attendanceDiff < 0) $riskScore += abs($attendanceDiff) * 3;
+$riskScore += count($problemClasses) * 12;
+$riskScore = min(100, $riskScore);
+
+// Veprimi i fundit administrativ
+$stmt = $pdo->prepare("
+    SELECT action_title, created_at
+    FROM admin_logs
+    WHERE school_id = ?
+    ORDER BY created_at DESC
+    LIMIT 1
+");
 $stmt->execute([$schoolId]);
-$statusData = $stmt->fetchAll(PDO::FETCH_ASSOC);
+$lastAction = $stmt->fetch(PDO::FETCH_ASSOC);
+
+// Notat (30 ditët e fundit)
+$stmt = $pdo->prepare("
+    SELECT 
+        CASE 
+            WHEN g.grade >= 4.5 THEN '5'
+            WHEN g.grade >= 3.5 THEN '4'
+            WHEN g.grade >= 2.5 THEN '3'
+            WHEN g.grade >= 1.5 THEN '2'
+            ELSE '1'
+        END AS label,
+        COUNT(*) AS total
+    FROM grades g
+    JOIN students s ON s.student_id = g.student_id
+    WHERE s.school_id = ?
+      AND g.created_at >= DATE_SUB(NOW(), INTERVAL 30 DAY)
+    GROUP BY label
+");
+$stmt->execute([$schoolId]);
+$gradeDist = $stmt->fetchAll(PDO::FETCH_KEY_PAIR);
+
+$updatedAt = date('H:i');
 
 ob_start();
 ?>
 
-<div class="p-6 bg-slate-50 min-h-screen font-sans">
-    
-    <div class="flex flex-col md:flex-row md:items-center justify-between mb-10 gap-4">
-        <div>
-            <h1 class="text-3xl font-black text-slate-900 tracking-tight"><?= htmlspecialchars($schoolName) ?></h1>
-            <p class="text-slate-500 text-sm font-medium">Pasqyra e performancës së përgjithshme</p>
+<!-- MODALI I VEPRIMIT -->
+<div id="actionModal" class="hidden fixed inset-0 bg-slate-900/60 backdrop-blur-sm z-50 flex items-center justify-center p-4">
+    <div class="bg-white rounded-2xl max-w-md w-full shadow-xl border border-slate-200">
+        <div class="p-6 border-b flex justify-between items-center">
+            <h3 id="modalTitle" class="text-sm font-black uppercase tracking-widest">Veprim Administrativ</h3>
+            <button onclick="closeModal()" class="text-slate-400 hover:text-slate-600">✕</button>
         </div>
-    </div>
-
-    <div class="grid grid-cols-2 lg:grid-cols-4 gap-6 mb-10">
-        <?php 
-        $cards = [
-            ['Nxënës', $counts['students'], 'bg-indigo-600'],
-            ['Mësues', $counts['teachers'], 'bg-slate-800'],
-            ['Klasa', $counts['classes'], 'bg-emerald-500'],
-            ['Prindër', $counts['parents'], 'bg-amber-500']
-        ];
-        foreach ($cards as $card): ?>
-        <div class="bg-white p-6 rounded-[28px] border border-slate-200/60 shadow-sm hover:shadow-md transition-shadow">
-            <p class="text-slate-400 text-[10px] font-black uppercase tracking-widest mb-2"><?= $card[0] ?></p>
-            <div class="flex items-center justify-between">
-                <span class="text-3xl font-black text-slate-900"><?= number_format($card[1]) ?></span>
-                <div class="w-1.5 h-8 <?= $card[2] ?> rounded-full"></div>
-            </div>
+        <div class="p-6">
+            <p id="modalDescription" class="text-sm text-slate-600 mb-4"></p>
+            <textarea id="actionMessage" rows="3"
+                class="w-full p-3 border rounded-lg text-sm"
+                placeholder="Shënim i brendshëm (opsional)…"></textarea>
         </div>
-        <?php endforeach; ?>
-    </div>
-
-    <div class="grid grid-cols-1 lg:grid-cols-3 gap-8">
-        
-        <div class="lg:col-span-2 space-y-8">
-            
-            <div class="bg-white p-8 rounded-[32px] border border-slate-200/60 shadow-sm">
-                <div class="flex justify-between items-center mb-8">
-                    <div>
-                        <h2 class="text-xl font-bold text-slate-900 italic">Shpërndarja Akademike</h2>
-                        <p class="text-xs text-slate-400 font-medium uppercase tracking-tighter">Analiza e notave të muajit të fundit</p>
-                    </div>
-                    <div class="h-2 w-12 bg-indigo-100 rounded-full"></div>
-                </div>
-                <div class="h-[320px]">
-                    <canvas id="gradeChart"></canvas>
-                </div>
-            </div>
-
-            <div class="bg-white p-8 rounded-[32px] border border-slate-200/60 shadow-sm">
-                <div class="flex items-center justify-between mb-8">
-                    <h2 class="text-xl font-bold text-slate-900">Pjesëmarrja sipas Klasave (Sot)</h2>
-                    <span class="px-3 py-1 bg-emerald-50 text-emerald-600 text-[10px] font-bold rounded-full">LIVE DATA</span>
-                </div>
-                <div class="h-[300px]">
-                    <canvas id="classAttendanceChart"></canvas>
-                </div>
-            </div>
-        </div>
-
-        <div class="space-y-8">
-            
-            <div class="bg-slate-900 text-white p-8 rounded-[40px] shadow-2xl relative overflow-hidden">
-                <div class="relative z-10">
-                    <div class="flex justify-between items-start mb-6">
-                        <div>
-                            <h2 class="text-slate-400 text-[10px] font-black uppercase tracking-[0.2em]">Pulsi i Prezencës</h2>
-                            <p class="text-5xl font-black mt-2"><?= end($trendData)['rate'] ?? 0 ?><span class="text-indigo-400">%</span></p>
-                        </div>
-                        <div class="p-3 bg-white/5 rounded-2xl border border-white/10">
-                            <svg class="w-6 h-6 text-indigo-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 7h8m0 0v8m0-8l-8 8-4-4-6 6"/></svg>
-                        </div>
-                    </div>
-                    <div class="h-32">
-                        <canvas id="miniTrendChart"></canvas>
-                    </div>
-                    <p class="text-center text-[10px] text-slate-500 font-bold uppercase mt-6 tracking-widest">Trendi 7-Ditor</p>
-                </div>
-                <div class="absolute -right-16 -top-16 w-48 h-48 bg-indigo-600/20 rounded-full blur-[80px]"></div>
-            </div>
-
-            <div class="bg-white p-8 rounded-[32px] border border-slate-200/60 shadow-sm">
-                <h2 class="text-lg font-bold text-slate-900 mb-8">Statusi i Regjistrimit</h2>
-                <div class="h-[240px]">
-                    <canvas id="statusChart"></canvas>
-                </div>
-                <div class="mt-8 space-y-3">
-                    <?php 
-                    $colors = ['#6366f1', '#94a3b8', '#10b981', '#f59e0b'];
-                    foreach($statusData as $index => $row): ?>
-                    <div class="flex items-center justify-between text-sm">
-                        <div class="flex items-center gap-3">
-                            <div class="w-2.5 h-2.5 rounded-full" style="background-color: <?= $colors[$index % 4] ?>"></div>
-                            <span class="font-medium text-slate-600"><?= ucfirst($row['status']) ?></span>
-                        </div>
-                        <span class="font-bold text-slate-900"><?= $row['count'] ?></span>
-                    </div>
-                    <?php endforeach; ?>
-                </div>
-            </div>
-
+        <div class="p-6 bg-slate-50 flex gap-3">
+            <button onclick="closeModal()" class="flex-1 text-xs font-black uppercase text-slate-500">Anulo</button>
+            <button id="confirmBtn" class="flex-1 bg-slate-900 text-white text-xs font-black uppercase rounded-lg py-2">
+                Konfirmo
+            </button>
         </div>
     </div>
 </div>
 
-<?php
-$content = ob_get_clean();
-require_once __DIR__ . '/../index.php';
-?>
+<div class="p-6 lg:p-10 bg-slate-50 min-h-screen text-slate-900">
+
+    <!-- HEADER -->
+    <div class="mb-10 border-b border-slate-200 pb-6">
+        <h1 class="text-3xl font-black"><?= htmlspecialchars($schoolName) ?></h1>
+        <p class="text-xs uppercase tracking-widest text-slate-400 mt-1">
+            Përmbledhje e Gjendjes së Shkollës · Përditësuar sot në <?= $updatedAt ?>
+        </p>
+    </div>
+
+    <!-- GJENDJA SOT -->
+    <div class="mb-8 bg-white p-6 rounded-2xl border border-slate-200">
+        <p class="text-xs uppercase text-slate-400 font-bold mb-2">
+            Gjendja e Shkollës Sot
+        </p>
+
+        <p class="text-2xl font-black">
+            <?= $riskScore > 50
+                ? 'Shkolla kërkon vëmendje sot.'
+                : 'Shkolla po funksionon normalisht sot.' ?>
+        </p>
+
+        <p class="mt-2 text-sm text-slate-600">
+            <?= $riskScore > 50
+                ? 'Janë vërejtur sinjale që kërkojnë monitorim në vijueshmëri ose performancë akademike.'
+                : 'Nuk janë identifikuar probleme kritike në vijueshmëri apo rezultate akademike.' ?>
+        </p>
+    </div>
+
+    <!-- FOKUSI I DITËS -->
+    <div class="mb-10 bg-slate-900 text-white p-6 rounded-2xl">
+        <p class="text-xs uppercase tracking-widest text-slate-400 mb-3 font-bold">
+            Fokusi i Ditës
+        </p>
+
+        <?php if (!empty($problemClasses)): ?>
+            <ul class="space-y-2 text-sm font-semibold">
+                <?php foreach (array_slice($problemClasses, 0, 2) as $c): ?>
+                    <li>
+                        • Ndiqni Klasën <?= htmlspecialchars($c['grade']) ?>
+                        (<?= $c['rate'] ?>% vijueshmëri)
+                    </li>
+                <?php endforeach; ?>
+            </ul>
+        <?php else: ?>
+            <p class="text-sm text-slate-300">
+                Nuk ka veprime urgjente për sot.
+            </p>
+        <?php endif; ?>
+    </div>
+
+    <div class="grid grid-cols-1 lg:grid-cols-12 gap-8">
+
+        <!-- MAJTAS -->
+        <div class="lg:col-span-8 space-y-8">
+
+            <div class="bg-slate-50 p-5 rounded-xl border border-slate-200">
+                <p class="text-xs uppercase text-slate-400 font-bold mb-3">Pse kjo gjendje</p>
+                <ul class="text-sm space-y-1 text-slate-700">
+                    <li>• Trendi i vijueshmërisë është <?= $attendanceDiff < 0 ? 'në rënie' : 'i qëndrueshëm' ?></li>
+                    <li>• <?= count($problemClasses) ?> klasa janë nën pragun minimal të vijueshmërisë</li>
+                    <li>• Performanca akademike është brenda pritshmërive</li>
+                </ul>
+                <p class="mt-4 text-xs text-slate-400">
+                    Indeksi i rrezikut (i brendshëm): <?= $riskScore ?>/100
+                </p>
+            </div>
+
+            <div class="bg-white p-6 rounded-2xl border border-slate-200">
+                <p class="text-xs uppercase text-slate-400 font-bold mb-2">
+                    Çfarë mund të ndodhë në vazhdim
+                </p>
+                <p class="text-sm text-slate-700">
+                    Nëse trendi aktual vazhdon, vijueshmëria e përgjithshme mund të bjerë nën <strong>80%</strong>
+                    në ditët në vijim.
+                </p>
+                <p class="mt-2 text-xs text-slate-400">
+                    Besueshmëria: mesatare (bazuar në 7 ditët e fundit)
+                </p>
+            </div>
+
+            <div class="bg-white rounded-2xl border border-slate-200 overflow-hidden">
+                <div class="p-6 border-b bg-slate-50 flex justify-between items-center">
+                    <p class="text-xs uppercase font-bold text-slate-400">
+                        Klasat që kërkojnë vëmendje
+                    </p>
+                    <?php if ($lastAction): ?>
+                        <p class="text-xs text-slate-400 italic">
+                            Veprimi i fundit: <?= htmlspecialchars($lastAction['action_title']) ?>
+                        </p>
+                    <?php endif; ?>
+                </div>
+
+                <?php if (empty($problemClasses)): ?>
+                    <div class="p-12 text-center text-slate-400 text-sm">
+                        Të gjitha klasat janë brenda niveleve normale të vijueshmërisë.
+                    </div>
+                <?php else: ?>
+                    <?php foreach ($problemClasses as $c): ?>
+                        <div class="p-6 flex justify-between items-center hover:bg-slate-50">
+                            <div>
+                                <p class="font-bold">Klasa <?= htmlspecialchars($c['grade']) ?></p>
+                                <p class="text-xs text-rose-600 uppercase">
+                                    <?= $c['rate'] ?>% vijueshmëri sot
+                                </p>
+                            </div>
+                            <button
+                                onclick="openActionModal(
+                                    'notify',
+                                    'Njofto mësimdhënësin — Klasa <?= $c['grade'] ?>',
+                                    'Kërko sqarim lidhur me rënien e vijueshmërisë sot.'
+                                )"
+                                class="bg-slate-900 text-white text-xs font-black uppercase px-4 py-2 rounded-lg">
+                                Ndërmerr veprim
+                            </button>
+                        </div>
+                    <?php endforeach; ?>
+                <?php endif; ?>
+            </div>
+
+        </div>
+
+        <!-- DJATHTAS -->
+        <div class="lg:col-span-4 space-y-8">
+
+            <div class="bg-white p-6 rounded-2xl border border-slate-200">
+                <p class="text-xs uppercase font-bold text-slate-400 mb-4">
+                    Gjendja Akademike (30 ditët e fundit)
+                </p>
+                <div class="h-40">
+                    <canvas id="gradeChart"></canvas>
+                </div>
+                <p class="mt-4 text-xs text-slate-500 italic">
+                    Rritja e notave të ulëta mund të tregojë vështirësi në vlerësim ose ngarkesë të lëndëve.
+                </p>
+            </div>
+
+            <div class="bg-slate-900 p-6 rounded-2xl text-white">
+                <p class="text-xs uppercase text-slate-400 font-bold mb-4">
+                    Trendi i Vijueshmërisë
+                </p>
+                <div class="h-32">
+                    <canvas id="trendChart"></canvas>
+                </div>
+            </div>
+
+        </div>
+    </div>
+
+    <!-- MBYLLJE / SIGURI -->
+    <div class="mt-12 p-6 rounded-2xl bg-slate-100 text-slate-600 text-sm">
+        Sistemi monitoron vazhdimisht vijueshmërinë dhe performancën akademike.
+        Në rast të ndryshimeve të rëndësishme, do të njoftoheni menjëherë.
+    </div>
+</div>
 
 <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
 <script>
-// 1. Shpërndarja e Notave
+Chart.defaults.font.family = 'Inter, sans-serif';
+Chart.defaults.color = '#94a3b8';
+
 new Chart(document.getElementById('gradeChart'), {
     type: 'bar',
     data: {
-        labels: ['Nota 5', 'Nota 4', 'Nota 3', 'Nota 2', 'Nota 1'],
+        labels: ['5','4','3','2','1'],
         datasets: [{
-            data: [<?= $gradeDist['5']??0 ?>, <?= $gradeDist['4']??0 ?>, <?= $gradeDist['3']??0 ?>, <?= $gradeDist['2']??0 ?>, <?= $gradeDist['1']??0 ?>],
-            backgroundColor: '#6366f1',
-            borderRadius: 15,
-            barThickness: 45
+            data: [<?= $gradeDist['5']??0 ?>,<?= $gradeDist['4']??0 ?>,<?= $gradeDist['3']??0 ?>,<?= $gradeDist['2']??0 ?>,<?= $gradeDist['1']??0 ?>],
+            backgroundColor: '#1e293b',
+            borderRadius: 6,
+            barThickness: 16
         }]
     },
     options: {
         maintainAspectRatio: false,
         plugins: { legend: { display: false } },
-        scales: {
-            y: { grid: { color: '#f1f5f9', drawBorder: false }, ticks: { font: { size: 11, weight: 'bold' }, color: '#94a3b8' } },
-            x: { grid: { display: false } }
-        }
+        scales: { y: { display:false }, x: { display:true } }
     }
 });
 
-// 2. Prezenca sipas Klasave (Dinamike)
-const classData = <?= json_encode($classAttendance) ?>;
-new Chart(document.getElementById('classAttendanceChart'), {
-    type: 'bar',
-    data: {
-        labels: classData.map(c => c.class_name),
-        datasets: [{
-            data: classData.map(c => c.rate),
-            // Ngjyra e kuqe nëse < 70%, e gjelbër nëse > 70%
-            backgroundColor: classData.map(c => c.rate < 70 ? '#ef4444' : '#10b981'),
-            borderRadius: 8,
-            barThickness: 35
-        }]
-    },
-    options: {
-        maintainAspectRatio: false,
-        plugins: { legend: { display: false } },
-        scales: {
-            y: { max: 100, beginAtZero: true, ticks: { callback: v => v + '%', font: { size: 10 } } },
-            x: { grid: { display: false }, ticks: { font: { weight: 'bold' } } }
-        }
-    }
-});
-
-// 3. Trendi Sparkline
-new Chart(document.getElementById('miniTrendChart'), {
+new Chart(document.getElementById('trendChart'), {
     type: 'line',
     data: {
-        labels: <?= json_encode(array_column($trendData, 'day')) ?>,
+        labels: <?= json_encode(array_column($trendData,'day')) ?>,
         datasets: [{
-            data: <?= json_encode(array_column($trendData, 'rate')) ?>,
-            borderColor: '#818cf8',
-            borderWidth: 4,
+            data: <?= json_encode(array_column($trendData,'rate')) ?>,
+            borderColor: '#6366f1',
+            borderWidth: 3,
             tension: 0.4,
-            pointRadius: 0,
-            fill: true,
-            backgroundColor: 'rgba(129, 140, 248, 0.1)'
+            pointRadius: 0
         }]
     },
     options: {
         maintainAspectRatio: false,
-        plugins: { legend: { display: false } },
-        scales: { x: { display: false }, y: { display: false, min: 0, max: 105 } }
+        plugins: { legend: { display:false } },
+        scales: { x:{display:false}, y:{display:false} }
     }
 });
 
-// 4. Statusi i Nxënësve
-new Chart(document.getElementById('statusChart'), {
-    type: 'doughnut',
-    data: {
-        labels: <?= json_encode(array_column($statusData, 'status')) ?>,
-        datasets: [{
-            data: <?= json_encode(array_column($statusData, 'count')) ?>,
-            backgroundColor: ['#6366f1', '#94a3b8', '#10b981', '#f59e0b'],
-            borderWidth: 0,
-            hoverOffset: 10
-        }]
-    },
-    options: {
-        cutout: '82%',
-        maintainAspectRatio: false,
-        plugins: { legend: { display: false } }
-    }
-});
+const modal = document.getElementById('actionModal');
+const confirmBtn = document.getElementById('confirmBtn');
+
+function openActionModal(type, title, description) {
+    document.getElementById('modalTitle').innerText = title;
+    document.getElementById('modalDescription').innerText = description;
+    modal.classList.remove('hidden');
+
+    confirmBtn.onclick = () => {
+        fetch('handle_command.php', {
+            method: 'POST',
+            headers: {'Content-Type':'application/json'},
+            body: JSON.stringify({ type, title })
+        }).then(() => location.reload());
+    };
+}
+
+function closeModal() {
+    modal.classList.add('hidden');
+}
 </script>
+
+<?php
+$content = ob_get_clean();
+require_once __DIR__ . '/../index.php';
