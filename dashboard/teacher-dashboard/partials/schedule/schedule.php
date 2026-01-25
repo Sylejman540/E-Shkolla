@@ -24,10 +24,9 @@ if (!$teacherId) {
 }
 
 /* =========================
-   TIME & DAY SETUP
+   DAY SETUP
 ========================= */
-$todayEng    = strtolower(date('l')); // monday, tuesday...
-$currentTime = date('H:i');
+$todayEng = strtolower(date('l'));
 
 $dayMap = [
     'monday'    => 'E Hënë',
@@ -38,27 +37,13 @@ $dayMap = [
 ];
 
 /* =========================
-   PERIOD TIMES (FIXED)
-========================= */
-$periodTimes = [
-    1 => ['08:00', '08:45'],
-    2 => ['08:50', '09:35'],
-    3 => ['09:40', '10:25'],
-    4 => ['10:30', '11:15'],
-    5 => ['11:20', '12:05'],
-    6 => ['12:10', '12:55'],
-    7 => ['13:00', '13:45'],
-];
-
-/* =========================
-   FETCH SCHEDULE
+   FETCH SCHEDULE (PERIOD-BASED)
 ========================= */
 $stmt = $pdo->prepare("
     SELECT 
         cs.id,
         cs.day,
         cs.period_number,
-        cs.status,
         c.grade      AS class_name,
         s.subject_name
     FROM class_schedule cs
@@ -73,97 +58,101 @@ $stmt = $pdo->prepare("
 $stmt->execute([$teacherId, $schoolId]);
 $scheduleItems = $stmt->fetchAll(PDO::FETCH_ASSOC);
 
-/* =========================
-   TOTAL CLASSES (FIX)
-========================= */
+/* =====================================================
+   KPI PREPARATION (READ-ONLY, PERIOD-BASED)
+===================================================== */
+
+// Always defined (no notices)
+$totalClasses     = 0;
+$totalHours       = 0;
+$busiestDayLabel  = 'N/A';
+$busiestCount     = 0;
+
+// Total periods in the week
 $totalClasses = count($scheduleItems);
 
-/* =========================
-   WEEKLY LOAD + TODAY + BUSIEST DAY
-========================= */
-$totalHours   = 0;
-$dayCounts    = [];
+// One period = one hour (visual KPI)
+$totalHours = $totalClasses;
+
+// Count periods per weekday
+$dayCounts = [];
+
+foreach ($scheduleItems as $item) {
+    $day = strtolower($item['day']);
+    $dayCounts[$day] = ($dayCounts[$day] ?? 0) + 1;
+}
+
+// Determine busiest day
+if (!empty($dayCounts)) {
+    $busiestDayKey   = array_keys($dayCounts, max($dayCounts))[0];
+    $busiestCount   = $dayCounts[$busiestDayKey];
+    $busiestDayLabel = $dayMap[$busiestDayKey] ?? 'N/A';
+}
+
+/* =====================================================
+   ORA AKTIVE — PERIOD POINTER (FINAL MVP)
+===================================================== */
+
+// Collect ONLY today’s lessons
 $todayClasses = [];
 
 foreach ($scheduleItems as $item) {
-
-    $day    = strtolower($item['day']);
-    $period = (int)$item['period_number'];
-
-    if (!isset($periodTimes[$period])) continue;
-
-    [$startTime, $endTime] = $periodTimes[$period];
-
-    /* ----- HOURS ----- */
-    $totalHours += (strtotime($endTime) - strtotime($startTime)) / 3600;
-
-    /* ----- DAY COUNT ----- */
-    $dayCounts[$day] = ($dayCounts[$day] ?? 0) + 1;
-
-    /* ----- TODAY STATUS ----- */
-    if ($day === $todayEng) {
-
-        if ($currentTime >= $startTime && $currentTime <= $endTime) {
-            $status = 'ongoing';
-        } elseif ($currentTime > $endTime) {
-            $status = 'completed';
-        } else {
-            $status = 'upcoming';
-        }
-
-        $item['status']     = $status;
-        $item['start_time'] = $startTime;
-        $item['end_time']   = $endTime;
-
+    if (strtolower($item['day']) === $todayEng) {
         $todayClasses[] = $item;
     }
 }
 
-/* =========================
-   BUSIEST DAY
-========================= */
-$busiestDayKey   = !empty($dayCounts) ? array_search(max($dayCounts), $dayCounts) : null;
-$busiestDayLabel = $busiestDayKey ? $dayMap[$busiestDayKey] : 'N/A';
-$busiestCount    = $busiestDayKey ? $dayCounts[$busiestDayKey] : 0;
+// Determine active period (MVP default)
+$activePeriod = null;
 
-/* =========================
-   GROUP BY DAY + BLOCK
-========================= */
+if (!empty($todayClasses)) {
+    $activePeriod = min(array_column($todayClasses, 'period_number'));
+}
+
+// Assign statuses (STRICT)
+foreach ($todayClasses as &$lesson) {
+    if ($lesson['period_number'] < $activePeriod) {
+        $lesson['status'] = 'completed';
+    } elseif ($lesson['period_number'] == $activePeriod) {
+        $lesson['status'] = 'ongoing';
+    } else {
+        $lesson['status'] = 'upcoming';
+    }
+}
+unset($lesson);
+
+/* =====================================================
+   GROUP BY DAY + SHIFT (FOR UI RENDERING)
+===================================================== */
+
 $grouped = [];
 
 foreach ($scheduleItems as $item) {
     $period = (int)$item['period_number'];
-    [$start] = $periodTimes[$period];
-
-    $hour  = (int)date('H', strtotime($start));
-    $block = ($hour < 12) ? 'Mëngjes' : 'Pasdite';
-
-    $item['start_time'] = $start;
-    $item['end_time']   = $periodTimes[$period][1];
-
+    $block  = ($period <= 5) ? 'Mëngjes' : 'Pasdite';
     $grouped[strtolower($item['day'])][$block][] = $item;
 }
 
-/* =========================
-   SUBJECT STYLE HELPER
-========================= */
-function getSubjectStyle($subject) {
+/* =====================================================
+   SUBJECT STYLE HELPER (PURE FUNCTION)
+===================================================== */
+function getSubjectStyle(string $subject): array {
     $s = mb_strtolower($subject);
 
-    if (str_contains($s, 'matematik')) return ['bg'=>'bg-orange-50','border'=>'border-orange-500','text'=>'text-orange-700','icon'=>'📐'];
-    if (str_contains($s, 'gjuh'))      return ['bg'=>'bg-blue-50','border'=>'border-blue-500','text'=>'text-blue-700','icon'=>'📘'];
+    if (str_contains($s, 'matematik')) return ['border'=>'border-orange-500','icon'=>'📐'];
+    if (str_contains($s, 'gjuh'))      return ['border'=>'border-blue-500','icon'=>'📘'];
     if (str_contains($s, 'biologji') || str_contains($s, 'kimi'))
-        return ['bg'=>'bg-green-50','border'=>'border-green-500','text'=>'text-green-700','icon'=>'🧪'];
-    if (str_contains($s, 'fizik'))      return ['bg'=>'bg-purple-50','border'=>'border-purple-500','text'=>'text-purple-700','icon'=>'⚛️'];
+        return ['border'=>'border-green-500','icon'=>'🧪'];
+    if (str_contains($s, 'fizik'))      return ['border'=>'border-purple-500','icon'=>'⚛️'];
 
-    return ['bg'=>'bg-slate-50','border'=>'border-slate-400','text'=>'text-slate-700','icon'=>'📝'];
+    return ['border'=>'border-slate-400','icon'=>'📝'];
 }
+
 
 /* =========================
    READY FOR VIEW
 ========================= */
 ob_start();
-
 ?>
 
 <div class="space-y-6 max-w-full overflow-hidden pb-10">
@@ -240,7 +229,6 @@ ob_start();
             <div class="relative flex items-center gap-4 p-4 bg-white dark:bg-slate-900 rounded-2xl border border-slate-200 dark:border-white/10 shadow-sm overflow-hidden">
                 <div class="absolute left-0 top-0 bottom-0 w-1 <?= $tc['status'] === 'ongoing' ? 'bg-emerald-500' : 'bg-slate-200 dark:bg-slate-800' ?>"></div>
                 <div class="text-center min-w-[55px]">
-                    <span class="block text-xs font-black text-slate-900 dark:text-white"><?= date('H:i', strtotime($tc['start_time'])) ?></span>
                     <div class="mt-1 flex justify-center"><span class="h-1.5 w-1.5 rounded-full <?= $statusColor ?> ring-4"></span></div>
                 </div>
                 <div class="flex-1">
@@ -290,10 +278,7 @@ ob_start();
                                         <?php foreach ($grouped[$engDay][$block] as $class): $style = getSubjectStyle($class['subject_name']); ?>
                                             <div class="group bg-white dark:bg-slate-800 border-l-4 <?= $style['border'] ?> rounded-xl p-3 shadow-sm hover:shadow-md transition-all border border-slate-100 dark:border-white/5">
                                                 <div class="flex justify-between items-start mb-1">
-                                                    <span class="text-[10px] font-black text-slate-900 dark:text-white leading-tight">
-                                                        <?= date('H:i', strtotime($class['start_time'])) ?><br>
-                                                        <span class="text-slate-400 font-medium font-sans">- <?= date('H:i', strtotime($class['end_time'])) ?></span>
-                                                    </span>
+                                                    <?= (int)$class['period_number'] ?>
                                                     <span class="text-lg"><?= $style['icon'] ?></span>
                                                 </div>
                                                 <div class="font-bold text-slate-800 dark:text-white text-sm truncate"><?= htmlspecialchars($class['subject_name']) ?></div>
@@ -309,6 +294,50 @@ ob_start();
             <?php endforeach; ?>
         </div>
     </div>
+</div>
+
+<div class="space-y-6 max-w-full overflow-hidden pb-10">
+
+    <!-- MOBILE: AXHENDA E SOTME -->
+    <?php if (!empty($todayClasses)): ?>
+    <div class="lg:hidden px-2">
+        <h3 class="text-sm font-bold text-slate-900 mb-4">
+            Axhenda e Sotme (<?= $dayMap[$todayEng] ?>)
+        </h3>
+
+        <div class="space-y-3">
+            <?php foreach ($todayClasses as $tc): ?>
+                <div class="relative flex items-center gap-4 p-4 bg-white rounded-2xl border shadow-sm">
+                    
+                    <!-- PERIOD DISPLAY (REPLACED TIME) -->
+                    <div class="text-center min-w-[55px]">
+                        <span class="block text-xs font-black">
+                            Ora <?= (int)$tc['period_number'] ?>
+                        </span>
+                    </div>
+
+                    <div class="flex-1">
+                        <h4 class="text-sm font-bold leading-none mb-1">
+                            <?= htmlspecialchars($tc['subject_name']) ?>
+                        </h4>
+                        <p class="text-[10px] text-slate-500 font-medium">
+                            Klasa <?= htmlspecialchars($tc['class_name']) ?>
+                        </p>
+                    </div>
+
+                    <?php if ($tc['status'] === 'ongoing'): ?>
+                        <span class="text-xs font-bold text-emerald-600">AKTIVE</span>
+                    <?php elseif ($tc['status'] === 'completed'): ?>
+                        <span class="text-xs text-slate-400">Përfunduar</span>
+                    <?php else: ?>
+                        <span class="text-xs text-slate-400">Në vijim</span>
+                    <?php endif; ?>
+                </div>
+            <?php endforeach; ?>
+        </div>
+    </div>
+    <?php endif; ?>
+
 </div>
 
 <style>
