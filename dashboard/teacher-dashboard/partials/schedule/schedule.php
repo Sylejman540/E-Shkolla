@@ -88,7 +88,6 @@ $stmt = $pdo->prepare("
         cs.academic_year,
         cs.created_at,
         c.grade,
-        c.class_header,
         c.academic_year AS class_academic_year,
         s.subject_name
     FROM class_schedule cs
@@ -344,15 +343,13 @@ ob_start();
 
                                     <div class="flex items-center justify-between border-t border-slate-50 pt-2">
                                         <span class="text-[10px] font-medium text-slate-400 italic">Snapshot <?= substr($csrfToken,0,4) ?></span>
-<a
-    href="/E-Shkolla/show-classes?class_id=<?= (int)$l['class_id'] ?>&subject_id=<?= (int)$l['subject_id'] ?>"
-    class="text-[10px] text-indigo-500 font-bold hover:underline"
->
-    Detajet →
-</a>
-
-                 </div>
-
+                                        <a
+                                            href="/E-Shkolla/show-classes?class_id=<?= (int)$l['class_id'] ?>&subject_id=<?= (int)$l['subject_id'] ?>"
+                                            class="text-[10px] text-indigo-500 font-bold hover:underline"
+                                        >
+                                            Detajet →
+                                        </a>
+                                    </div>
                                     <?php if ($isConflict): ?>
                                         <div class="absolute -top-2 -right-2 bg-amber-500 text-white text-[8px] font-black px-2 py-0.5 rounded-full shadow-lg animate-bounce">
                                             KONFLIKT
