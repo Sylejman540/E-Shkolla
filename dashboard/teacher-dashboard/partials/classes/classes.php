@@ -8,7 +8,6 @@ require_once __DIR__ . '/../../../../db.php';
 /* =====================================================
    SECURITY & DATA INTEGRITY
 ===================================================== */
-
 $user = $_SESSION['user'] ?? null;
 
 if (!$user || empty($user['id']) || empty($user['school_id']) || ($user['role'] ?? '') !== 'teacher') {
@@ -32,7 +31,7 @@ if (!$teacherId) {
 // Academic Year Context
 $yearStmt = $pdo->prepare("SELECT academic_year FROM classes WHERE school_id = ? AND status = 'active' ORDER BY academic_year DESC LIMIT 1");
 $yearStmt->execute([$schoolId]);
-$academicYear = $yearStmt->fetchColumn() ?: 'E pa specifikuar';
+$academicYear = $yearStmt->fetchColumn() ?: '2025/26';
 
 /* =====================================================
    PAGINATION LOGIC
@@ -56,8 +55,8 @@ $totalPages = ceil($totalItems / $itemsPerPage);
    DATA FETCHING
 ===================================================== */
 
-// 1. Pinned Class (If Head Teacher) - Always shown, not paginated
-$headerStmt = $pdo->prepare("SELECT id, grade as class_name, max_students FROM classes WHERE class_header = ? AND school_id = ? AND status = 'active' AND academic_year = ? LIMIT 1");
+// 1. Pinned Class (If Head Teacher)
+$headerStmt = $pdo->prepare("SELECT id, grade as class_name FROM classes WHERE class_header = ? AND school_id = ? AND status = 'active' AND academic_year = ? LIMIT 1");
 $headerStmt->execute([$userId, $schoolId, $academicYear]);
 $pinnedClass = $headerStmt->fetch(PDO::FETCH_ASSOC);
 
@@ -102,16 +101,50 @@ ob_start();
                 </ol>
             </nav>
             <h1 class="text-3xl font-extrabold text-slate-900 tracking-tight">Menaxhimi i Klasave</h1>
-            <p class="text-sm text-slate-500 mt-1 flex items-center gap-2">
-                <span class="inline-block w-2 h-2 rounded-full bg-indigo-500 animate-pulse"></span>
-                Viti Akademik: <span class="font-bold text-slate-700"><?= htmlspecialchars($academicYear) ?></span>
-            </p>
+            <p class="text-sm text-slate-500 mt-1">Viti Akademik: <span class="font-bold text-slate-700"><?= htmlspecialchars($academicYear) ?></span></p>
         </div>
 
         <div class="relative group">
             <input type="text" id="classSearch" placeholder="Kërko në faqen aktuale..." 
                 class="w-full md:w-72 pl-10 pr-4 py-2.5 bg-slate-100 border-transparent rounded-xl focus:bg-white focus:ring-2 focus:ring-indigo-500 transition-all outline-none text-sm">
             <svg class="absolute left-3 top-3 w-4 h-4 text-slate-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" stroke-width="2" stroke-linecap="round"/></svg>
+        </div>
+    </div>
+
+    <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
+        <div class="bg-white rounded-2xl border border-slate-200 p-6 shadow-sm">
+            <div class="flex justify-between items-start mb-4">
+                <div class="p-2 bg-indigo-50 text-indigo-600 rounded-lg">
+                    <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path d="M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0h2m-2 0h-5m-9 0H3m2 0h5M9 7h1m-1 4h1m4-4h1m-1 4h1m-5 10v-5a1 1 0 011-1h2a1 1 0 011 1v5m-4 0h4" stroke-width="2"/></svg>
+                </div>
+                <span class="text-[10px] font-bold text-slate-400 uppercase tracking-widest">Aktiviteti</span>
+            </div>
+            <p class="text-sm font-medium text-slate-500">Lëndë Gjithsej</p>
+            <h3 class="text-3xl font-black text-slate-900"><?= $totalItems ?></h3>
+        </div>
+
+        <div class="bg-indigo-600 rounded-2xl p-6 shadow-xl shadow-indigo-100 text-white relative overflow-hidden group">
+            <div class="relative z-10">
+                <div class="flex justify-between items-start mb-4">
+                    <div class="p-2 bg-white/20 rounded-lg backdrop-blur-md">
+                        <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z" stroke-width="2"/></svg>
+                    </div>
+                </div>
+                <p class="text-xs font-bold text-indigo-100 uppercase">Statusi Im</p>
+                <h3 class="text-2xl font-black"><?= $pinnedClass ? 'Kujdestar Klasë' : 'Mësimdhënës' ?></h3>
+            </div>
+            <div class="absolute -right-4 -bottom-4 w-24 h-24 bg-white/10 rounded-full blur-2xl group-hover:scale-150 transition-transform duration-700"></div>
+        </div>
+
+        <div class="bg-white rounded-2xl border border-slate-200 p-6 shadow-sm">
+            <div class="flex justify-between items-start mb-4">
+                <div class="p-2 bg-orange-50 text-orange-600 rounded-lg">
+                    <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" stroke-width="2"/></svg>
+                </div>
+                <span class="text-[10px] font-bold text-slate-400 uppercase tracking-widest">Koha</span>
+            </div>
+            <p class="text-sm font-medium text-slate-500">Viti Shkollor</p>
+            <h3 class="text-xl font-black text-slate-900"><?= htmlspecialchars($academicYear) ?></h3>
         </div>
     </div>
 
@@ -127,26 +160,23 @@ ob_start();
                     </div>
                     <div>
                         <h4 class="text-xl font-black text-slate-900">Kujdestari e Klasës <?= htmlspecialchars($pinnedClass['class_name']) ?></h4>
-                        <p class="text-sm text-slate-500 italic">Menaxhimi i studentëve, mungesave dhe kontakteve me prindërit.</p>
+                        <p class="text-sm text-slate-500 italic">Menaxhimi i studentëve, mungesave dhe prindërve.</p>
                     </div>
                 </div>
                 <a href="/E-Shkolla/show-classes?class_id=<?= (int)$pinnedClass['id'] ?>" 
                    class="w-full md:w-auto px-6 py-3 bg-indigo-600 text-white rounded-xl font-bold text-sm hover:bg-indigo-700 transition-all shadow-lg text-center">
-                    Shiko Detajet
+                    Shiko Klasën Kujdestare
                 </a>
             </div>
         </div>
         <?php endif; ?>
 
         <div class="space-y-3">
-            <div class="flex items-center justify-between ml-1">
-                <h2 class="text-[10px] font-black text-slate-400 uppercase tracking-widest">Lëndët e Caktuara</h2>
-                <span class="text-[10px] font-bold text-slate-400">Gjithsej: <?= $totalItems ?> rezultate</span>
-            </div>
+            <h2 class="text-[10px] font-black text-slate-400 uppercase tracking-widest ml-1">Lëndët e Caktuara (<?= $totalItems ?>)</h2>
             
             <?php if (empty($classes)): ?>
             <div class="bg-slate-50 border-2 border-dashed border-slate-200 rounded-3xl p-12 text-center">
-                <p class="text-slate-400 italic">Nuk u gjet asnjë klasë në këtë faqe.</p>
+                <p class="text-slate-400 italic">Nuk u gjet asnjë lëndë e caktuar.</p>
             </div>
             <?php else: ?>
             <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4" id="classesGrid">
@@ -205,7 +235,7 @@ ob_start();
     <div class="flex flex-col md:flex-row justify-between items-center text-[11px] text-slate-400 bg-slate-50 p-6 rounded-2xl border border-slate-100">
         <div class="flex items-center gap-4">
             <span class="flex items-center gap-1">🛡️ Moduli i Sigurt</span>
-            <span class="flex items-center gap-1 uppercase tracking-tighter">🔑 Sesioni: <?= substr(session_id(), 0, 8) ?>...</span>
+            <span class="flex items-center gap-1 uppercase">🔑 Sesioni: <?= substr(session_id(), 0, 8) ?>...</span>
         </div>
         <p class="mt-2 md:mt-0 italic text-center">Sistemi për Menaxhimin e Arsimit © <?= date('Y') ?></p>
     </div>
