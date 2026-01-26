@@ -158,8 +158,7 @@ ob_start();
                                         <h4 class="font-bold text-slate-900"><?= htmlspecialchars($lesson['subject_name']) ?></h4>
                                         <p class="text-sm text-slate-500">Klasa: <?= htmlspecialchars($lesson['grade']) ?></p>
                                     </div>
-                                    <a href="/E-Shkolla/show-classes?class_id=<?= (int)$lesson['class_id'] ?>&subject_id=<?= (int)$lesson['subject_id'] ?>"
-   class="opacity-0 group-hover:opacity-100 p-2 bg-white border rounded-lg text-slate-400 hover:text-indigo-600 transition-all no-print">
+                                    <a href="/E-Shkolla/show-classes?class_id=<?= (int)$lesson['class_id'] ?>&subject_id=<?= (int)$lesson['subject_id'] ?>" class="opacity-0 group-hover:opacity-100 p-2 bg-white border rounded-lg text-slate-400 hover:text-indigo-600 transition-all no-print">
 
                                         <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path d="M9 5l7 7-7 7" stroke-width="2.5"/></svg>
                                     </a>
