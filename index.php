@@ -32,6 +32,7 @@ $routes = [
     '/teacher-settings' => 'dashboard/teacher-dashboard/partials/settings.php',
     '/teacher-classes' => 'dashboard/teacher-dashboard/partials/classes/classes.php',
     '/teacher-parents' => 'dashboard/teacher-dashboard/partials/parents/parents.php',
+    '/teacher-relators' => 'dashboard/teacher-dashboard/partials/relators.php',
     '/teacher-notices' => 'dashboard/teacher-dashboard/partials/announcement/announcement.php',
     '/class-assignments' => 'dashboard/teacher-dashboard/partials/show-classes/assignments/assignments.php',
     '/class-attendance' => 'dashboard/teacher-dashboard/partials/show-classes/attendance/attendance.php',
