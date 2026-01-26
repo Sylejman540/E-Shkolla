@@ -95,96 +95,96 @@ foreach ($trendRows as $row) {
 ob_start();
 ?>
 
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
 
-<div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 pb-12">
+<style>
+    .dashboard-container {
+        font-family: 'Inter', sans-serif;
+        -webkit-font-smoothing: antialiased;
+    }
+</style>
 
-    <!-- HEADER -->
-    <div class="mb-10 flex flex-col lg:flex-row lg:items-center lg:justify-between gap-6">
+<div class="dashboard-container max-w-6xl mx-auto px-4 pb-10 text-slate-700">
+
+    <div class="mb-6 py-4 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 border-b border-slate-100">
         <div>
-            <h1 class="text-3xl font-black text-slate-900">
+            <h1 class="text-xl font-bold text-slate-900 tracking-tight">
                 Klasa <?= htmlspecialchars($currentClassName) ?>
             </h1>
-            <p class="mt-1 text-slate-500">
-                Lënda:
-                <span class="font-semibold text-indigo-600">
-                    <?= htmlspecialchars($currentSubjectName) ?>
-                </span>
+            <p class="text-[13px] text-slate-500">
+                Lënda: <span class="font-medium text-indigo-600"><?= htmlspecialchars($currentSubjectName) ?></span>
             </p>
         </div>
 
         <button onclick="window.print()"
-            class="no-print inline-flex items-center gap-2 rounded-xl border border-slate-200 bg-white px-4 py-2 text-sm font-semibold text-slate-700 shadow-sm hover:bg-slate-50">
-            🖨️ Printo Raportin
+            class="no-print inline-flex items-center gap-2 rounded-lg border border-slate-200 bg-white px-3 py-1.5 text-[12px] font-medium text-slate-600 shadow-sm hover:bg-slate-50 transition-colors">
+            <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 17h2a2 2 0 002-2v-4a2 2 0 00-2-2H5a2 2 0 00-2 2v4a2 2 0 002 2h2m2 4h6a2 2 0 002-2v-4a2 2 0 00-2-2H9a2 2 0 00-2 2v4a2 2 0 002 2zm8-12V5a2 2 0 00-2-2H9a2 2 0 00-2 2v4h10z"/></svg>
+            Printo Raportin
         </button>
     </div>
 
-    <!-- KPI CARDS -->
-    <div class="grid grid-cols-1 sm:grid-cols-2 gap-6 mb-12">
+    <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 mb-8">
 
-        <div class="relative overflow-hidden rounded-3xl border border-slate-200 bg-white p-6 shadow-sm">
-            <p class="text-xs font-bold uppercase tracking-widest text-slate-400">
-                Nxënës në klasë
-            </p>
-            <div class="mt-3 text-4xl font-black text-indigo-600">
+        <div class="rounded-xl border border-slate-200 bg-white p-4 shadow-sm">
+            <p class="text-[10px] font-bold uppercase tracking-wider text-slate-400">Nxënës në klasë</p>
+            <div class="mt-1 text-2xl font-bold text-slate-800">
                 <?= $myTotalStudents ?>
             </div>
         </div>
 
-        <div class="relative overflow-hidden rounded-3xl border border-emerald-200 bg-emerald-50 p-6 shadow-sm">
-            <p class="text-xs font-bold uppercase tracking-widest text-emerald-700">
-                Prezenca sot
-            </p>
-            <div class="mt-3 text-4xl font-black text-emerald-600">
+        <div class="rounded-xl border border-emerald-100 bg-emerald-50/50 p-4 shadow-sm">
+            <p class="text-[10px] font-bold uppercase tracking-wider text-emerald-700">Prezenca sot</p>
+            <div class="mt-1 text-2xl font-bold text-emerald-600">
                 <?= ($presentToday + $missingToday > 0)
                     ? round(($presentToday / ($presentToday + $missingToday)) * 100)
                     : 0 ?>%
             </div>
         </div>
-
+        
+        <div class="hidden lg:block"></div>
+        <div class="hidden lg:block"></div>
     </div>
 
-    <!-- CHARTS -->
-    <div class="grid grid-cols-1 lg:grid-cols-2 gap-8 mb-12">
+    <div class="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-8">
 
-        <div class="rounded-3xl border border-slate-200 bg-white p-8 shadow-sm">
-            <h2 class="mb-2 text-lg font-bold text-slate-800">
-                Pjesëmarrja Sot
-            </h2>
-            <p class="mb-6 text-sm text-slate-500">
-                <?= htmlspecialchars($currentSubjectName) ?>
-            </p>
+        <div class="rounded-2xl border border-slate-200 bg-white p-6 shadow-sm">
+            <div class="mb-4">
+                <h2 class="text-[14px] font-semibold text-slate-800">Pjesëmarrja Sot</h2>
+                <p class="text-[11px] text-slate-400">Statistikat aktuale për <?= htmlspecialchars($currentSubjectName) ?></p>
+            </div>
 
-            <div class="h-[280px]">
+            <div class="h-[220px] flex items-center justify-center">
                 <?php if ($presentToday + $missingToday > 0): ?>
                     <canvas id="teacherAttendanceChart"></canvas>
                 <?php else: ?>
-                    <div class="flex h-full items-center justify-center text-center text-slate-400 italic">
-                        Nuk ka të dhëna për sot.<br>
-                        Shënoni prezencën për të parë grafikun.
-                    </div>
+                    <div class="text-[12px] text-slate-400 italic">Nuk ka të dhëna për sot.</div>
                 <?php endif; ?>
             </div>
         </div>
 
-        <div class="rounded-3xl border border-slate-200 bg-white p-8 shadow-sm">
-            <h2 class="mb-2 text-lg font-bold text-slate-800">
-                Trendi i Pjesëmarrjes
-            </h2>
-            <p class="mb-6 text-sm text-slate-500">
-                7 ditët e fundit
-            </p>
+        <div class="rounded-2xl border border-slate-200 bg-white p-6 shadow-sm">
+            <div class="mb-4">
+                <h2 class="text-[14px] font-semibold text-slate-800">Trendi i Pjesëmarrjes</h2>
+                <p class="text-[11px] text-slate-400">7 ditët e fundit</p>
+            </div>
 
-            <div class="h-[280px]">
+            <div class="h-[220px]">
                 <canvas id="teacherTrendChart"></canvas>
             </div>
         </div>
 
     </div>
-
 </div>
 
 <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
 <script>
+// Chart.js global defaults for smaller UI
+Chart.defaults.font.size = 11;
+Chart.defaults.font.family = "'Inter', sans-serif";
+Chart.defaults.color = '#94a3b8';
+
 const ctx1 = document.getElementById('teacherAttendanceChart');
 if (ctx1) {
     new Chart(ctx1, {
@@ -195,11 +195,17 @@ if (ctx1) {
                 data: [<?= $presentToday ?>, <?= $missingToday ?>],
                 backgroundColor: ['#10b981', '#f43f5e'],
                 borderWidth: 0,
-                cutout: '72%'
+                cutout: '80%' // Thinner ring for more elegance
             }]
         },
         options: {
-            plugins: { legend: { position: 'bottom' } }
+            maintainAspectRatio: false,
+            plugins: { 
+                legend: { 
+                    position: 'bottom',
+                    labels: { boxWidth: 8, padding: 15, usePointStyle: true }
+                } 
+            }
         }
     });
 }
@@ -211,13 +217,24 @@ new Chart(document.getElementById('teacherTrendChart'), {
         datasets: [{
             data: <?= json_encode($attendanceRates) ?>,
             borderColor: '#6366f1',
-            backgroundColor: 'rgba(99,102,241,.15)',
+            backgroundColor: 'rgba(99,102,241,.05)',
             tension: 0.4,
-            fill: true
+            fill: true,
+            pointRadius: 3,
+            borderWidth: 2
         }]
     },
     options: {
-        scales: { y: { beginAtZero: true, max: 100 } },
+        maintainAspectRatio: false,
+        scales: { 
+            y: { 
+                beginAtZero: true, 
+                max: 100,
+                grid: { display: false },
+                ticks: { stepSize: 25 }
+            },
+            x: { grid: { display: false } }
+        },
         plugins: { legend: { display: false } }
     }
 });
@@ -226,3 +243,4 @@ new Chart(document.getElementById('teacherTrendChart'), {
 <?php
 $content = ob_get_clean();
 require_once __DIR__ . '/index.php';
+?>
