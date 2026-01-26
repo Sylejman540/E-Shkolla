@@ -6,7 +6,7 @@ if (session_status() === PHP_SESSION_NONE) {
 require_once __DIR__ . '/../../../../db.php';
 
 /* =====================================================
-   SECURITY & DATA INTEGRITY
+    SECURITY & DATA INTEGRITY
 ===================================================== */
 $user = $_SESSION['user'] ?? null;
 
@@ -18,7 +18,6 @@ if (!$user || empty($user['id']) || empty($user['school_id']) || ($user['role'] 
 $userId   = (int)$user['id'];
 $schoolId = (int)$user['school_id'];
 
-// Authoritative Teacher Check
 $tStmt = $pdo->prepare("SELECT id FROM teachers WHERE user_id = ? AND school_id = ? LIMIT 1");
 $tStmt->execute([$userId, $schoolId]);
 $teacherId = (int)$tStmt->fetchColumn();
@@ -28,19 +27,17 @@ if (!$teacherId) {
     exit('Mësimdhënësi nuk u gjet.');
 }
 
-// Academic Year Context
 $yearStmt = $pdo->prepare("SELECT academic_year FROM classes WHERE school_id = ? AND status = 'active' ORDER BY academic_year DESC LIMIT 1");
 $yearStmt->execute([$schoolId]);
 $academicYear = $yearStmt->fetchColumn() ?: '2025/26';
 
 /* =====================================================
-   PAGINATION LOGIC
+    PAGINATION LOGIC
 ===================================================== */
-$itemsPerPage = 8;
+$itemsPerPage = 12; // Rritur meqë kartelat janë më kompakte
 $currentPage  = isset($_GET['page']) ? max(1, (int)$_GET['page']) : 1;
 $offset       = ($currentPage - 1) * $itemsPerPage;
 
-// Total Count for Pagination
 $countStmt = $pdo->prepare("
     SELECT COUNT(*) 
     FROM teacher_class tc
@@ -52,15 +49,12 @@ $totalItems = (int)$countStmt->fetchColumn();
 $totalPages = ceil($totalItems / $itemsPerPage);
 
 /* =====================================================
-   DATA FETCHING
+    DATA FETCHING
 ===================================================== */
-
-// 1. Pinned Class (If Head Teacher)
 $headerStmt = $pdo->prepare("SELECT id, grade as class_name FROM classes WHERE class_header = ? AND school_id = ? AND status = 'active' AND academic_year = ? LIMIT 1");
 $headerStmt->execute([$userId, $schoolId, $academicYear]);
 $pinnedClass = $headerStmt->fetch(PDO::FETCH_ASSOC);
 
-// 2. Paginated Subject Classes
 $stmt = $pdo->prepare("
     SELECT tc.class_id, tc.subject_id, c.grade AS class_name, c.max_students, s.subject_name
     FROM teacher_class tc
@@ -72,10 +66,6 @@ $stmt = $pdo->prepare("
 ");
 $stmt->execute([$schoolId, $academicYear, $teacherId]);
 $classes = $stmt->fetchAll(PDO::FETCH_ASSOC);
-
-/* =====================================================
-   UI HELPERS
-===================================================== */
 
 function getSubjectIcon(string $subject): array {
     $s = mb_strtolower($subject);
@@ -89,178 +79,148 @@ function getSubjectIcon(string $subject): array {
 ob_start();
 ?>
 
-<div class="max-w-6xl mx-auto space-y-8 pb-16 animate-in fade-in duration-500">
+<div class="max-w-6xl mx-auto space-y-6 pb-12 animate-in fade-in duration-500 text-slate-700">
 
-    <div class="flex flex-col md:flex-row md:items-end justify-between gap-4 border-b border-slate-100 pb-6">
+    <div class="flex flex-col md:flex-row md:items-center justify-between gap-4 border-b border-slate-100 pb-4">
         <div>
-            <nav class="flex mb-2" aria-label="Breadcrumb">
-                <ol class="flex items-center space-x-2 text-xs font-medium text-slate-400">
-                    <li>Dashboard</li>
-                    <li><svg class="w-3 h-3" fill="currentColor" viewBox="0 0 20 20"><path d="M7.293 14.707a1 1 0 010-1.414L10.586 10 7.293 6.707a1 1 0 011.414-1.414l4 4a1 1 0 010 1.414l-4 4a1 1 0 01-1.414 0z"></path></svg></li>
-                    <li class="text-indigo-600 font-bold">Klasat e Mia</li>
-                </ol>
-            </nav>
-            <h1 class="text-3xl font-extrabold text-slate-900 tracking-tight">Menaxhimi i Klasave</h1>
-            <p class="text-sm text-slate-500 mt-1">Viti Akademik: <span class="font-bold text-slate-700"><?= htmlspecialchars($academicYear) ?></span></p>
+            <h1 class="text-2xl font-bold text-slate-900 tracking-tight">Menaxhimi i Klasave</h1>
+            <p class="text-xs text-slate-500">Viti Akademik: <span class="font-semibold text-indigo-600"><?= htmlspecialchars($academicYear) ?></span></p>
         </div>
 
-        <div class="relative group">
-            <input type="text" id="classSearch" placeholder="Kërko në faqen aktuale..." 
-                class="w-full md:w-72 pl-10 pr-4 py-2.5 bg-slate-100 border-transparent rounded-xl focus:bg-white focus:ring-2 focus:ring-indigo-500 transition-all outline-none text-sm">
-            <svg class="absolute left-3 top-3 w-4 h-4 text-slate-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" stroke-width="2" stroke-linecap="round"/></svg>
+        <div class="relative">
+            <input type="text" id="classSearch" placeholder="Kërko klasën ose lëndën..." 
+                class="w-full md:w-64 pl-9 pr-4 py-2 bg-white border border-slate-200 rounded-lg focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 transition-all outline-none text-sm">
+            <svg class="absolute left-3 top-2.5 w-4 h-4 text-slate-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" stroke-width="2"/></svg>
         </div>
     </div>
 
-    <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
-        <div class="bg-white rounded-2xl border border-slate-200 p-6 shadow-sm">
-            <div class="flex justify-between items-start mb-4">
-                <div class="p-2 bg-indigo-50 text-indigo-600 rounded-lg">
-                    <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path d="M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0h2m-2 0h-5m-9 0H3m2 0h5M9 7h1m-1 4h1m4-4h1m-1 4h1m-5 10v-5a1 1 0 011-1h2a1 1 0 011 1v5m-4 0h4" stroke-width="2"/></svg>
-                </div>
-                <span class="text-[10px] font-bold text-slate-400 uppercase tracking-widest">Aktiviteti</span>
-            </div>
-            <p class="text-sm font-medium text-slate-500">Klasë Gjithsej</p>
-            <h3 class="text-3xl font-black text-slate-900"><?= $totalItems ?></h3>
-        </div>
-
-        <div class="bg-indigo-600 rounded-2xl p-6 shadow-xl shadow-indigo-100 text-white relative overflow-hidden group">
-            <div class="relative z-10">
-                <div class="flex justify-between items-start mb-4">
-                    <div class="p-2 bg-white/20 rounded-lg backdrop-blur-md">
-                        <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z" stroke-width="2"/></svg>
-                    </div>
-                </div>
-                <p class="text-xs font-bold text-indigo-100 uppercase">Statusi Im</p>
-                <h3 class="text-2xl font-black"><?= $pinnedClass ? 'Kujdestar Klasë' : 'Mësimdhënës' ?></h3>
-            </div>
-            <div class="absolute -right-4 -bottom-4 w-24 h-24 bg-white/10 rounded-full blur-2xl group-hover:scale-150 transition-transform duration-700"></div>
-        </div>
-
-        <div class="bg-white rounded-2xl border border-slate-200 p-6 shadow-sm">
-            <div class="flex justify-between items-start mb-4">
-                <div class="p-2 bg-orange-50 text-orange-600 rounded-lg">
-                    <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" stroke-width="2"/></svg>
-                </div>
-                <span class="text-[10px] font-bold text-slate-400 uppercase tracking-widest">Koha</span>
-            </div>
-            <p class="text-sm font-medium text-slate-500">Viti Shkollor</p>
-            <h3 class="text-xl font-black text-slate-900"><?= htmlspecialchars($academicYear) ?></h3>
-        </div>
-    </div>
-
-    <div class="space-y-6">
+<div class="grid grid-cols-1 md:grid-cols-3 gap-4">
         
-        <?php if ($pinnedClass): ?>
-        <div class="space-y-3">
-            <h2 class="text-[10px] font-black text-indigo-500 uppercase tracking-widest ml-1">Përgjegjësia Kryesore</h2>
-            <div class="bg-white border-2 border-indigo-500 rounded-3xl p-6 flex flex-col md:flex-row items-center justify-between gap-6 shadow-sm">
-                <div class="flex items-center gap-6 text-center md:text-left">
-                    <div class="h-16 w-16 bg-indigo-50 rounded-2xl flex items-center justify-center text-2xl font-black text-indigo-600 border border-indigo-100">
-                        <?= htmlspecialchars($pinnedClass['class_name']) ?>
-                    </div>
-                    <div>
-                        <h4 class="text-xl font-black text-slate-900">Kujdestari e Klasës <?= htmlspecialchars($pinnedClass['class_name']) ?></h4>
-                        <p class="text-sm text-slate-500 italic">Menaxhimi i studentëve, mungesave dhe prindërve.</p>
-                    </div>
-                </div>
-                <a href="/E-Shkolla/show-classes?class_id=<?= (int)$pinnedClass['id'] ?>" 
-                   class="w-full md:w-auto px-6 py-3 bg-indigo-600 text-white rounded-xl font-bold text-sm hover:bg-indigo-700 transition-all shadow-lg text-center">
-                    Shiko Klasën Kujdestare
-                </a>
+        <div class="bg-white rounded-xl border border-slate-200 py-4 px-5 flex items-center gap-4 shadow-sm hover:shadow-md transition-all group">
+            <div class="flex-shrink-0 w-12 h-12 bg-blue-50 text-blue-600 rounded-xl flex items-center justify-center border border-blue-100 group-hover:bg-blue-600 group-hover:text-white transition-all duration-300">
+                <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0h2m-2 0h-5m-9 0H3m2 0h5M9 7h1m-1 4h1m4-4h1m-1 4h1m-5 10v-5a1 1 0 011-1h2a1 1 0 011 1v5m-4 0h4"/>
+                </svg>
             </div>
+            <div class="flex flex-col min-w-0">
+                <p class="text-[10px] font-bold text-slate-400 uppercase tracking-wider leading-none mb-1">Klasat Totale</p>
+                <p class="text-xl font-bold text-slate-900 tabular-nums"><?= $totalItems ?></p>
+            </div>
+        </div>
+
+        <div class="bg-indigo-600 rounded-xl py-4 px-5 flex items-center gap-4 shadow-md shadow-indigo-100 group transition-all hover:bg-indigo-700">
+            <div class="flex-shrink-0 w-12 h-12 bg-white/20 text-white rounded-xl flex items-center justify-center backdrop-blur-md border border-white/30 group-hover:scale-110 transition-transform">
+                <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z"/>
+                </svg>
+            </div>
+            <div class="flex flex-col min-w-0">
+                <p class="text-[10px] font-bold text-indigo-100 uppercase tracking-wider leading-none mb-1">Roli Aktual</p>
+                <p class="text-lg font-bold text-white truncate"><?= $pinnedClass ? 'Kujdestar' : 'Mësimdhënës' ?></p>
+            </div>
+        </div>
+
+        <div class="bg-white rounded-xl border border-slate-200 py-4 px-5 flex items-center gap-4 shadow-sm hover:shadow-md transition-all group">
+            <div class="flex-shrink-0 w-12 h-12 bg-orange-50 text-orange-600 rounded-xl flex items-center justify-center border border-orange-100 group-hover:bg-orange-500 group-hover:text-white transition-all duration-300">
+                <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z"/>
+                </svg>
+            </div>
+            <div class="flex flex-col min-w-0">
+                <p class="text-[10px] font-bold text-slate-400 uppercase tracking-wider leading-none mb-1">Viti Akademik</p>
+                <p class="text-xl font-bold text-slate-900"><?= htmlspecialchars($academicYear) ?></p>
+            </div>
+        </div>
+
+    </div>
+
+    <?php if ($pinnedClass): ?>
+    <div class="bg-indigo-50/50 border border-indigo-100 rounded-xl p-4 flex flex-col md:flex-row items-center justify-between gap-4">
+        <div class="flex items-center gap-4">
+            <div class="h-12 w-12 bg-white rounded-lg flex items-center justify-center text-lg font-bold text-indigo-600 border border-indigo-100 shadow-sm">
+                <?= htmlspecialchars($pinnedClass['class_name']) ?>
+            </div>
+            <div>
+                <h4 class="text-sm font-bold text-slate-900">Kujdestaria e Klasës</h4>
+                <p class="text-xs text-slate-500">Menaxhimi i studentëve dhe prindërve të klasës <?= htmlspecialchars($pinnedClass['class_name']) ?>.</p>
+            </div>
+        </div>
+        <a href="/E-Shkolla/show-classes?class_id=<?= (int)$pinnedClass['id'] ?>" 
+           class="px-4 py-2 bg-indigo-600 text-white rounded-lg font-semibold text-xs hover:bg-indigo-700 transition-all shadow-sm">
+            Shiko Kujdestarinë
+        </a>
+    </div>
+    <?php endif; ?>
+
+    <div class="space-y-4">
+        <h2 class="text-[10px] font-bold text-slate-400 uppercase tracking-widest ml-1">Lëndët e Caktuara</h2>
+        
+        <?php if (empty($classes)): ?>
+        <div class="bg-white border border-slate-200 border-dashed rounded-xl p-12 text-center">
+            <p class="text-sm text-slate-400">Nuk u gjet asnjë lëndë e caktuar.</p>
+        </div>
+        <?php else: ?>
+        <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4" id="classesGrid">
+            <?php foreach ($classes as $row): 
+                $style = getSubjectIcon($row['subject_name']);
+            ?>
+            <div class="class-card group bg-white border border-slate-200 rounded-xl p-4 hover:border-indigo-300 transition-all">
+                <div class="flex justify-between items-start mb-3">
+                    <div class="h-8 w-8 <?= $style['bg'] ?> <?= $style['text'] ?> rounded-lg flex items-center justify-center text-sm border border-white">
+                        <?= $style['icon'] ?>
+                    </div>
+                    <span class="text-[9px] font-bold text-slate-400 bg-slate-50 px-2 py-0.5 rounded border border-slate-100">
+                        <?= (int)$row['max_students'] ?> NX.
+                    </span>
+                </div>
+
+                <h4 class="text-sm font-bold text-slate-900 searchable-class">Klasa <?= htmlspecialchars($row['class_name']) ?></h4>
+                <p class="text-[11px] font-semibold text-indigo-600 uppercase tracking-tight mb-4 searchable-subject"><?= htmlspecialchars($row['subject_name']) ?></p>
+                
+                <div class="pt-3 border-t border-slate-50 flex items-center justify-between">
+                    <span class="text-[9px] text-slate-400">ID: #<?= (int)$row['class_id'] ?></span>
+                    <a href="/E-Shkolla/show-classes?class_id=<?= (int)$row['class_id'] ?>&subject_id=<?= (int)$row['subject_id'] ?>" 
+                       class="text-[10px] font-bold text-indigo-600 hover:text-indigo-800 transition-colors">
+                        MENAXHO →
+                    </a>
+                </div>
+            </div>
+            <?php endforeach; ?>
+        </div>
+
+        <?php if ($totalPages > 1): ?>
+        <div class="flex items-center justify-center gap-1.5 pt-6">
+            <?php for($i = 1; $i <= $totalPages; $i++): ?>
+            <a href="?page=<?= $i ?>" 
+               class="px-3 py-1.5 rounded-lg border text-xs font-bold transition-all <?= $i === $currentPage ? 'bg-indigo-600 border-indigo-600 text-white shadow-sm' : 'bg-white border-slate-200 text-slate-600 hover:bg-slate-50' ?>">
+                <?= $i ?>
+            </a>
+            <?php endfor; ?>
         </div>
         <?php endif; ?>
-
-        <div class="space-y-3">
-            <h2 class="text-[10px] font-black text-slate-400 uppercase tracking-widest ml-1">Lëndët e Caktuara (<?= $totalItems ?>)</h2>
-            
-            <?php if (empty($classes)): ?>
-            <div class="bg-slate-50 border-2 border-dashed border-slate-200 rounded-3xl p-12 text-center">
-                <p class="text-slate-400 italic">Nuk u gjet asnjë lëndë e caktuar.</p>
-            </div>
-            <?php else: ?>
-            <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4" id="classesGrid">
-                <?php foreach ($classes as $row): 
-                    $style = getSubjectIcon($row['subject_name']);
-                ?>
-                <div class="class-card group bg-white border border-slate-200 rounded-2xl p-5 hover:shadow-xl hover:-translate-y-1 transition-all">
-                    <div class="flex justify-between items-start mb-4">
-                        <div class="h-10 w-10 <?= $style['bg'] ?> <?= $style['text'] ?> rounded-xl flex items-center justify-center text-xl shadow-sm border border-white group-hover:scale-110 transition-transform">
-                            <?= $style['icon'] ?>
-                        </div>
-                        <span class="text-[10px] font-bold text-slate-400 bg-slate-50 px-2 py-1 rounded-md border border-slate-100">
-                            <?= (int)$row['max_students'] ?> NXËNËS
-                        </span>
-                    </div>
-
-                    <h4 class="font-black text-slate-800 searchable-class">Klasa <?= htmlspecialchars($row['class_name']) ?></h4>
-                    <p class="text-xs font-bold text-indigo-600 uppercase tracking-wide mb-4 searchable-subject"><?= htmlspecialchars($row['subject_name']) ?></p>
-                    
-                    <div class="pt-4 border-t border-slate-50 flex items-center justify-between">
-                        <span class="text-[10px] font-medium text-slate-400 italic">ID: #<?= (int)$row['class_id'] ?></span>
-                        <a href="/E-Shkolla/show-classes?class_id=<?= (int)$row['class_id'] ?>&subject_id=<?= (int)$row['subject_id'] ?>" 
-                           class="text-[11px] font-black text-indigo-500 hover:text-indigo-700 uppercase tracking-tighter">
-                           Menaxho →
-                        </a>
-                    </div>
-                </div>
-                <?php endforeach; ?>
-            </div>
-
-            <?php if ($totalPages > 1): ?>
-            <div class="flex items-center justify-center gap-2 pt-8">
-                <a href="?page=<?= max(1, $currentPage - 1) ?>" 
-                   class="p-2 rounded-lg border border-slate-200 bg-white text-slate-600 hover:bg-slate-50 <?= $currentPage <= 1 ? 'opacity-50 pointer-events-none' : '' ?>">
-                    <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path d="M15 19l-7-7 7-7" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>
-                </a>
-
-                <?php for($i = 1; $i <= $totalPages; $i++): ?>
-                <a href="?page=<?= $i ?>" 
-                   class="px-4 py-2 rounded-lg border font-bold text-sm transition-all <?= $i === $currentPage ? 'bg-indigo-600 border-indigo-600 text-white shadow-md' : 'bg-white border-slate-200 text-slate-600 hover:bg-slate-50' ?>">
-                    <?= $i ?>
-                </a>
-                <?php endfor; ?>
-
-                <a href="?page=<?= min($totalPages, $currentPage + 1) ?>" 
-                   class="p-2 rounded-lg border border-slate-200 bg-white text-slate-600 hover:bg-slate-50 <?= $currentPage >= $totalPages ? 'opacity-50 pointer-events-none' : '' ?>">
-                    <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path d="M9 5l7 7-7 7" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>
-                </a>
-            </div>
-            <?php endif; ?>
-
-            <?php endif; ?>
-        </div>
+        <?php endif; ?>
     </div>
 
-    <div class="flex flex-col md:flex-row justify-between items-center text-[11px] text-slate-400 bg-slate-50 p-6 rounded-2xl border border-slate-100">
-        <div class="flex items-center gap-4">
-            <span class="flex items-center gap-1">🛡️ Moduli i Sigurt</span>
-            <span class="flex items-center gap-1 uppercase">🔑 Sesioni: <?= substr(session_id(), 0, 8) ?>...</span>
-        </div>
-        <p class="mt-2 md:mt-0 italic text-center">Sistemi për Menaxhimin e Arsimit © <?= date('Y') ?></p>
+    <div class="flex justify-between items-center text-[10px] text-slate-400 mt-8">
+        <p>🛡️ Sesioni: <?= substr(session_id(), 0, 8) ?></p>
+        <p>© <?= date('Y') ?> E-Shkolla</p>
     </div>
-
 </div>
 
 <script>
-// Real-time Search Logic (Searches items on the CURRENT page)
 document.getElementById('classSearch').addEventListener('keyup', function () {
     const filter = this.value.toLowerCase();
     document.querySelectorAll('.class-card').forEach(card => {
         const className = card.querySelector('.searchable-class').innerText.toLowerCase();
         const subjectName = card.querySelector('.searchable-subject').innerText.toLowerCase();
-        
         card.style.display = (className.includes(filter) || subjectName.includes(filter)) ? 'block' : 'none';
     });
 });
 </script>
 
 <style>
-    .class-card { transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1); }
-    ::-webkit-scrollbar { width: 6px; }
-    ::-webkit-scrollbar-track { background: #f8fafc; }
-    ::-webkit-scrollbar-thumb { background: #e2e8f0; border-radius: 10px; }
-    ::-webkit-scrollbar-thumb:hover { background: #cbd5e1; }
+    .class-card { transition: transform 0.2s ease, border-color 0.2s ease; }
+    .class-card:hover { transform: translateY(-2px); }
 </style>
 
 <?php
