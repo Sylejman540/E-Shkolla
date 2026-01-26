@@ -119,7 +119,7 @@ ob_start();
                 </div>
                 <span class="text-[10px] font-bold text-slate-400 uppercase tracking-widest">Aktiviteti</span>
             </div>
-            <p class="text-sm font-medium text-slate-500">Lëndë Gjithsej</p>
+            <p class="text-sm font-medium text-slate-500">Klasë Gjithsej</p>
             <h3 class="text-3xl font-black text-slate-900"><?= $totalItems ?></h3>
         </div>
 
