@@ -344,6 +344,73 @@ ob_start();
         .text-slate-700 { color: #334155 !important; }
     }
 </style>
+<script>
+function printScope(scope) {
+    let originalContent = document.body.innerHTML;
+    let printContent = '';
+
+    if (scope === 'today') {
+        const todaySection = document.getElementById('today');
+        if (!todaySection) {
+            alert('Nuk ka përmbajtje për sot.');
+            return;
+        }
+        printContent = todaySection.outerHTML;
+    }
+
+    if (scope === 'all') {
+        const printableArea = document.getElementById('printable-area') 
+            || document.querySelector('main') 
+            || document.body;
+        printContent = printableArea.outerHTML;
+    }
+
+    document.body.innerHTML = `
+        <html>
+            <head>
+                <title>Print</title>
+                <style>
+                    body {
+                        font-family: system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+                        color: #0f172a;
+                    }
+                    h1, h2, h3 {
+                        margin-bottom: 8px;
+                    }
+                    table {
+                        width: 100%;
+                        border-collapse: collapse;
+                        margin-top: 16px;
+                    }
+                    th, td {
+                        border: 1px solid #e2e8f0;
+                        padding: 8px;
+                        font-size: 12px;
+                        text-align: left;
+                    }
+                    th {
+                        background: #f1f5f9;
+                        font-weight: 700;
+                    }
+                    @media print {
+                        button, .no-print {
+                            display: none !important;
+                        }
+                    }
+                </style>
+            </head>
+            <body>
+                ${printContent}
+            </body>
+        </html>
+    `;
+
+    window.print();
+    document.body.innerHTML = originalContent;
+    window.location.reload();
+}
+</script>
+
 
 <?php
 $content = ob_get_clean();
