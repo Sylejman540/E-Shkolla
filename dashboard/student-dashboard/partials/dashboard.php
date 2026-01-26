@@ -6,6 +6,9 @@ if (session_status() === PHP_SESSION_NONE) {
     session_start();
 }
 
+/* =========================
+   1. SESSION CHECK
+========================= */
 $studentId = $_SESSION['user']['student_id'] ?? null;
 $schoolId  = $_SESSION['user']['school_id'] ?? null;
 
@@ -13,149 +16,213 @@ if (!$studentId || !$schoolId) {
     die('Session expired. Please log in.');
 }
 
+/* =========================
+   2. INITIALIZE VARIABLES
+========================= */
+$studentName = "Nxënës";
+$className = "N/A";
+$teacherName = "Pa caktuar";
+$attendanceStatus = "Pa regjistruar";
+$attendanceColor = "text-slate-500 bg-slate-100";
+$attendanceRate = 0;
+$upcomingAssignments = [];
+$trendDates = [];
+$trendStatus = [];
+
 try {
     /* =====================================================
-       1. STUDENT & CLASS INFO 
+       3. FETCH STUDENT + CLASS + KUJDESTAR (FIXED)
+       - students.class_id (canonical)
+       - classes.id join
+       - classes.class_header = teacher user_id
     ===================================================== */
     $stmt = $pdo->prepare("
-        SELECT s.student_id, s.name AS student_name, s.class_name,
-               c.id AS class_id, t.name AS teacher_name
+        SELECT
+            s.name        AS student_name,
+            c.grade       AS class_name,
+            c.id          AS class_id,
+            u.name        AS teacher_name
         FROM students s
-        LEFT JOIN classes c ON c.grade = s.class_name AND c.school_id = s.school_id
-        LEFT JOIN teachers t ON t.user_id = c.user_id
-        WHERE s.student_id = ? AND s.school_id = ?
+        INNER JOIN classes c
+            ON c.id = s.class_id
+           AND c.school_id = s.school_id
+        LEFT JOIN users u
+            ON u.id = c.class_header
+        WHERE s.student_id = ?
+          AND s.school_id = ?
         LIMIT 1
     ");
     $stmt->execute([$studentId, $schoolId]);
     $student = $stmt->fetch(PDO::FETCH_ASSOC);
 
-    if (!$student) die('Student not found.');
+    if ($student) {
+        $studentName = htmlspecialchars($student['student_name']);
+        $className   = htmlspecialchars($student['class_name']);
+        $teacherName = htmlspecialchars($student['teacher_name'] ?? 'Pa caktuar');
+        $classId     = (int)$student['class_id'];
 
-    $studentName = htmlspecialchars($student['student_name']);
-    $className   = htmlspecialchars($student['class_name']);
-    $teacherName = $student['teacher_name'] ?? 'Not assigned';
-    $classId     = $student['class_id'];
+        /* =========================
+           ATTENDANCE (TODAY)
+        ========================= */
+        $stmt = $pdo->prepare("
+            SELECT present, missing
+            FROM attendance
+            WHERE student_id = ?
+              AND DATE(created_at) = CURDATE()
+            LIMIT 1
+        ");
+        $stmt->execute([$studentId]);
+        $todayAtt = $stmt->fetch(PDO::FETCH_ASSOC);
 
-    /* =====================================================
-       2. ATTENDANCE & STATS
-    ===================================================== */
-    $stmt = $pdo->prepare("SELECT present, missing FROM attendance WHERE student_id = ? AND DATE(created_at) = CURDATE() LIMIT 1");
-    $stmt->execute([$studentId]);
-    $todayAtt = $stmt->fetch(PDO::FETCH_ASSOC);
+        if ($todayAtt) {
+            if ($todayAtt['present'] == 1) {
+                $attendanceStatus = 'Prezent';
+                $attendanceColor  = 'text-green-600 bg-green-100';
+            } elseif ($todayAtt['missing'] == 1) {
+                $attendanceStatus = 'Mungon';
+                $attendanceColor  = 'text-red-600 bg-red-100';
+            } else {
+                $attendanceStatus = 'Pa Regjistruar';
+                $attendanceColor  = 'text-yellow-600 bg-yellow-100';
+            }
+        }
 
-   /* =====================================================
-    2. ATTENDANCE & STATS (Përkthyer në Shqip)
-===================================================== */
-    $stmt = $pdo->prepare("SELECT present, missing FROM attendance WHERE student_id = ? AND DATE(created_at) = CURDATE() LIMIT 1");
-    $stmt->execute([$studentId]);
-    $todayAtt = $stmt->fetch(PDO::FETCH_ASSOC);
+        /* =========================
+           MONTHLY RATE
+        ========================= */
+        $stmt = $pdo->prepare("
+            SELECT COUNT(*) AS total, SUM(present) AS p
+            FROM attendance
+            WHERE student_id = ?
+              AND MONTH(created_at) = MONTH(CURDATE())
+              AND YEAR(created_at) = YEAR(CURDATE())
+        ");
+        $stmt->execute([$studentId]);
+        $mStats = $stmt->fetch(PDO::FETCH_ASSOC);
+        $attendanceRate = ($mStats['total'] > 0)
+            ? (int)round(($mStats['p'] / $mStats['total']) * 100)
+            : 0;
 
-    $attendanceStatus = ($todayAtt['present'] ?? 0) == 1 ? 'Prezant' : (($todayAtt['missing'] ?? 0) == 1 ? 'Mungon' : 'Pa Regjistruar');
-    $attendanceColor  = ($todayAtt['present'] ?? 0) == 1 ? 'text-green-600 bg-green-100' : (($todayAtt['missing'] ?? 0) == 1 ? 'text-red-600 bg-red-100' : 'text-yellow-600 bg-yellow-100');
+        /* =========================
+           UPCOMING ASSIGNMENTS
+        ========================= */
+        $stmt = $pdo->prepare("
+            SELECT a.title, a.due_date, sub.subject_name
+            FROM assignments a
+            INNER JOIN subjects sub ON sub.id = a.subject_id
+            WHERE a.class_id = ?
+              AND a.due_date >= CURDATE()
+            ORDER BY a.due_date ASC
+            LIMIT 4
+        ");
+        $stmt->execute([$classId]);
+        $upcomingAssignments = $stmt->fetchAll(PDO::FETCH_ASSOC);
 
-    $stmt = $pdo->prepare("SELECT COUNT(*) as total, SUM(present) as p FROM attendance WHERE student_id = ? AND MONTH(created_at) = MONTH(CURDATE())");
-    $stmt->execute([$studentId]);
-    $mStats = $stmt->fetch(PDO::FETCH_ASSOC);
-    $attendanceRate = ($mStats['total'] ?? 0) > 0 ? round(($mStats['p'] / $mStats['total']) * 100) : 0;
+        /* =========================
+           14-DAY ATTENDANCE TREND
+        ========================= */
+        $stmt = $pdo->prepare("
+            SELECT DATE(created_at) AS date, present
+            FROM attendance
+            WHERE student_id = ?
+              AND created_at >= DATE_SUB(CURDATE(), INTERVAL 14 DAY)
+            ORDER BY date ASC
+        ");
+        $stmt->execute([$studentId]);
+        $trendData = $stmt->fetchAll(PDO::FETCH_ASSOC);
 
-    /* =====================================================
-       3. UPCOMING ASSIGNMENTS (FIXED GROUP BY ERROR)
-    ===================================================== */
-    $stmt = $pdo->prepare("
-        SELECT a.id, a.title, a.due_date, ANY_VALUE(sub.subject_name) as subject_name
-        FROM assignments a
-        LEFT JOIN class_subject cs ON cs.class_id = a.class_id
-        LEFT JOIN subjects sub ON sub.id = cs.subject_id
-        WHERE a.class_id = ? AND a.due_date >= CURDATE()
-        GROUP BY a.id, a.title, a.due_date
-        ORDER BY a.due_date ASC LIMIT 5
-    ");
-    $stmt->execute([$classId]);
-    $upcomingAssignments = $stmt->fetchAll(PDO::FETCH_ASSOC);
-
-    /* =====================================================
-       4. CHART DATA: ATTENDANCE TREND
-    ===================================================== */
-    $stmt = $pdo->prepare("
-        SELECT DATE(created_at) as date, present FROM attendance 
-        WHERE student_id = ? AND created_at >= DATE_SUB(CURDATE(), INTERVAL 14 DAY)
-        ORDER BY date ASC
-    ");
-    $stmt->execute([$studentId]);
-    $trendData = $stmt->fetchAll(PDO::FETCH_ASSOC);
-
-    $trendDates = [];
-    $trendStatus = [];
-    foreach ($trendData as $day) {
-        $trendDates[] = date('M j', strtotime($day['date']));
-        $trendStatus[] = (int)$day['present'];
+        foreach ($trendData as $day) {
+            $trendDates[]  = date('d M', strtotime($day['date']));
+            $trendStatus[] = (int)$day['present'];
+        }
     }
 
 } catch (PDOException $e) {
-    die("Database Error: " . $e->getMessage());
+    error_log('Database Error (Student Dashboard): ' . $e->getMessage());
 }
 
 ob_start();
 ?>
 
-<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+<div class="px-6 py-6 max-w-6xl mx-auto font-sans antialiased text-slate-800">
 
-<div class="px-4 py-8 max-w-7xl mx-auto">
-    <div class="mb-10 flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
+    <div class="mb-8 flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
         <div>
-            <h1 class="text-4xl font-black text-slate-900 tracking-tight">Welcome, <?= $studentName ?>!</h1>
-            <p class="text-slate-500 font-medium mt-1"><?= $className ?> • Class Teacher: <?= $teacherName ?></p>
+            <h1 class="text-2xl font-bold text-slate-900 tracking-tight">
+                Mirësevini, <?= $studentName ?>!
+            </h1>
+            <p class="text-sm text-slate-500 font-normal mt-0.5">
+                <?= $className ?> • Kujdestari: <?= $teacherName ?>
+            </p>
         </div>
-        <div class="px-6 py-3 rounded-2xl font-bold shadow-sm <?= $attendanceColor ?>">
-            Status: <?= $attendanceStatus ?>
+        <div class="px-4 py-1.5 rounded-full text-[11px] font-bold shadow-sm <?= $attendanceColor ?>">
+            STATUSI: <?= mb_strtoupper($attendanceStatus) ?>
         </div>
     </div>
 
-    <div class="grid grid-cols-1 lg:grid-cols-3 gap-8 mb-8">
-        <div class="bg-white p-8 rounded-[32px] border shadow-sm flex flex-col items-center">
-            <h3 class="text-slate-400 text-xs font-bold uppercase tracking-widest mb-6">Attendance Rate</h3>
-            <div class="relative w-48 h-24">
+    <div class="grid grid-cols-1 lg:grid-cols-3 gap-6 mb-6">
+        <div class="bg-white p-6 rounded-2xl border border-slate-100 shadow-sm flex flex-col items-center">
+            <h3 class="text-slate-400 text-[10px] font-bold uppercase tracking-wider mb-4">
+                Pjesëmarrja Mujore
+            </h3>
+            <div class="relative w-40 h-20">
                 <canvas id="attendanceGauge"></canvas>
                 <div class="absolute inset-0 flex items-end justify-center">
-                    <span class="text-3xl font-black mb-[-5px]"><?= $attendanceRate ?>%</span>
+                    <span class="text-xl font-bold mb-[-2px]"><?= $attendanceRate ?>%</span>
                 </div>
             </div>
         </div>
 
-        <div class="lg:col-span-2 bg-white p-8 rounded-[32px] border shadow-sm">
-            <h3 class="text-slate-400 text-xs font-bold uppercase tracking-widest mb-4">14-Day Activity</h3>
-            <div class="h-32">
+        <div class="lg:col-span-2 bg-white p-6 rounded-2xl border border-slate-100 shadow-sm">
+            <h3 class="text-slate-400 text-[10px] font-bold uppercase tracking-wider mb-4">
+                Aktiviteti 14-Ditor
+            </h3>
+            <div class="h-24">
                 <canvas id="attendanceTrendChart"></canvas>
             </div>
         </div>
     </div>
 
-    <div class="bg-white p-8 rounded-[32px] border shadow-sm">
-        <h3 class="text-xl font-bold mb-6">Upcoming Assignments</h3>
-        <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
-            <?php if ($upcomingAssignments): foreach ($upcomingAssignments as $a): ?>
-                <div class="flex justify-between items-center p-5 bg-slate-50 rounded-2xl hover:bg-slate-100 transition-colors">
+    <div class="bg-white p-6 rounded-2xl border border-slate-100 shadow-sm">
+        <div class="flex items-center justify-between mb-5">
+            <h3 class="text-base font-bold text-slate-800">Detyrat e Ardhshme</h3>
+            <a href="/E-Shkolla/student-assignments"
+               class="text-[10px] text-blue-600 font-bold uppercase hover:underline">
+                Shiko të gjitha
+            </a>
+        </div>
+
+        <div class="grid grid-cols-1 md:grid-cols-2 gap-3">
+            <?php if (!empty($upcomingAssignments)): foreach ($upcomingAssignments as $a): ?>
+                <div class="flex justify-between items-center p-4 bg-slate-50 rounded-xl hover:bg-slate-100 transition-all border border-transparent hover:border-slate-200">
                     <div>
-                        <h4 class="font-bold text-slate-800"><?= htmlspecialchars($a['title']) ?></h4>
-                        <p class="text-sm text-slate-500 font-medium"><?= htmlspecialchars($a['subject_name'] ?? 'General') ?></p>
+                        <h4 class="text-sm font-semibold text-slate-800">
+                            <?= htmlspecialchars($a['title']) ?>
+                        </h4>
+                        <p class="text-xs text-slate-500">
+                            <?= htmlspecialchars($a['subject_name'] ?? 'Përgjithshme') ?>
+                        </p>
                     </div>
                     <div class="text-right">
-                        <p class="text-xs text-slate-400 font-bold uppercase">Due Date</p>
-                        <p class="text-blue-600 font-black"><?= date('d M', strtotime($a['due_date'])) ?></p>
+                        <p class="text-[9px] text-slate-400 font-bold uppercase">Afati</p>
+                        <p class="text-sm font-bold text-blue-600">
+                            <?= date('d M', strtotime($a['due_date'])) ?>
+                        </p>
                     </div>
                 </div>
             <?php endforeach; else: ?>
-                <div class="col-span-2 py-10 text-center text-slate-400 italic">No pending assignments found.</div>
+                <div class="col-span-2 py-8 text-center text-slate-400 text-sm italic border-2 border-dashed border-slate-50 rounded-xl">
+                    Nuk ka detyra në pritje.
+                </div>
             <?php endif; ?>
         </div>
     </div>
 </div>
 
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
 <script>
 document.addEventListener('DOMContentLoaded', function () {
-    // 1. GAUGE CHART (Attendance Rate)
-    const ctxG = document.getElementById('attendanceGauge').getContext('2d');
-    new Chart(ctxG, {
+    new Chart(document.getElementById('attendanceGauge').getContext('2d'), {
         type: 'doughnut',
         data: {
             datasets: [{
@@ -163,24 +230,28 @@ document.addEventListener('DOMContentLoaded', function () {
                 backgroundColor: ['#2563eb', '#f1f5f9'],
                 borderWidth: 0,
                 circumference: 180,
-                rotation: 270,
+                rotation: 270
             }]
         },
-        options: { cutout: '85%', responsive: true, maintainAspectRatio: false, plugins: { legend: { display: false }, tooltip: { enabled: false } } }
+        options: {
+            cutout: '88%',
+            responsive: true,
+            maintainAspectRatio: false,
+            plugins: { legend: { display: false }, tooltip: { enabled: false } }
+        }
     });
 
-    // 2. LINE CHART (Attendance Trend)
-    const ctxT = document.getElementById('attendanceTrendChart').getContext('2d');
-    new Chart(ctxT, {
+    new Chart(document.getElementById('attendanceTrendChart').getContext('2d'), {
         type: 'line',
         data: {
             labels: <?= json_encode($trendDates) ?>,
             datasets: [{
                 data: <?= json_encode($trendStatus) ?>,
                 borderColor: '#2563eb',
-                backgroundColor: 'rgba(37, 99, 235, 0.1)',
+                borderWidth: 2,
+                backgroundColor: 'rgba(37,99,235,.05)',
                 fill: true,
-                tension: 0.4,
+                tension: .4,
                 pointRadius: 0
             }]
         },
