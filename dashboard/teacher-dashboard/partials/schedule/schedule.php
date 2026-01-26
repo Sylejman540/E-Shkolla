@@ -220,141 +220,101 @@ function getSubjectStyle(string $subject): array {
 ob_start();
 ?>
 
-<div class="max-w-6xl mx-auto space-y-8 pb-16 animate-in fade-in duration-500">
 
-    <div class="flex flex-col md:flex-row md:items-end justify-between gap-4 border-b border-slate-100 pb-6 print:hidden">
+<div class="max-w-6xl mx-auto space-y-6 pb-12 animate-in fade-in duration-500 text-slate-700 font-inter">
+
+    <div class="flex flex-col md:flex-row md:items-end justify-between gap-4 border-b border-slate-100 pb-5 print:hidden">
         <div>
-            <nav class="flex mb-2" aria-label="Breadcrumb">
-                <ol class="flex items-center space-x-2 text-xs font-medium text-slate-400">
+            <nav class="flex mb-1" aria-label="Breadcrumb">
+                <ol class="flex items-center space-x-2 text-[10px] font-medium text-slate-400">
                     <li>Dashboard</li>
-                    <li><svg class="w-3 h-3" fill="currentColor" viewBox="0 0 20 20"><path d="M7.293 14.707a1 1 0 010-1.414L10.586 10 7.293 6.707a1 1 0 011.414-1.414l4 4a1 1 0 010 1.414l-4 4a1 1 0 01-1.414 0z"></path></svg></li>
-                    <li class="text-indigo-600">Orari i Mësimit</li>
+                    <li><svg class="w-2.5 h-2.5" fill="currentColor" viewBox="0 0 20 20"><path d="M7.293 14.707a1 1 0 010-1.414L10.586 10 7.293 6.707a1 1 0 011.414-1.414l4 4a1 1 0 010 1.414l-4 4a1 1 0 01-1.414 0z"></path></svg></li>
+                    <li class="text-indigo-500">Orari</li>
                 </ol>
             </nav>
-            <h1 class="text-3xl font-extrabold text-slate-900 tracking-tight">Orari Im Personal</h1>
-            <p class="text-sm text-slate-500 mt-1 flex items-center gap-2">
-                <span class="inline-block w-2 h-2 rounded-full bg-emerald-500 animate-pulse"></span>
+            <h1 class="text-2xl font-bold text-slate-900 tracking-tight">Orari Im Personal</h1>
+            <p class="text-[11px] text-slate-500 mt-0.5 flex items-center gap-1.5">
+                <span class="w-1.5 h-1.5 rounded-full bg-emerald-500"></span>
                 <?= $lastUpdatedLabel ?>
             </p>
         </div>
 
-        <div class="flex items-center gap-2 bg-slate-100 p-1 rounded-xl">
-            <button onclick="printScope('today')" class="hover:bg-white hover:shadow-sm px-4 py-2 text-xs font-bold rounded-lg transition-all text-slate-700">Sot</button>
-            <button onclick="printScope('all')" class="bg-indigo-600 text-white shadow-md px-4 py-2 text-xs font-bold rounded-lg transition-all">Printo Krejt</button>
+        <div class="flex items-center gap-2 bg-slate-100 p-1 rounded-lg">
+            <button onclick="printScope('today')" class="hover:bg-white px-3 py-1.5 text-[10px] font-semibold rounded-md transition-all text-slate-600">Sot</button>
+            <button onclick="printScope('all')" class="bg-indigo-600 text-white shadow-sm px-3 py-1.5 text-[10px] font-semibold rounded-md transition-all hover:bg-indigo-700">Printo Krejt</button>
         </div>
     </div>
 
-    <div class="grid grid-cols-1 md:grid-cols-3 gap-6 print:hidden">
-        <div class="group bg-white rounded-2xl border border-slate-200 p-6 transition-all hover:border-indigo-200 hover:shadow-md">
-            <div class="flex items-center justify-between mb-4">
-                <div class="p-2 bg-indigo-50 rounded-lg text-indigo-600">
-                    <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"></path></svg>
-                </div>
-                <span class="text-[10px] font-bold text-slate-400 uppercase tracking-widest">Javore</span>
+    <div class="grid grid-cols-1 md:grid-cols-3 gap-4 print:hidden">
+        <div class="bg-white rounded-xl border border-slate-200 py-4 px-5 flex items-center gap-4 shadow-sm group">
+            <div class="flex-shrink-0 w-11 h-11 bg-indigo-50 text-indigo-600 rounded-lg flex items-center justify-center border border-indigo-100 group-hover:bg-indigo-600 group-hover:text-white transition-all">
+                <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"></path></svg>
             </div>
-            <p class="text-sm font-medium text-slate-500">Ngarkesa Totale</p>
-            <h3 class="text-3xl font-black text-slate-900"><?= (int)$totalHours ?> <span class="text-lg font-normal text-slate-400 italic">orë</span></h3>
+            <div>
+                <p class="text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-0.5">Ngarkesa</p>
+                <h3 class="text-lg font-bold text-slate-900"><?= (int)$totalHours ?> orë <span class="text-[11px] font-medium text-slate-400">/javë</span></h3>
+            </div>
         </div>
 
-        <div class="group bg-white rounded-2xl border border-slate-200 p-6 transition-all hover:border-emerald-200 hover:shadow-md">
-            <div class="flex items-center justify-between mb-4">
-                <div class="p-2 bg-emerald-50 rounded-lg text-emerald-600">
-                    <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 6.253v13m0-13C10.832 5.477 9.246 5 7.5 5S4.168 5.477 3 6.253v13C4.168 18.477 5.754 18 7.5 18s3.332.477 4.5 1.253m0-13C13.168 5.477 14.754 5 16.5 5c1.747 0 3.332.477 4.5 1.253v13C19.832 18.477 18.247 18 16.5 18c-1.746 0-3.332.477-4.5 1.253"></path></svg>
-                </div>
-                <span class="text-[10px] font-bold text-slate-400 uppercase tracking-widest">Lëndë</span>
+        <div class="bg-white rounded-xl border border-slate-200 py-4 px-5 flex items-center gap-4 shadow-sm group">
+            <div class="flex-shrink-0 w-11 h-11 bg-emerald-50 text-emerald-600 rounded-lg flex items-center justify-center border border-emerald-100 group-hover:bg-emerald-600 group-hover:text-white transition-all">
+                <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M12 6.253v13m0-13C10.832 5.477 9.246 5 7.5 5S4.168 5.477 3 6.253v13C4.168 18.477 5.754 18 7.5 18s3.332.477 4.5 1.253m0-13C13.168 5.477 14.754 5 16.5 5c1.747 0 3.332.477 4.5 1.253v13C19.832 18.477 18.247 18 16.5 18c-1.746 0-3.332.477-4.5 1.253"></path></svg>
             </div>
-            <p class="text-sm font-medium text-slate-500">Lëndë të Ndryshme</p>
-            <h3 class="text-3xl font-black text-slate-900"><?= (int)$totalClasses ?></h3>
+            <div>
+                <p class="text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-0.5">Lëndët</p>
+                <h3 class="text-lg font-bold text-slate-900"><?= (int)$totalClasses ?> Lëndë</h3>
+            </div>
         </div>
 
-        <div class="bg-indigo-600 rounded-2xl p-6 shadow-xl shadow-indigo-200 text-white relative overflow-hidden">
-            <div class="relative z-10">
-                <div class="flex items-center justify-between mb-4">
-                    <div class="p-2 bg-white/20 rounded-lg backdrop-blur-md">
-                        <svg class="w-6 h-6 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17.657 18.657A8 8 0 016.343 7.343S7 9 9 10c0-2 .5-5 2.5-7 3 10 1 15 1 15z"></path></svg>
-                    </div>
-                </div>
-                <p class="text-sm font-medium text-indigo-100">Dita më e ngarkuar</p>
-                <h3 class="text-2xl font-black"><?= htmlspecialchars($busiestDayLabel) ?> <span class="text-sm font-light opacity-80">(<?= (int)$busiestCount ?> orë)</span></h3>
+        <div class="bg-indigo-600 rounded-xl py-4 px-5 flex items-center gap-4 shadow-md shadow-indigo-100 text-white">
+            <div class="flex-shrink-0 w-11 h-11 bg-white/20 rounded-lg flex items-center justify-center backdrop-blur-sm border border-white/30">
+                <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M17.657 18.657A8 8 0 016.343 7.343S7 9 9 10c0-2 .5-5 2.5-7 3 10 1 15 1 15z"></path></svg>
             </div>
-            <div class="absolute -right-4 -bottom-4 w-24 h-24 bg-white/10 rounded-full blur-2xl"></div>
+            <div>
+                <p class="text-[10px] font-bold text-indigo-100 uppercase tracking-wider mb-0.5">Busiest Day</p>
+                <h3 class="text-lg font-bold"><?= htmlspecialchars($busiestDayLabel) ?></h3>
+            </div>
         </div>
     </div>
 
-    <div class="grid grid-cols-1 lg:grid-cols-5 gap-6">
+    <div class="grid grid-cols-1 lg:grid-cols-5 gap-4">
         <?php foreach ($dayMap as $dayKey => $label): 
             $isToday = ($dayKey === $todayEng);
         ?>
-            <div class="print-scope week <?= $isToday ? 'print-scope today' : '' ?> space-y-4">
-                <div class="flex items-center justify-between border-b pb-2 <?= $isToday ? 'border-indigo-500' : 'border-slate-100' ?>">
-                    <h3 class="font-black text-slate-800 tracking-tight <?= $isToday ? 'text-indigo-600' : '' ?>">
+            <div class="print-scope week space-y-3">
+                <div class="flex items-center justify-between border-b pb-1.5 <?= $isToday ? 'border-indigo-400' : 'border-slate-100' ?>">
+                    <h3 class="text-xs font-bold text-slate-800 uppercase tracking-wide <?= $isToday ? 'text-indigo-600' : '' ?>">
                         <?= $label ?>
                     </h3>
                     <?php if($isToday): ?>
-                        <span class="text-[10px] bg-indigo-100 text-indigo-600 px-2 py-0.5 rounded-full font-bold">SOT</span>
+                        <span class="text-[8px] bg-indigo-50 text-indigo-600 px-1.5 py-0.5 rounded font-bold">SOT</span>
                     <?php endif; ?>
                 </div>
 
                 <?php if (empty($grouped[$dayKey])): ?>
-                    <div class="bg-slate-50 border border-dashed border-slate-200 rounded-xl p-4 text-center">
-                        <p class="text-xs italic text-slate-400">Pushim</p>
+                    <div class="bg-slate-50 border border-dashed border-slate-200 rounded-lg p-3 text-center">
+                        <p class="text-[10px] font-medium italic text-slate-400">Pushim</p>
                     </div>
                 <?php else: ?>
-                    
-                    <?php if (!empty($freePeriods[$dayKey])): ?>
-                        <div class="bg-amber-50/50 border border-amber-100 rounded-lg p-2 flex items-center gap-2">
-                             <span class="text-amber-500">☕</span>
-                             <span class="text-[10px] text-amber-700 leading-tight">
-                                <strong>Dritare:</strong> 
-                                <?= implode(', ', array_map(fn($g) => "Ora {$g['from']}", $freePeriods[$dayKey])) ?>
-                             </span>
-                        </div>
-                    <?php endif; ?>
-
-                    <div class="space-y-4">
+                    <div class="space-y-3">
                     <?php foreach ($grouped[$dayKey] as $block => $lessons): ?>
-                        <div class="space-y-2">
-                            <span class="text-[10px] font-bold text-slate-300 uppercase tracking-widest block pl-1"><?= $block ?></span>
-                            
+                        <div class="space-y-1.5">
                             <?php foreach ($lessons as $l):
                                 $style = getSubjectStyle($l['subject_name']);
                                 $slotKey = strtolower($l['day']) . '-' . (int)$l['period_number'];
                                 $isConflict = isset($conflictSlots[$slotKey]) && count($conflictSlots[$slotKey]) > 1;
-                                $classLabel = trim(($l['grade'] ?? '') . ($l['class_header'] ?? ''));
                             ?>
-                                <div class="relative bg-white border border-slate-200 rounded-xl p-4 transition-all hover:shadow-lg hover:-translate-y-1 group
-                                    <?= $isConflict ? 'ring-2 ring-amber-400 border-transparent bg-amber-50' : '' ?>">
-                                    
-                                    <div class="flex justify-between items-start mb-2">
-                                        <div class="w-8 h-8 rounded-lg bg-slate-50 flex items-center justify-center text-lg shadow-sm border border-slate-100 group-hover:scale-110 transition-transform">
+                                <div class="bg-white border border-slate-200 rounded-lg p-3 hover:border-indigo-200 transition-all shadow-sm">
+                                    <div class="flex justify-between items-start mb-1.5">
+                                        <div class="w-7 h-7 rounded bg-slate-50 flex items-center justify-center text-sm border border-slate-100">
                                             <?= $style['icon'] ?>
                                         </div>
-                                        <span class="text-[10px] font-bold text-slate-400 bg-slate-50 px-2 py-1 rounded-md border border-slate-100">
+                                        <span class="text-[9px] font-bold text-slate-500 bg-slate-50 px-1.5 py-0.5 rounded border border-slate-100">
                                             ORA <?= (int)$l['period_number'] ?>
                                         </span>
                                     </div>
-
-                                    <h4 class="font-bold text-slate-800 text-sm leading-tight mb-1"><?= htmlspecialchars($l['subject_name']) ?></h4>
-                                    
-                                    <div class="flex items-center gap-2 text-[11px] text-slate-500 mb-3">
-                                        <svg class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path d="M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0h2m-2 0h-5m-9 0H3m2 0h5M9 7h1m-1 4h1m4-4h1m-1 4h1m-5 10v-5a1 1 0 011-1h2a1 1 0 011 1v5m-4 0h4"></path></svg>
-                                        <span>Klasa: <span class="font-bold text-slate-700"><?= $classLabel ?: '—' ?></span></span>
-                                    </div>
-
-                                    <div class="flex items-center justify-between border-t border-slate-50 pt-2">
-                                        <span class="text-[10px] font-medium text-slate-400 italic">Snapshot <?= substr($csrfToken,0,4) ?></span>
-                                        <a
-                                            href="/E-Shkolla/show-classes?class_id=<?= (int)$l['class_id'] ?>&subject_id=<?= (int)$l['subject_id'] ?>"
-                                            class="text-[10px] text-indigo-500 font-bold hover:underline"
-                                        >
-                                            Detajet →
-                                        </a>
-                                    </div>
-                                    <?php if ($isConflict): ?>
-                                        <div class="absolute -top-2 -right-2 bg-amber-500 text-white text-[8px] font-black px-2 py-0.5 rounded-full shadow-lg animate-bounce">
-                                            KONFLIKT
-                                        </div>
-                                    <?php endif; ?>
+                                    <h4 class="font-bold text-slate-800 text-[12px] leading-tight mb-1 truncate"><?= htmlspecialchars($l['subject_name']) ?></h4>
+                                    <p class="text-[10px] text-slate-500 font-medium">Klasa: <span class="text-slate-900"><?= htmlspecialchars($l['grade'] ?? '—') ?></span></p>
                                 </div>
                             <?php endforeach; ?>
                         </div>
@@ -365,41 +325,23 @@ ob_start();
         <?php endforeach; ?>
     </div>
 
-    <div class="flex flex-col md:flex-row justify-between items-center text-[11px] text-slate-400 bg-slate-50 p-6 rounded-2xl border border-slate-100">
-        <div class="flex items-center gap-4">
-            <span class="flex items-center gap-1">🛡️ SSL Active</span>
-            <span class="flex items-center gap-1">🔑 CSRF: <?= htmlspecialchars(substr($csrfToken,0,8)) ?>...</span>
-        </div>
-        <p class="mt-2 md:mt-0 italic">Moduli i Menaxhimit të Mësimdhënësit © <?= date('Y') ?></p>
+    <div class="flex justify-between items-center text-[10px] text-slate-400 pt-6 border-t border-slate-100">
+        <p class="font-medium tracking-tight italic">© <?= date('Y') ?> E-Shkolla Management</p>
+        <p class="font-bold">ID: <?= htmlspecialchars(substr($csrfToken,0,6)) ?></p>
     </div>
-
 </div>
 
-
-
-<script>
-function printScope(scope) {
-    document.body.classList.remove('print-today','print-week','print-all');
-    document.body.classList.add('print-' + scope);
-    window.print();
-}
-</script>
-
-
 <style>
-    /* Custom Scrollbar for better look */
-    ::-webkit-scrollbar { width: 6px; }
-    ::-webkit-scrollbar-track { background: #f1f1f1; }
-    ::-webkit-scrollbar-thumb { background: #e2e8f0; border-radius: 10px; }
-    ::-webkit-scrollbar-thumb:hover { background: #cbd5e1; }
+    @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap');
+    
+    .font-inter { font-family: 'Inter', sans-serif; -webkit-font-smoothing: antialiased; }
 
+    /* Custom overrides for thinner typography */
+    h1, h2, h3, h4 { letter-spacing: -0.015em; }
+    
     @media print {
-        body { background: white !important; }
-        .print-scope { margin-bottom: 2rem; }
-        body.print-today .print-scope.week:not(.today) { display:none; }
-        body.print-week .print-scope.today { display:block; }
-        body.print-all .print-scope { display:block; }
-        .print\:hidden { display:none !important; }
+        .font-inter { font-family: sans-serif; }
+        .text-slate-700 { color: #334155 !important; }
     }
 </style>
 
