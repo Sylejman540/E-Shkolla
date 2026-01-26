@@ -130,52 +130,86 @@ if (!$isAjax) { ob_start(); }
     }
 </style>
 
-<div id="announcementModal" class="hidden fixed inset-0 z-[100] bg-slate-900/40 backdrop-blur-sm flex items-center justify-center p-4">
-    <div class="bg-white dark:bg-slate-900 rounded-xl w-full max-w-sm p-5 shadow-xl border border-slate-200 dark:border-slate-800">
-        <h2 class="text-lg font-bold mb-4 text-slate-900 dark:text-white">Krijo Njoftim</h2>
-
-        <form action="/E-Shkolla/dashboard/teacher-dashboard/partials/announcement/save-announcement.php" method="POST" class="space-y-3 font-inter">
+<div id="announcementModal" class="hidden fixed inset-0 z-[100] flex items-center justify-center p-4 transition-all duration-300">
+    <div class="absolute inset-0 bg-slate-900/60 backdrop-blur-md"></div>
+    
+    <div class="relative bg-white dark:bg-slate-900 rounded-2xl w-full max-w-md overflow-hidden shadow-2xl border border-slate-200 dark:border-slate-800 animate-in zoom-in-95 duration-200">
+        
+        <div class="px-6 py-4 border-b border-slate-100 dark:border-slate-800 flex justify-between items-center bg-slate-50/50 dark:bg-slate-800/30">
             <div>
-                <label class="block text-[10px] font-bold text-slate-400 uppercase mb-1">Titulli</label>
-                <input type="text" name="title" required class="w-full border border-slate-200 dark:border-slate-700 rounded-lg p-2 text-xs dark:bg-slate-800 dark:text-white outline-none focus:border-indigo-500 transition-colors">
+                <h2 class="text-lg font-bold text-slate-900 dark:text-white">Krijo Njoftim</h2>
+                <p class="text-[11px] text-slate-500">Plotësoni detajet e njoftimit më poshtë</p>
+            </div>
+            <button type="button" id="closeAnnouncementModal" class="text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 transition-colors">
+                <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/></svg>
+            </button>
+        </div>
+
+        <form action="/E-Shkolla/dashboard/teacher-dashboard/partials/announcement/save-announcement.php" method="POST" class="p-6 space-y-5 font-inter">
+            
+            <div class="space-y-1.5">
+                <label class="block text-xs font-semibold text-slate-700 dark:text-slate-300">Titulli i Njoftimit</label>
+                <input type="text" name="title" required placeholder="p.sh. Provimi i radhës..." 
+                    class="w-full bg-slate-50 dark:bg-slate-800/50 border border-slate-200 dark:border-slate-700 rounded-xl px-4 py-2.5 text-sm dark:text-white outline-none focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 transition-all placeholder:text-slate-400">
             </div>
 
-            <div>
-                <label class="block text-[10px] font-bold text-slate-400 uppercase mb-1">Mesazhi</label>
-                <textarea name="message" rows="3" required class="w-full border border-slate-200 dark:border-slate-700 rounded-lg p-2 text-xs dark:bg-slate-800 dark:text-white outline-none focus:border-indigo-500 transition-colors"></textarea>
+            <div class="space-y-1.5">
+                <label class="block text-xs font-semibold text-slate-700 dark:text-slate-300">Mesazhi i plotë</label>
+                <textarea name="message" rows="4" required placeholder="Shkruani përmbajtjen këtu..." 
+                    class="w-full bg-slate-50 dark:bg-slate-800/50 border border-slate-200 dark:border-slate-700 rounded-xl px-4 py-2.5 text-sm dark:text-white outline-none focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 transition-all resize-none placeholder:text-slate-400"></textarea>
             </div>
 
-            <div class="grid grid-cols-2 gap-2">
-                <div>
-                    <label class="block text-[10px] font-bold text-slate-400 uppercase mb-1">Dërguar për:</label>
-                    <select name="target_role" id="targetRole" class="w-full border border-slate-200 dark:border-slate-700 rounded-lg p-2 text-[11px] dark:bg-slate-800 dark:text-white outline-none">
-                        <option value="all">Të gjithë</option>
-                        <option value="student">Nxënësit</option>
-                        <option value="parent">Prindërit</option>
+            <div class="grid grid-cols-2 gap-4">
+                <div class="space-y-1.5">
+                    <label class="block text-xs font-semibold text-slate-700 dark:text-slate-300">Dërguar për:</label>
+                    <div class="relative">
+                        <select name="target_role" id="targetRole" 
+                            class="w-full appearance-none bg-slate-50 dark:bg-slate-800/50 border border-slate-200 dark:border-slate-700 rounded-xl px-4 py-2.5 text-sm dark:text-white outline-none focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 transition-all cursor-pointer">
+                            <option value="all">Të gjithë</option>
+                            <option value="student">Nxënësit</option>
+                            <option value="parent">Prindërit</option>
+                        </select>
+                        <div class="absolute right-3 top-1/2 -translate-y-1/2 pointer-events-none text-slate-400">
+                            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"/></svg>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="space-y-1.5">
+                    <label class="block text-xs font-semibold text-slate-700 dark:text-slate-300">Data e skadimit</label>
+                    <input type="date" name="expires_at" 
+                        class="w-full bg-slate-50 dark:bg-slate-800/50 border border-slate-200 dark:border-slate-700 rounded-xl px-4 py-2.5 text-sm dark:text-white outline-none focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 transition-all">
+                </div>
+            </div>
+
+            <div id="classSelectWrapper" class="hidden space-y-1.5 animate-in slide-in-from-top-2 duration-200">
+                <label class="block text-xs font-semibold text-slate-700 dark:text-slate-300">Zgjidh Klasën specifike</label>
+                <div class="relative">
+                    <select name="class_id" 
+                        class="w-full appearance-none bg-slate-50 dark:bg-slate-800/50 border border-slate-200 dark:border-slate-700 rounded-xl px-4 py-2.5 text-sm dark:text-white outline-none focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 transition-all cursor-pointer">
+                        <?php
+                        $clsStmt = $pdo->prepare("SELECT id, grade FROM classes WHERE school_id = ? AND status = 'active'");
+                        $clsStmt->execute([$schoolId]);
+                        foreach ($clsStmt->fetchAll(PDO::FETCH_ASSOC) as $c):
+                        ?>
+                            <option value="<?= (int)$c['id'] ?>"><?= htmlspecialchars($c['grade']) ?></option>
+                        <?php endforeach; ?>
                     </select>
-                </div>
-                <div>
-                    <label class="block text-[10px] font-bold text-slate-400 uppercase mb-1">Skadimi</label>
-                    <input type="date" name="expires_at" class="w-full border border-slate-200 dark:border-slate-700 rounded-lg p-2 text-[11px] dark:bg-slate-800 dark:text-white outline-none">
+                    <div class="absolute right-3 top-1/2 -translate-y-1/2 pointer-events-none text-slate-400">
+                        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"/></svg>
+                    </div>
                 </div>
             </div>
 
-            <div id="classSelectWrapper" class="hidden">
-                <label class="block text-[10px] font-bold text-slate-400 uppercase mb-1">Zgjidh Klasën</label>
-                <select name="class_id" class="w-full border border-slate-200 dark:border-slate-700 rounded-lg p-2 text-[11px] dark:bg-slate-800 dark:text-white outline-none">
-                    <?php
-                    $clsStmt = $pdo->prepare("SELECT id, grade FROM classes WHERE school_id = ? AND status = 'active'");
-                    $clsStmt->execute([$schoolId]);
-                    foreach ($clsStmt->fetchAll(PDO::FETCH_ASSOC) as $c):
-                    ?>
-                        <option value="<?= (int)$c['id'] ?>"><?= htmlspecialchars($c['grade']) ?></option>
-                    <?php endforeach; ?>
-                </select>
-            </div>
-
-            <div class="flex justify-end gap-2 pt-3 border-t border-slate-100 dark:border-slate-800">
-                <button type="button" id="closeAnnouncementModal" class="px-3 py-1.5 text-[11px] font-semibold text-slate-500 hover:bg-slate-50 rounded-lg transition">Anulo</button>
-                <button type="submit" class="px-3 py-1.5 text-[11px] font-bold text-white bg-indigo-600 rounded-lg hover:bg-indigo-700 transition">Ruaj</button>
+            <div class="flex items-center gap-3 pt-4">
+                <button type="button" id="cancelModalBtn" 
+                    class="flex-1 px-4 py-2.5 text-sm font-semibold text-slate-600 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800 rounded-xl transition-colors">
+                    Anulo
+                </button>
+                <button type="submit" 
+                    class="flex-1 px-4 py-2.5 text-sm font-bold text-white bg-indigo-600 hover:bg-indigo-700 rounded-xl shadow-md shadow-indigo-500/20 transition-all active:scale-[0.98]">
+                    Publiko Njoftimin
+                </button>
             </div>
         </form>
     </div>
