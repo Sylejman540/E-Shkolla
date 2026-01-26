@@ -127,7 +127,7 @@ if (isset($_SESSION['user']) && $_SESSION['user']['role'] === 'teacher') {
                 </li>
 
                 <div x-show="!sidebarCollapsed" class="px-3 mt-4 mb-2">
-                    <h3 class="text-[10px] font-bold uppercase tracking-widest text-slate-400">Menaxhimi</h3>
+                    <h3 class="text-[10px] font-bold uppercase tracking-widest text-slate-400">Menaxhimi i klasës kujdestare</h3>
                 </div>
 
                 <li>
@@ -151,6 +151,10 @@ if (isset($_SESSION['user']) && $_SESSION['user']['role'] === 'teacher') {
                         <span x-show="!sidebarCollapsed" class="whitespace-nowrap">Njoftimet</span>
                     </a>
                 </li>
+
+                <div x-show="!sidebarCollapsed" class="px-3 mt-4 mb-2">
+                    <h3 class="text-[10px] font-bold uppercase tracking-widest text-slate-400">Personalizime</h3>
+                </div>
 
                 <li>
                     <a href="/E-Shkolla/teacher-settings"
