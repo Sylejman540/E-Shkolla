@@ -2,48 +2,90 @@
 session_start();
 require_once __DIR__ . '/../../../../db.php';
 
-if ($_SERVER['REQUEST_METHOD'] === 'POST') {
-
-    if (!isset($_SESSION['user']['id'], $_SESSION['user']['school_id'])) {
-        die('Unauthorized');
-    }
-
-    $schoolId  = $_SESSION['user']['school_id'];
-    $teacherId = $_SESSION['user']['id'];
-
-    $title   = $_POST['title'] ?? '';
-    $content = $_POST['message'] ?? '';
-    $target  = $_POST['target_role'] ?? 'all';
-    $classId = ($target === 'student') ? ($_POST['class_id'] ?? null) : null;
-
-    try {
-        $stmt = $pdo->prepare("
-            INSERT INTO announcements (
-                school_id,
-                teacher_id,
-                author_id,
-                title,
-                content,
-                target_role,
-                class_id,
-                created_at
-            ) VALUES (?, ?, ?, ?, ?, ?, ?, NOW())
-        ");
-
-        $stmt->execute([
-            $schoolId,
-            $teacherId,
-            $teacherId, // author_id = teacher for now
-            $title,
-            $content,
-            $target,
-            $classId
-        ]);
-
-        header("Location: /E-Shkolla/school-announcement?success=1");
-        exit;
-
-    } catch (PDOException $e) {
-        die("Error: " . $e->getMessage());
-    }
+if ($_SERVER['REQUEST_METHOD'] !== 'POST') {
+    http_response_code(405);
+    exit;
 }
+
+if (
+    empty($_SESSION['user']) ||
+    ($_SESSION['user']['role'] ?? '') !== 'teacher'
+) {
+    http_response_code(403);
+    exit('Akses i ndaluar');
+}
+
+$schoolId  = (int)$_SESSION['user']['school_id'];
+$teacherId = (int)$_SESSION['user']['id'];
+
+$title     = trim($_POST['title'] ?? '');
+$content   = trim($_POST['message'] ?? '');
+$target    = $_POST['target_role'] ?? 'all';
+$classId   = $_POST['class_id'] ?? null;
+$classId   = ($classId !== null && $classId !== '') ? (int)$classId : null;
+$expiresAt = $_POST['expires_at'] ?? null;
+
+if ($title === '' || $content === '') {
+    http_response_code(422);
+    exit('Titulli dhe mesazhi janë të detyrueshme');
+}
+
+/* =========================
+   ONLY SCHOOL VALIDATION
+========================= */
+if (in_array($target, ['student','parent'], true)) {
+
+    if (!$classId) {
+        http_response_code(422);
+        exit('Klasa është e detyrueshme');
+    }
+
+    // Class must belong to same school — NOTHING ELSE
+    $classCheck = $pdo->prepare("
+        SELECT 1
+        FROM classes
+        WHERE id = ?
+          AND school_id = ?
+        LIMIT 1
+    ");
+    $classCheck->execute([$classId, $schoolId]);
+
+    if (!$classCheck->fetchColumn()) {
+        http_response_code(403);
+        exit('Klasa nuk i përket shkollës suaj');
+    }
+
+} else {
+    $classId = null;
+}
+
+/* =========================
+   INSERT
+========================= */
+$stmt = $pdo->prepare("
+    INSERT INTO announcements (
+        school_id,
+        teacher_id,
+        author_id,
+        title,
+        content,
+        target_role,
+        class_id,
+        expires_at,
+        created_at
+    ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, NOW())
+");
+
+$stmt->execute([
+    $schoolId,
+    $teacherId,
+    $teacherId,
+    $title,
+    $content,
+    $target,
+    $classId,
+    $expiresAt ?: null
+]);
+
+header('Location: /E-Shkolla/teacher-notices');
+exit;
