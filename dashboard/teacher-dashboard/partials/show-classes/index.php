@@ -135,12 +135,6 @@ function isActive($path) {
             <button @click="mobileOpen = true" class="p-2 lg:hidden text-slate-600 hover:bg-slate-50 rounded-lg transition-colors">
                 <svg class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path d="M4 6h16M4 12h16M4 18h16"/></svg>
             </button>
-            <div class="hidden lg:block">
-                <h2 class="text-sm font-bold text-slate-800 uppercase tracking-tight">Detajet e Klasës</h2>
-            </div>
-            <div class="flex items-center gap-3">
-                 <div class="h-9 w-9 rounded-full bg-blue-600 flex items-center justify-center text-white text-sm font-black shadow-lg shadow-blue-200">P</div>
-            </div>
         </header>
 
         <main class="p-4 lg:p-10 flex-1">
