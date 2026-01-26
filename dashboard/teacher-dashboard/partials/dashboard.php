@@ -37,16 +37,23 @@ $todayStmt = $pdo->prepare("
         cs.period_number,
         c.grade,
         s.subject_name,
-        cs.class_id
+        cs.class_id,
+        cs.subject_id
     FROM class_schedule cs
-    INNER JOIN classes c ON c.id = cs.class_id AND c.school_id = ?
+    INNER JOIN classes c ON c.id = cs.class_id
     INNER JOIN subjects s ON s.id = cs.subject_id
     WHERE cs.teacher_id = ?
       AND cs.school_id  = ?
       AND LOWER(cs.day) = ?
     ORDER BY cs.period_number ASC
 ");
-$todayStmt->execute([$schoolId, $teacherId, $schoolId, $today]);
+
+// Ekzekutimi (Sigurohu që renditja e variablave përputhet me '?' në query)
+$todayStmt->execute([
+    $teacherId, 
+    $schoolId, 
+    strtolower(date('l')) // Shembull: 'monday'
+]);
 $todayLessons = $todayStmt->fetchAll(PDO::FETCH_ASSOC);
 
 $summaryStmt = $pdo->prepare("SELECT COUNT(*) AS total_lessons, COUNT(DISTINCT class_id) AS total_classes FROM teacher_class WHERE teacher_id = ?");
@@ -151,7 +158,9 @@ ob_start();
                                         <h4 class="font-bold text-slate-900"><?= htmlspecialchars($lesson['subject_name']) ?></h4>
                                         <p class="text-sm text-slate-500">Klasa: <?= htmlspecialchars($lesson['grade']) ?></p>
                                     </div>
-                                    <a href="class-view.php?id=<?= $lesson['class_id'] ?>" class="opacity-0 group-hover:opacity-100 p-2 bg-white border rounded-lg text-slate-400 hover:text-indigo-600 transition-all no-print">
+                                    <a href="/E-Shkolla/show-classes?class_id=<?= (int)$lesson['class_id'] ?>&subject_id=<?= (int)$lesson['subject_id'] ?>"
+   class="opacity-0 group-hover:opacity-100 p-2 bg-white border rounded-lg text-slate-400 hover:text-indigo-600 transition-all no-print">
+
                                         <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path d="M9 5l7 7-7 7" stroke-width="2.5"/></svg>
                                     </a>
                                 </div>
