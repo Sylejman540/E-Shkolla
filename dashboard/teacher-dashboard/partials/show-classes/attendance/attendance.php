@@ -78,120 +78,128 @@ $rows = $stmt->fetchAll(PDO::FETCH_ASSOC);
 
 ob_start();
 ?>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
 
-<div class="px-4 sm:px-6 lg:px-8 py-8">
-    <div class="sm:flex sm:items-center justify-between mb-8">
+<style>
+    .attendance-view { font-family: 'Inter', sans-serif; -webkit-font-smoothing: antialiased; }
+    .status-badge { letter-spacing: 0.025em; }
+</style>
+
+<div class="attendance-view px-4 sm:px-6 lg:px-8 py-6 max-w-6xl mx-auto">
+    <div class="flex flex-col sm:flex-row sm:items-end justify-between mb-6 gap-4 border-b border-slate-100 pb-5">
         <div>
-            <h1 class="text-2xl font-bold text-slate-900 dark:text-white"><?= $view === 'history' ? 'Historia e Mungesave' : 'Regjistrimi i Prezencës' ?></h1>
-            <p class="mt-1 text-sm text-slate-500 dark:text-slate-400 font-medium italic"><?= htmlspecialchars($lessonDate) ?> • <?= date('H:i', strtotime($lessonTime)) ?></p>
+            <h1 class="text-xl font-bold text-slate-900 dark:text-white tracking-tight">
+                <?= $view === 'history' ? 'Historia e Mungesave' : 'Regjistrimi i Prezencës' ?>
+            </h1>
+            <div class="flex items-center gap-2 mt-1 text-[12px] text-slate-500 font-medium">
+                <span class="flex items-center gap-1">
+                    <svg class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z"/></svg>
+                    <?= htmlspecialchars($lessonDate) ?>
+                </span>
+                <span class="text-slate-300">•</span>
+                <span class="flex items-center gap-1">
+                    <svg class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
+                    <?= date('H:i', strtotime($lessonTime)) ?>
+                </span>
+            </div>
         </div>
         
-        <div class="mt-4 sm:mt-0 flex items-center gap-4">
+        <div class="flex items-center gap-3">
             <?php if ($view === 'live'): ?>
-                <button onclick="markAllPresentBulk()" class="inline-flex items-center gap-2 px-4 py-2 bg-blue-50 text-blue-700 dark:bg-blue-500/10 dark:text-blue-400 text-sm font-bold rounded-xl border border-blue-200 hover:bg-blue-600 hover:text-white transition-all active:scale-95">
-                    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"/></svg>
+                <button onclick="markAllPresentBulk()" class="inline-flex items-center gap-2 px-3 py-1.5 bg-indigo-600 text-white text-[11px] font-bold rounded-lg hover:bg-indigo-700 transition-all shadow-sm active:scale-95">
+                    <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M5 13l4 4L19 7"/></svg>
                     Marko të gjithë Prezent
                 </button>
             <?php endif; ?>
 
-            <div class="inline-flex p-1 bg-slate-100 dark:bg-slate-800 rounded-xl border border-slate-200 dark:border-slate-700">
-                <a href="?class_id=<?= $classId ?>&subject_id=<?= $subjectId ?>&view=live" class="px-4 py-2 text-sm font-semibold rounded-lg transition-all <?= $view === 'live' ? 'bg-white dark:bg-slate-700 text-indigo-600 shadow-sm' : 'text-slate-500 hover:text-slate-700' ?>">Live</a>
-                <a href="?class_id=<?= $classId ?>&subject_id=<?= $subjectId ?>&view=history" class="px-4 py-2 text-sm font-semibold rounded-lg transition-all <?= $view === 'history' ? 'bg-white dark:bg-slate-700 text-indigo-600 shadow-sm' : 'text-slate-500 hover:text-slate-700' ?>">Historia</a>
+            <div class="inline-flex p-1 bg-slate-100 dark:bg-slate-800 rounded-lg border border-slate-200 dark:border-slate-700">
+                <a href="?class_id=<?= $classId ?>&subject_id=<?= $subjectId ?>&view=live" class="px-3 py-1 text-[11px] font-bold rounded-md transition-all <?= $view === 'live' ? 'bg-white dark:bg-slate-700 text-indigo-600 shadow-sm' : 'text-slate-500 hover:text-slate-700' ?>">LIVE</a>
+                <a href="?class_id=<?= $classId ?>&subject_id=<?= $subjectId ?>&view=history" class="px-3 py-1 text-[11px] font-bold rounded-md transition-all <?= $view === 'history' ? 'bg-white dark:bg-slate-700 text-indigo-600 shadow-sm' : 'text-slate-500 hover:text-slate-700' ?>">HISTORIA</a>
             </div>
         </div>
     </div>
 
-    <div class="bg-white dark:bg-slate-900 rounded-2xl border border-slate-200 dark:border-white/10 shadow-sm overflow-hidden">
+    <div class="bg-white dark:bg-slate-900 rounded-xl border border-slate-200 dark:border-slate-800 shadow-sm overflow-hidden">
         <table class="w-full text-left border-collapse">
-            <thead class="bg-slate-50 dark:bg-white/5 border-b border-slate-200 dark:border-white/10">
-                <tr>
+            <thead>
+                <tr class="bg-slate-50/50 dark:bg-slate-800/50 border-b border-slate-100 dark:border-slate-800">
                     <?php if ($view === 'history'): ?>
-                        <th class="px-6 py-4 text-xs font-bold uppercase text-slate-500">Data & Ora</th>
+                        <th class="px-5 py-3 text-[10px] font-bold uppercase tracking-wider text-slate-400">Data & Ora</th>
                     <?php endif; ?>
-                    <th class="px-6 py-4 text-xs font-bold uppercase text-slate-500">Nxënësi</th>
+                    <th class="px-5 py-3 text-[10px] font-bold uppercase tracking-wider text-slate-400">Nxënësi</th>
                     <?php if ($view === 'live'): ?>
-                        <th class="px-6 py-4 text-xs font-bold uppercase text-slate-500 text-center">Veprimet</th>
+                        <th class="px-5 py-3 text-[10px] font-bold uppercase tracking-wider text-slate-400 text-center">Veprimet</th>
                     <?php endif; ?>
-                    <th class="px-6 py-4 text-xs font-bold uppercase text-slate-500 text-right pr-10">Statusi</th>
+                    <th class="px-5 py-3 text-[10px] font-bold uppercase tracking-wider text-slate-400 text-right pr-8">Statusi</th>
                 </tr>
             </thead>
-            <tbody class="divide-y divide-slate-100 dark:divide-white/5">
-            <?php 
-            // Sigurohemi që $rows është array që të mos kemi error në count
-            $hasRows = is_array($rows) && count($rows) > 0; 
-            
-            if (!$hasRows): ?>
-                <tr id="emptyState">
-                    <td colspan="<?= ($view === 'history') ? '4' : '3' ?>" class="px-6 py-12 text-center text-slate-400 italic">
-                        Nuk u gjet asnjë regjistrim.
-                    </td>
+            <tbody class="divide-y divide-slate-50 dark:divide-slate-800">
+            <?php if (!$hasRows): ?>
+                <tr>
+                    <td colspan="4" class="px-5 py-12 text-center text-slate-400 italic text-sm">Nuk u gjet asnjë regjistrim.</td>
                 </tr>
             <?php else: ?>
                 <?php foreach ($rows as $r): 
                     $isLocked = false;
-                    // Logjika e bllokimit (45 minuta pas përditësimit të fundit)
                     if ($view === 'live' && !empty($r['updated_at'])) {
                         $isLocked = (time() - strtotime($r['updated_at'])) < (45 * 60);
                     }
                 ?>
-                <tr class="hover:bg-slate-50 dark:hover:bg-white/5 transition-colors">
-                    
+                <tr class="hover:bg-slate-50/50 dark:hover:bg-slate-800/30 transition-colors">
                     <?php if ($view === 'history'): ?>
-                        <td class="px-6 py-4 text-sm text-slate-600 dark:text-slate-400">
-                            <span class="font-medium text-slate-900 dark:text-white">
-                                <?= date('d/m/Y', strtotime($r['lesson_date'])) ?>
-                            </span>
-                            <span class="block text-xs opacity-60">
-                                <?= substr($r['lesson_start_time'], 0, 5) ?>
-                            </span>
+                        <td class="px-5 py-3">
+                            <div class="text-[13px] font-semibold text-slate-700 dark:text-slate-300"><?= date('d.m.Y', strtotime($r['lesson_date'])) ?></div>
+                            <div class="text-[10px] text-slate-400"><?= substr($r['lesson_start_time'], 0, 5) ?></div>
                         </td>
                     <?php endif; ?>
 
-                    <td class="px-6 py-4 text-sm font-semibold text-slate-900 dark:text-white uppercase tracking-tight">
+                    <td class="px-5 py-3">
                         <div class="flex items-center gap-2">
-                            <?= htmlspecialchars($r['name'] ?? 'I panjohur') ?>
+                            <span class="text-[13px] font-medium text-slate-800 dark:text-slate-200"><?= htmlspecialchars($r['name'] ?? 'I panjohur') ?></span>
                             <?php if($isLocked): ?> 
-                                <span class="text-amber-500 text-xs" title="E bllokuar për modifikim">🔒</span> 
+                                <svg class="w-3 h-3 text-amber-500" fill="currentColor" viewBox="0 0 20 20"><path fill-rule="evenodd" d="M5 9V7a5 5 0 0110 0v2a2 2 0 012 2v5a2 2 0 01-2 2H5a2 2 0 01-2-2v-5a2 2 0 012-2zm8-2v2H7V7a3 3 0 016 0z" clip-rule="evenodd"/></svg>
                             <?php endif; ?>
                         </div>
                     </td>
 
                     <?php if ($view === 'live'): ?>
-                        <td class="px-6 py-4 text-center">
-                            <div class="flex items-center justify-center gap-2">
+                        <td class="px-5 py-3">
+                            <div class="flex items-center justify-center gap-1.5">
                                 <button onclick="save(<?= $r['student_id'] ?>,'present')" 
                                         <?= $isLocked ? 'disabled' : '' ?> 
-                                        class="w-8 h-8 flex items-center justify-center bg-blue-600 text-white text-[11px] font-bold rounded-lg hover:bg-blue-700 transition active:scale-95 disabled:opacity-20 shadow-sm">
-                                    P
+                                        class="p-1.5 bg-emerald-50 text-emerald-600 rounded-md hover:bg-emerald-600 hover:text-white transition-all disabled:opacity-10" title="Prezent">
+                                    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="2.5"><path d="M5 13l4 4L19 7"/></svg>
                                 </button>
                                 
                                 <button onclick="save(<?= $r['student_id'] ?>,'missing')" 
                                         <?= $isLocked ? 'disabled' : '' ?> 
-                                        class="w-8 h-8 flex items-center justify-center bg-rose-600 text-white text-[11px] font-bold rounded-lg hover:bg-rose-700 transition active:scale-95 disabled:opacity-20 shadow-sm">
-                                    M
+                                        class="p-1.5 bg-rose-50 text-rose-600 rounded-md hover:bg-rose-600 hover:text-white transition-all disabled:opacity-10" title="Mungon">
+                                    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="2.5"><path d="M6 18L18 6M6 6l12 12"/></svg>
                                 </button>
                                 
                                 <button onclick="resetA(<?= $r['student_id'] ?>)" 
-                                        class="w-8 h-8 flex items-center justify-center bg-slate-100 dark:bg-slate-800 text-slate-500 dark:text-slate-400 text-[11px] font-bold rounded-lg hover:bg-rose-50 dark:hover:bg-rose-500/20 hover:text-rose-600 transition">
-                                    R
+                                        class="p-1.5 bg-slate-100 text-slate-500 rounded-md hover:bg-slate-200 hover:text-slate-700 transition-all" title="Rifillo">
+                                    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="2.5"><path d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"/></svg>
                                 </button>
                             </div>
                         </td>
                     <?php endif; ?>
 
-                    <td class="px-6 py-4 text-right pr-10">
+                    <td class="px-5 py-3 text-right pr-8">
                         <?php if (!empty($r['present']) && $r['present'] == 1): ?>
-                            <span class="text-[11px] font-bold text-blue-600 dark:text-blue-400 uppercase tracking-widest">Prezent</span>
+                            <span class="status-badge px-2 py-0.5 bg-emerald-100 text-emerald-700 text-[10px] font-bold rounded uppercase">Prezent</span>
                         <?php elseif (!empty($r['missing']) && $r['missing'] == 1): ?>
-                            <span class="text-[11px] font-bold text-rose-600 dark:text-rose-400 uppercase tracking-widest">Mungon</span>
+                            <span class="status-badge px-2 py-0.5 bg-rose-100 text-rose-700 text-[10px] font-bold rounded uppercase">Mungon</span>
                         <?php else: ?>
-                            <span class="text-[10px] font-bold text-slate-300 dark:text-slate-700 italic text-nowrap">Pa regjistruar</span>
+                            <span class="text-[10px] font-medium text-slate-300 italic uppercase">Pa regjistruar</span>
                         <?php endif; ?>
                     </td>
                 </tr>
                 <?php endforeach; ?>
             <?php endif; ?>
-        </tbody>
+            </tbody>
         </table>
     </div>
 </div>
