@@ -332,7 +332,7 @@ if (isset($_SESSION['user']) && $_SESSION['user']['role'] === 'teacher') {
             <div class="flex items-center gap-3">
                 <div class="relative" x-data="{ open: false }">
                     <button @click="open = !open" class="p-2 text-slate-400 hover:text-blue-600 relative transition-colors">
-                        <?php if (!empty($userNotifications)): ?>
+                        <?php if (!empty($announcement)): ?>
                         <span class="absolute top-2 right-2 flex h-2 w-2">
                             <span class="animate-ping absolute inline-flex h-full w-full rounded-full bg-red-400 opacity-75"></span>
                             <span class="relative inline-flex rounded-full h-2 w-2 bg-red-500"></span>
@@ -359,7 +359,7 @@ if (isset($_SESSION['user']) && $_SESSION['user']['role'] === 'teacher') {
                                             <h4 class="text-xs font-bold text-slate-800 uppercase tracking-tight"><?= htmlspecialchars($n['title']) ?></h4>
                                             <span class="text-[9px] text-slate-400 font-bold"><?= date('H:i', strtotime($n['created_at'])) ?></span>
                                         </div>
-                                        <p class="text-[11px] text-slate-500 leading-relaxed line-clamp-2"><?= htmlspecialchars($n['content']) ?></p>
+                                        <p class="text-[11px] text-slate-500 leading-relaxed"><?= htmlspecialchars($n['content']) ?></p>
                                     </div>
                                 <?php endforeach; ?>
                             <?php endif; ?>
@@ -367,10 +367,10 @@ if (isset($_SESSION['user']) && $_SESSION['user']['role'] === 'teacher') {
                     </div>
                 </div>
 
-                <div class="flex items-center gap-3 pl-3 border-l border-slate-100">
-                    <span class="hidden md:block text-xs font-bold text-slate-700"><?= htmlspecialchars($teacherName) ?></span>
-                    <div class="h-9 w-9 rounded-full bg-blue-600 flex items-center justify-center text-white text-sm font-black shadow-lg shadow-blue-200 uppercase">
-                        <?= substr($teacherName, 0, 1) ?>
+                <div class="flex items-center gap-3 pl-2 lg:pl-4 border-l border-slate-100">
+                    <span class="hidden md:block text-sm font-semibold text-slate-700"><?= htmlspecialchars($teacherName) ?></span>
+                    <div class="h-9 w-9 rounded-full bg-indigo-600 flex items-center justify-center text-white text-sm font-bold shadow-sm">
+                        <?= strtoupper(substr(htmlspecialchars($teacherName), 0, 1)) ?>
                     </div>
                 </div>
             </div>
