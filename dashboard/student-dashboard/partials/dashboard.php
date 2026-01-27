@@ -10,9 +10,8 @@ if (session_status() === PHP_SESSION_NONE) {
 $studentId = $_SESSION['user']['student_id'] ?? null;
 $schoolId  = $_SESSION['user']['school_id'] ?? null;
 
-if (!$userId || $_SESSION['user']['role'] !== 'student' || !$schoolId) {
-    header("Location: /login.php");
-    exit();
+if (!$studentId || !$schoolId) {
+    die("Session expired. Ju lutem hyni përsëri.");
 }
 
 try {

@@ -6,10 +6,8 @@ require_once __DIR__ . '/../../../../db.php';
 $userId   = $_SESSION['user']['id'] ?? null;
 $schoolId = $_SESSION['user']['school_id'] ?? null;
 
-if (!$userId || $_SESSION['user']['role'] !== 'student' || !$schoolId) {
-    header("Location: /login.php");
-    exit();
-}
+if (!$userId || !$schoolId) die("Aksesi i ndaluar.");
+
 // --- LOGJIKA E PAGINIMIT ---
 $limit = 10;
 $page = isset($_GET['page']) && is_numeric($_GET['page']) ? (int)$_GET['page'] : 1;
