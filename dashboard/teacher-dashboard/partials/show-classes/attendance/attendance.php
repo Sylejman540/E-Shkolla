@@ -9,10 +9,7 @@ $schoolId  = (int) ($_SESSION['user']['school_id'] ?? 0);
 $teacherId = (int) ($_SESSION['user']['teacher_id'] ?? 0);
 $classId   = (int) ($_GET['class_id'] ?? 0);
 $subjectId = (int) ($_GET['subject_id'] ?? 0);
-
-$lessonDate = $_GET['lesson_date'] ?? date('Y-m-d');
-$lessonTime = $_GET['lesson_start_time'] ?? date('H:i:00');
-$view = $_GET['view'] ?? 'live'; 
+$view      = $_GET['view'] ?? 'live'; 
 
 $page    = (int)($_GET['page'] ?? 1);
 $perPage = 25;
@@ -20,8 +17,29 @@ $offset  = ($page - 1) * $perPage;
 
 if (!$schoolId || !$teacherId || !$classId || !$subjectId) die('Missing parameters');
 
+/* =====================================================
+    2. STABLE LESSON CONTEXT (INTEGRATED LOGIC)
+===================================================== */
+$lessonDate = $_GET['lesson_date'] ?? null;
+$lessonTime = $_GET['lesson_start_time'] ?? null;
+
+// Fallback: If parameters are lost, fetch the last recorded lesson for this context
+if (!$lessonDate || !$lessonTime) {
+    $stmt = $pdo->prepare("
+        SELECT lesson_date, lesson_start_time 
+        FROM attendance 
+        WHERE class_id = ? AND subject_id = ? 
+        ORDER BY updated_at DESC LIMIT 1
+    ");
+    $stmt->execute([$classId, $subjectId]);
+    $last = $stmt->fetch(PDO::FETCH_ASSOC);
+
+    $lessonDate = $last['lesson_date'] ?? date('Y-m-d');
+    $lessonTime = $last['lesson_start_time'] ?? date('H:i:00');
+}
+
 /* ===============================
-    2. ACTIONS
+    3. ACTIONS
 ================================ */
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     $action = $_POST['action'] ?? '';
@@ -60,7 +78,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 }
 
 /* ===============================
-    3. DATA FETCH
+    4. DATA FETCH
 ================================ */
 if ($view === 'history') {
     $stmt = $pdo->prepare("SELECT a.*, s.name FROM attendance a JOIN students s ON s.student_id = a.student_id 
@@ -136,7 +154,7 @@ ob_start();
                 </tr>
             </thead>
             <tbody class="divide-y divide-slate-50 dark:divide-slate-800">
-            <?php if (!$hasRows): ?>
+            <?php if (!$rows): ?>
                 <tr>
                     <td colspan="4" class="px-5 py-12 text-center text-slate-400 italic text-sm">Nuk u gjet asnjë regjistrim.</td>
                 </tr>
@@ -169,13 +187,13 @@ ob_start();
                             <div class="flex items-center justify-center gap-1.5">
                                 <button onclick="save(<?= $r['student_id'] ?>,'present')" 
                                         <?= $isLocked ? 'disabled' : '' ?> 
-                                        class="p-1.5 bg-emerald-50 text-emerald-600 rounded-md hover:bg-emerald-600 hover:text-white transition-all disabled:opacity-10" title="Prezent">
+                                        class="p-1.5 bg-emerald-50 text-emerald-600 rounded-md hover:bg-emerald-600 hover:text-white transition-all disabled:opacity-30 disabled:cursor-not-allowed" title="Prezent">
                                     <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="2.5"><path d="M5 13l4 4L19 7"/></svg>
                                 </button>
                                 
                                 <button onclick="save(<?= $r['student_id'] ?>,'missing')" 
                                         <?= $isLocked ? 'disabled' : '' ?> 
-                                        class="p-1.5 bg-rose-50 text-rose-600 rounded-md hover:bg-rose-600 hover:text-white transition-all disabled:opacity-10" title="Mungon">
+                                        class="p-1.5 bg-rose-50 text-rose-600 rounded-md hover:bg-rose-600 hover:text-white transition-all disabled:opacity-30 disabled:cursor-not-allowed" title="Mungon">
                                     <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="2.5"><path d="M6 18L18 6M6 6l12 12"/></svg>
                                 </button>
                                 
