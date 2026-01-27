@@ -162,95 +162,128 @@ ob_start();
 </div>
 
 <script>
+/* ===============================
+   ROW CALCULATION
+================================ */
 function calculateRow(row) {
     const studentId = row.querySelector('.grade-input').dataset.studentId;
-    ['p1', 'p2'].forEach(p => {
-        const h = parseInt(row.querySelector(`[data-period="${p}"][data-field="homework"]`).value) || 0;
-        const a = parseInt(row.querySelector(`[data-period="${p}"][data-field="activity"]`).value) || 0;
-        const pr = parseInt(row.querySelector(`[data-period="${p}"][data-field="project"]`).value) || 0;
-        const t = parseInt(row.querySelector(`[data-period="${p}"][data-field="test"]`).value) || 0;
-        const finalInput = row.querySelector(`.${p}-final`);
 
-        // Average calculation (only if at least one grade exists)
-        const grades = [h, a, pr, t].filter(g => g > 0);
-        if (grades.length > 0) {
-            const avg = Math.round(grades.reduce((sum, g) => sum + g, 0) / grades.length);
+    ['p1', 'p2'].forEach(p => {
+        const h  = parseInt(row.querySelector(`[data-period="${p}"][data-field="homework"]`)?.value) || 0;
+        const a  = parseInt(row.querySelector(`[data-period="${p}"][data-field="activity"]`)?.value) || 0;
+        const pr = parseInt(row.querySelector(`[data-period="${p}"][data-field="project"]`)?.value) || 0;
+        const t  = parseInt(row.querySelector(`[data-period="${p}"][data-field="test"]`)?.value) || 0;
+
+        const finalInput = row.querySelector(`.${p}-final`);
+        const grades = [h, a, pr, t].filter(v => v > 0);
+
+        if (grades.length) {
+            const avg = Math.round(grades.reduce((s, v) => s + v, 0) / grades.length);
             if (finalInput.value != avg) {
                 finalInput.value = avg;
-                saveData(studentId, `${p}_final`, avg);
+                saveData(row, studentId, `${p}_final`, avg);
             }
-        } else { finalInput.value = ''; }
+        } else {
+            finalInput.value = '';
+        }
     });
 
-    // Yearly Average
     const f1 = parseInt(row.querySelector('.p1-final').value) || 0;
     const f2 = parseInt(row.querySelector('.p2-final').value) || 0;
     const yearlyCell = row.querySelector('.yearly-avg');
-    
-    if (f1 > 0 && f2 > 0) {
-        yearlyCell.innerText = Math.round((f1 + f2) / 2);
-    } else {
-        yearlyCell.innerText = f1 || f2 || '';
-    }
+
+    yearlyCell.innerText = f1 && f2 ? Math.round((f1 + f2) / 2) : (f1 || f2 || '');
 }
 
-function saveData(studentId, column, value) {
-    const row = document.querySelector(`[data-student-id="${studentId}"]`).closest('tr');
+/* ===============================
+   SAVE FUNCTION (ROW SAFE)
+================================ */
+function saveData(row, studentId, column, value) {
     const indicator = row.querySelector('.save-indicator');
+
     const formData = new FormData();
     formData.append('student_id', studentId);
     formData.append('column', column);
     formData.append('value', value);
 
-    fetch(window.location.href, { method: 'POST', body: formData })
+    fetch(window.location.href, {
+        method: 'POST',
+        body: formData
+    })
     .then(res => res.text())
-    .then(data => {
-        if(data.trim() === "success") {
+    .then(res => {
+        if (res.trim() === 'success') {
             indicator.style.opacity = '1';
-            setTimeout(() => { indicator.style.opacity = '0'; }, 800);
+            setTimeout(() => indicator.style.opacity = '0', 700);
         }
     });
 }
 
-document.getElementById('journalBody').addEventListener('input', (e) => {
-    if (e.target.classList.contains('grade-input')) {
-        let val = parseInt(e.target.value);
-        if (val < 1) e.target.value = ''; 
-        if (val > 5) e.target.value = 5; // System limit
-        
-        saveData(e.target.dataset.studentId, `${e.target.dataset.period}_${e.target.dataset.field}`, e.target.value);
-        calculateRow(e.target.closest('tr'));
-    }
+/* ===============================
+   INPUT HANDLING
+================================ */
+document.getElementById('journalBody').addEventListener('input', e => {
+    if (!e.target.classList.contains('grade-input')) return;
+
+    let val = parseInt(e.target.value);
+    if (val < 1) e.target.value = '';
+    if (val > 5) e.target.value = 5;
+
+    const row = e.target.closest('tr');
+
+    saveData(
+        row,
+        e.target.dataset.studentId,
+        `${e.target.dataset.period}_${e.target.dataset.field}`,
+        e.target.value
+    );
+
+    calculateRow(row);
 });
 
-document.getElementById('journalBody').addEventListener('blur', (e) => {
-    if (e.target.classList.contains('auto-save-comment')) {
-        saveData(e.target.dataset.studentId, 'comment', e.target.value);
-    }
+/* ===============================
+   COMMENT SAVE
+================================ */
+document.getElementById('journalBody').addEventListener('blur', e => {
+    if (!e.target.classList.contains('auto-save-comment')) return;
+
+    const row = e.target.closest('tr');
+
+    saveData(
+        row,
+        e.target.dataset.studentId,
+        'comment',
+        e.target.value
+    );
 }, true);
 
-// Init calculations on load
+/* ===============================
+   INIT CALCULATIONS
+================================ */
 document.querySelectorAll('#journalBody tr').forEach(row => calculateRow(row));
 
-// Enhanced Keyboard Navigation
-document.addEventListener('keydown', (e) => {
+/* ===============================
+   KEYBOARD NAVIGATION
+================================ */
+document.addEventListener('keydown', e => {
     const active = document.activeElement;
     if (!active.classList.contains('grade-input')) return;
-    
+
     const row = active.closest('tr');
-    const cell = active.closest('td');
-    const colIdx = cell.cellIndex;
+    const col = active.closest('td').cellIndex;
 
     if (e.key === 'ArrowDown') {
         e.preventDefault();
-        row.nextElementSibling?.cells[colIdx].querySelector('input')?.focus();
+        row.nextElementSibling?.cells[col]?.querySelector('input')?.focus();
     }
+
     if (e.key === 'ArrowUp') {
         e.preventDefault();
-        row.previousElementSibling?.cells[colIdx].querySelector('input')?.focus();
+        row.previousElementSibling?.cells[col]?.querySelector('input')?.focus();
     }
 });
 </script>
+
 
 <?php
 $content = ob_get_clean();
