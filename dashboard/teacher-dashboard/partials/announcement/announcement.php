@@ -52,8 +52,11 @@ if (!$isAjax) { ob_start(); }
         </div>
 
         <?php if ($role === 'teacher'): ?>
-            <button type="button" id="openAnnouncementModal" class="bg-indigo-600 hover:bg-indigo-700 text-white px-3 py-1.5 rounded-lg text-[11px] font-bold transition-all shadow-sm flex items-center gap-2">
-                <span class="text-lg leading-none">+</span> Krijo Njoftim
+            <button type="button" id="openAnnouncementModal" class="inline-flex items-center gap-2 rounded-xl bg-indigo-600 px-3 py-1.5 text-sm text-white shadow-sm hover:bg-indigo-500 transition-all active:scale-95">
+                <svg class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"/>
+                </svg>
+                Shto Njoftim
             </button>
         <?php endif; ?>
     </div>
@@ -202,7 +205,7 @@ if (!$isAjax) { ob_start(); }
             </div>
 
             <div class="flex items-center gap-3 pt-4">
-                <button type="button" id="cancelModalBtn" 
+                <button type="button" id="closeAnnouncementModal" 
                     class="flex-1 px-4 py-2.5 text-sm font-semibold text-slate-600 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800 rounded-xl transition-colors">
                     Anulo
                 </button>
