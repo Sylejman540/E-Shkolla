@@ -160,8 +160,10 @@ try {
             </ul>
         </nav>
 
-        <button @click="sidebarCollapsed = !sidebarCollapsed" class="hidden lg:flex items-center justify-center h-12 border-t border-slate-50 text-slate-400 hover:text-indigo-600">
-            <svg :class="sidebarCollapsed ? 'rotate-180' : ''" class="h-5 w-5 transition-transform duration-300" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path d="M11 19l-7-7 7-7" /></svg>
+        <button @click="sidebarCollapsed = !sidebarCollapsed" class="hidden lg:flex items-center justify-center h-12 border-t border-slate-50 text-slate-400 hover:text-blue-600 transition-colors">
+            <svg :class="sidebarCollapsed ? 'rotate-180' : ''" class="h-5 w-5 transition-transform duration-300" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+                <path stroke-linecap="round" stroke-linejoin="round" d="M11 19l-7-7 7-7m8 14l-7-7 7-7" />
+            </svg>
         </button>
     </aside>
 
@@ -173,13 +175,13 @@ try {
             </button>
 
             <div class="hidden lg:block">
-                <p class="text-sm font-medium text-slate-500 italic">Mirëseerdhe, Prof. <span class="text-slate-800 font-bold not-italic"><?= htmlspecialchars($parentName) ?></span></p>
+                <p class="text-slate-500">Përshëndetje, <span class="font-semibold text-slate-800"><?= htmlspecialchars($parentName) ?></span></p>
             </div>
 
-            <div class="flex items-center gap-3">
+            <div class="flex items-center gap-2 lg:gap-4">
                 <div class="relative" x-data="{ open: false }">
                     <button @click="open = !open" class="p-2 text-slate-400 hover:text-blue-600 relative transition-colors">
-                        <?php if (!empty($userNotifications)): ?>
+                        <?php if (!empty($announcement)): ?>
                         <span class="absolute top-2 right-2 flex h-2 w-2">
                             <span class="animate-ping absolute inline-flex h-full w-full rounded-full bg-red-400 opacity-75"></span>
                             <span class="relative inline-flex rounded-full h-2 w-2 bg-red-500"></span>
@@ -200,13 +202,13 @@ try {
                                     <p class="text-xs text-slate-400 italic font-medium">Nuk ka njoftime të reja.</p>
                                 </div>
                             <?php else: ?>
-                                <?php foreach ($userNotifications as $n): ?>
+                                <?php foreach ($userNotifications as $u): ?>
                                     <div class="p-4 border-b border-slate-50 hover:bg-slate-50 transition-colors cursor-pointer">
                                         <div class="flex justify-between items-start mb-1">
-                                            <h4 class="text-xs font-bold text-slate-800 uppercase tracking-tight"><?= htmlspecialchars($n['title']) ?></h4>
-                                            <span class="text-[9px] text-slate-400 font-bold"><?= date('H:i', strtotime($n['created_at'])) ?></span>
+                                            <h4 class="text-xs font-bold text-slate-800 uppercase tracking-tight"><?= htmlspecialchars($u['title']) ?></h4>
+                                            <span class="text-[9px] text-slate-400 font-bold"><?= date('H:i', strtotime($u['created_at'])) ?></span>
                                         </div>
-                                        <p class="text-[11px] text-slate-500 leading-relaxed line-clamp-2"><?= htmlspecialchars($n['content']) ?></p>
+                                        <p class="text-[11px] text-slate-500 leading-relaxed"><?= htmlspecialchars($u['content']) ?></p>
                                     </div>
                                 <?php endforeach; ?>
                             <?php endif; ?>
@@ -214,10 +216,10 @@ try {
                     </div>
                 </div>
 
-                <div class="flex items-center gap-3 pl-3 border-l border-slate-100">
-                    <span class="hidden md:block text-xs font-bold text-slate-700"><?= htmlspecialchars($parentName) ?></span>
-                    <div class="h-9 w-9 rounded-full bg-blue-600 flex items-center justify-center text-white text-sm font-black shadow-lg shadow-blue-200 uppercase">
-                        <?= substr($parentName, 0, 1) ?>
+                <div class="flex items-center gap-3 pl-2 lg:pl-4 border-l border-slate-100">
+                    <span class="hidden md:block text-sm font-semibold text-slate-700"><?= htmlspecialchars($parentName) ?></span>
+                    <div class="h-9 w-9 rounded-full bg-indigo-600 flex items-center justify-center text-white text-sm font-bold shadow-sm">
+                        <?= strtoupper(substr(htmlspecialchars($parentName), 0, 1)) ?>
                     </div>
                 </div>
             </div>
