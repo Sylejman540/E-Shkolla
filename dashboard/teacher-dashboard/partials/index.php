@@ -141,6 +141,10 @@ if (isset($_SESSION['user']) && $_SESSION['user']['role'] === 'teacher') {
                     </a>
                 </li>
 
+                <div x-show="!sidebarCollapsed" class="px-3 mt-4 mb-2">
+                    <h3 class="text-[10px] font-bold uppercase tracking-widest text-slate-400">Njoftimet</h3>
+                </div>
+
                 <li>
                     <a href="/E-Shkolla/teacher-notices"
                        class="relative group flex items-center gap-x-3 rounded-xl p-3 text-sm font-semibold transition-all
