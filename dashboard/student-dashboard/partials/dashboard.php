@@ -17,31 +17,29 @@ if (!$studentId || !$schoolId) {
 }
 
 /* =========================
-   2. INITIALIZE VARIABLES
+   2. DEFAULTS
 ========================= */
-$studentName = "Nxënës";
-$className = "N/A";
-$teacherName = "Pa caktuar";
-$attendanceStatus = "Pa regjistruar";
-$attendanceColor = "text-slate-500 bg-slate-100";
+$studentName = 'Nxënës';
+$className = 'N/A';
+$teacherName = 'Pa caktuar';
+$attendanceStatus = 'Pa regjistruar';
+$attendanceColor = 'text-slate-500 bg-slate-100';
 $attendanceRate = 0;
 $upcomingAssignments = [];
 $trendDates = [];
 $trendStatus = [];
 
 try {
+
     /* =====================================================
-       3. FETCH STUDENT + CLASS + KUJDESTAR (FIXED)
-       - students.class_id (canonical)
-       - classes.id join
-       - classes.class_header = teacher user_id
+       3. STUDENT + CLASS + KUJDESTAR
     ===================================================== */
     $stmt = $pdo->prepare("
         SELECT
-            s.name        AS student_name,
-            c.grade       AS class_name,
-            c.id          AS class_id,
-            u.name        AS teacher_name
+            s.name AS student_name,
+            c.grade AS class_name,
+            c.id AS class_id,
+            u.name AS teacher_name
         FROM students s
         INNER JOIN classes c
             ON c.id = s.class_id
@@ -55,95 +53,108 @@ try {
     $stmt->execute([$studentId, $schoolId]);
     $student = $stmt->fetch(PDO::FETCH_ASSOC);
 
-    if ($student) {
-        $studentName = htmlspecialchars($student['student_name']);
-        $className   = htmlspecialchars($student['class_name']);
-        $teacherName = htmlspecialchars($student['teacher_name'] ?? 'Pa caktuar');
-        $classId     = (int)$student['class_id'];
+    if (!$student) {
+        throw new RuntimeException('Student not found.');
+    }
 
-        /* =========================
-           ATTENDANCE (TODAY)
-        ========================= */
-        $stmt = $pdo->prepare("
-            SELECT present, missing
-            FROM attendance
-            WHERE student_id = ?
-              AND DATE(created_at) = CURDATE()
-            LIMIT 1
-        ");
-        $stmt->execute([$studentId]);
-        $todayAtt = $stmt->fetch(PDO::FETCH_ASSOC);
+    $studentName = htmlspecialchars($student['student_name']);
+    $className   = htmlspecialchars($student['class_name']);
+    $teacherName = htmlspecialchars($student['teacher_name'] ?? 'Pa caktuar');
+    $classId     = (int)$student['class_id'];
 
-        if ($todayAtt) {
-            if ($todayAtt['present'] == 1) {
-                $attendanceStatus = 'Prezent';
-                $attendanceColor  = 'text-green-600 bg-green-100';
-            } elseif ($todayAtt['missing'] == 1) {
-                $attendanceStatus = 'Mungon';
-                $attendanceColor  = 'text-red-600 bg-red-100';
-            } else {
-                $attendanceStatus = 'Pa Regjistruar';
-                $attendanceColor  = 'text-yellow-600 bg-yellow-100';
-            }
-        }
+    /* =====================================================
+       4. TODAY ATTENDANCE (LESSON-BASED)
+    ===================================================== */
+    $stmt = $pdo->prepare("
+        SELECT
+            SUM(present) AS p,
+            SUM(missing) AS m,
+            SUM(excused) AS e
+        FROM attendance
+        WHERE student_id = ?
+          AND school_id = ?
+          AND lesson_date = CURDATE()
+          AND archived_at IS NULL
+    ");
+    $stmt->execute([$studentId, $schoolId]);
+    $today = $stmt->fetch(PDO::FETCH_ASSOC);
 
-        /* =========================
-           MONTHLY RATE
-        ========================= */
-        $stmt = $pdo->prepare("
-            SELECT COUNT(*) AS total, SUM(present) AS p
-            FROM attendance
-            WHERE student_id = ?
-              AND MONTH(created_at) = MONTH(CURDATE())
-              AND YEAR(created_at) = YEAR(CURDATE())
-        ");
-        $stmt->execute([$studentId]);
-        $mStats = $stmt->fetch(PDO::FETCH_ASSOC);
-        $attendanceRate = ($mStats['total'] > 0)
-            ? (int)round(($mStats['p'] / $mStats['total']) * 100)
-            : 0;
-
-        /* =========================
-           UPCOMING ASSIGNMENTS
-        ========================= */
-        $stmt = $pdo->prepare("
-            SELECT a.title, a.due_date, sub.subject_name
-            FROM assignments a
-            INNER JOIN subjects sub ON sub.id = a.subject_id
-            WHERE a.class_id = ?
-              AND a.due_date >= CURDATE()
-            ORDER BY a.due_date ASC
-            LIMIT 4
-        ");
-        $stmt->execute([$classId]);
-        $upcomingAssignments = $stmt->fetchAll(PDO::FETCH_ASSOC);
-
-        /* =========================
-           14-DAY ATTENDANCE TREND
-        ========================= */
-        $stmt = $pdo->prepare("
-            SELECT DATE(created_at) AS date, present
-            FROM attendance
-            WHERE student_id = ?
-              AND created_at >= DATE_SUB(CURDATE(), INTERVAL 14 DAY)
-            ORDER BY date ASC
-        ");
-        $stmt->execute([$studentId]);
-        $trendData = $stmt->fetchAll(PDO::FETCH_ASSOC);
-
-        foreach ($trendData as $day) {
-            $trendDates[]  = date('d M', strtotime($day['date']));
-            $trendStatus[] = (int)$day['present'];
+    if ($today && ($today['p'] + $today['m'] + $today['e']) > 0) {
+        if ($today['p'] > 0) {
+            $attendanceStatus = 'Prezent';
+            $attendanceColor = 'text-green-600 bg-green-100';
+        } elseif ($today['m'] > 0) {
+            $attendanceStatus = 'Mungon';
+            $attendanceColor = 'text-red-600 bg-red-100';
+        } else {
+            $attendanceStatus = 'Arsyetuar';
+            $attendanceColor = 'text-yellow-600 bg-yellow-100';
         }
     }
 
-} catch (PDOException $e) {
-    error_log('Database Error (Student Dashboard): ' . $e->getMessage());
+    /* =====================================================
+       5. MONTHLY ATTENDANCE RATE (LESSON-BASED)
+    ===================================================== */
+    $stmt = $pdo->prepare("
+        SELECT
+            COUNT(*) AS total,
+            SUM(present) AS present_count
+        FROM attendance
+        WHERE student_id = ?
+          AND school_id = ?
+          AND MONTH(lesson_date) = MONTH(CURDATE())
+          AND YEAR(lesson_date) = YEAR(CURDATE())
+          AND archived_at IS NULL
+    ");
+    $stmt->execute([$studentId, $schoolId]);
+    $month = $stmt->fetch(PDO::FETCH_ASSOC);
+
+    if ($month['total'] > 0) {
+        $attendanceRate = (int) round(($month['present_count'] / $month['total']) * 100);
+    }
+
+    /* =====================================================
+       6. UPCOMING ASSIGNMENTS (NO SUBJECT JOIN)
+    ===================================================== */
+    $stmt = $pdo->prepare("
+        SELECT title, due_date
+        FROM assignments
+        WHERE class_id = ?
+          AND school_id = ?
+          AND due_date >= CURDATE()
+          AND status = 'active'
+        ORDER BY due_date ASC
+        LIMIT 4
+    ");
+    $stmt->execute([$classId, $schoolId]);
+    $upcomingAssignments = $stmt->fetchAll(PDO::FETCH_ASSOC);
+
+    /* =====================================================
+       7. 14-DAY ATTENDANCE TREND
+    ===================================================== */
+    $stmt = $pdo->prepare("
+        SELECT lesson_date AS d, present
+        FROM attendance
+        WHERE student_id = ?
+          AND school_id = ?
+          AND lesson_date >= DATE_SUB(CURDATE(), INTERVAL 14 DAY)
+          AND archived_at IS NULL
+        ORDER BY lesson_date ASC
+    ");
+    $stmt->execute([$studentId, $schoolId]);
+    $trend = $stmt->fetchAll(PDO::FETCH_ASSOC);
+
+    foreach ($trend as $row) {
+        $trendDates[]  = date('d M', strtotime($row['d']));
+        $trendStatus[] = (int)$row['present'];
+    }
+
+} catch (Throwable $e) {
+    error_log('[Student Dashboard] ' . $e->getMessage());
 }
 
 ob_start();
 ?>
-
 <div class="px-6 py-6 max-w-6xl mx-auto font-sans antialiased text-slate-800">
 
     <div class="mb-8 flex flex-col md:flex-row justify-between items-start md:items-center gap-4">

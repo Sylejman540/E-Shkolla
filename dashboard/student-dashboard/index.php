@@ -17,6 +17,7 @@ if (!isset($_SESSION['user']['id']) || $_SESSION['user']['role'] !== 'student') 
     exit();
 }
 
+
 // 3. Application State & Helper Functions
 $userId = $_SESSION['user']['id'];
 $currentUri = $_SERVER['REQUEST_URI'];

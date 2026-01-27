@@ -79,8 +79,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         $newUserId = $pdo->lastInsertId();
 
         // 8. Insert into Students Table
-        $stmtStudent = $pdo->prepare("INSERT INTO students (school_id, user_id, student_code, name, gender, class_name, date_birth, email, status) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)");
-        $stmtStudent->execute([$schoolId, $newUserId, $student_code, $name, $gender, $classRow['grade'], $date_birth, $email, $status]);
+        $stmtStudent = $pdo->prepare("INSERT INTO students (school_id, user_id, student_code, name, gender, class_name, class_id, date_birth, email, status) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)");
+        $stmtStudent->execute([$schoolId, $newUserId, $student_code, $name, $gender, $classRow['grade'], $class_id, $date_birth, $email, $status]);
         $studentId = $pdo->lastInsertId();
 
         // 9. Link to student_class Table
