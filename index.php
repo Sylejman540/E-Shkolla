@@ -54,6 +54,7 @@ $routes = [
     '/school-settings' => 'dashboard/schooladmin-dashboard/partials/settings/settings.php',
     '/school-announcement' => 'dashboard/schooladmin-dashboard/partials/announcement/announcement.php',
     '/schedule-csv' => 'dashboard/schooladmin-dashboard/partials/schedule/import-schedule.php',
+    '/student-settings' => 'dashboard/student-dashboard/partials/settings.php',
 ];
 
 if (array_key_exists($uri, $routes)) {
