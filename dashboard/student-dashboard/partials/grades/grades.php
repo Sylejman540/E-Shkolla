@@ -101,8 +101,8 @@ ob_start();
                 <thead class="bg-gray-50">
                     <tr>
                         <th rowspan="2" class="px-6 py-3 text-left text-xs font-bold text-gray-500 uppercase border-r">Lënda</th>
-                        <th colspan="4" class="px-4 py-2 text-center text-[10px] font-black text-indigo-500 uppercase border-b border-r bg-indigo-50/30">Perioda 1</th>
-                        <th colspan="4" class="px-4 py-2 text-center text-[10px] font-black text-rose-500 uppercase border-b border-r bg-rose-50/30">Perioda 2</th>
+                        <th colspan="4" class="px-4 py-2 text-center text-[10px] font-black text-indigo-500 uppercase border-b border-r bg-indigo-50/30">Periudha 1</th>
+                        <th colspan="4" class="px-4 py-2 text-center text-[10px] font-black text-rose-500 uppercase border-b border-r bg-rose-50/30">Periudha 2</th>
                         <th rowspan="2" class="px-6 py-3 text-center text-xs font-bold text-gray-700 uppercase">Nota</th>
                     </tr>
                     <tr class="bg-gray-50/50">
