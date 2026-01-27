@@ -134,8 +134,7 @@ ob_start();
 
             <div class="inline-flex p-1 bg-slate-100 dark:bg-slate-800 rounded-lg border border-slate-200 dark:border-slate-700">
                 <a href="?class_id=<?= $classId ?>&subject_id=<?= $subjectId ?>&view=live" class="px-3 py-1 text-[11px] font-bold rounded-md transition-all <?= $view === 'live' ? 'bg-white dark:bg-slate-700 text-indigo-600 shadow-sm' : 'text-slate-500 hover:text-slate-700' ?>">LIVE</a>
-                <a href="?class_id=<?= $classId ?>&subject_id=<?= $subjectId ?>&view=history" class="px-3 py-1 text-[11px] font-bold rounded-md transition-all <?= $view === 'history' ? 'bg-white dark:bg-slate-700 text-indigo-600 shadow-sm' : 'text-slate-500 hover:text-slate-700' ?>">HISTORIA</a>
-            </div>
+            </div>  
         </div>
     </div>
 
