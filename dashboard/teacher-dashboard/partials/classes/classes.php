@@ -78,8 +78,7 @@ function getSubjectIcon(string $subject): array {
 
 ob_start();
 ?>
-
-<div class="max-w-6xl mx-auto space-y-6 pb-12 animate-in fade-in duration-500 text-slate-700">
+<div class="dashboard-container max-w-6xl mx-auto p-4 lg:p-6 space-y-6 animate-in fade-in duration-500 text-slate-800">
 
     <div class="flex flex-col md:flex-row md:items-center justify-between gap-4 border-b border-slate-100 pb-4">
         <div>

@@ -104,6 +104,7 @@ ob_start();
 </style>
 
 <div class="dashboard-container max-w-6xl mx-auto p-4 lg:p-6 space-y-6 animate-in fade-in duration-500 text-slate-800">
+
     
     <div class="flex flex-col md:flex-row md:items-center justify-between gap-4">
         <div>
