@@ -58,7 +58,7 @@ function isActive($path) {
             <img src="/E-Shkolla/images/icon.png" class="h-9 w-auto min-w-[36px]" alt="Logo">
             <div x-show="!sidebarCollapsed" x-transition.opacity class="ml-3 whitespace-nowrap">
                 <h1 class="text-lg font-bold tracking-tight text-slate-800 leading-none">E-Shkolla</h1>
-                <p class="text-[10px] font-bold uppercase tracking-widest text-blue-600 mt-1">Menaxhimi</p>
+                <p class="text-[10px] font-bold uppercase tracking-widest text-blue-600 mt-1">Menaxhimi i klasës</p>
             </div>
         </a>
 
