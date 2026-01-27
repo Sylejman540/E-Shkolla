@@ -17,7 +17,6 @@ if (!isset($_SESSION['user']['id']) || $_SESSION['user']['role'] !== 'student') 
     exit();
 }
 
-
 // 3. Application State & Helper Functions
 $userId = $_SESSION['user']['id'];
 $currentUri = $_SERVER['REQUEST_URI'];
@@ -41,9 +40,31 @@ try {
     // Log error internally, don't echo $e to user
     error_log("Database Error in Layout: " . $e->getMessage());
 }
+$announcements = [];
+$schoolId = $_SESSION['user']['school_id'] ?? null;
 
-// Prepare the content variable (this will be populated by your route files)
-// $content is expected to be defined by the file including this layout.
+$stmt = $pdo->prepare("
+    SELECT 
+        title,
+        content,
+        created_at
+    FROM announcements
+    WHERE school_id = ?
+      AND target_role IN ('student', 'all')
+      AND target_audience IN ('students', 'all')
+      AND (
+            teacher_id IS NOT NULL
+         OR author_id IS NOT NULL
+      )
+      AND (expires_at IS NULL OR expires_at >= NOW())
+    ORDER BY created_at DESC
+    LIMIT 5
+");
+
+$stmt->execute([$schoolId]);
+$announcements = $stmt->fetchAll(PDO::FETCH_ASSOC);
+
+$hasAnnouncements = !empty($announcements);
 ?>
 <!DOCTYPE html>
 <html lang="en" class="h-full bg-slate-50"> 
@@ -199,16 +220,38 @@ try {
             <div class="flex items-center gap-2 lg:gap-4">
                 <div class="relative" x-data="{ open: false }">
                     <button @click="open = !open" class="p-2 text-slate-400 hover:text-blue-600 relative transition-colors">
+                        <?php if (!empty($announcement)): ?>
                         <span class="absolute top-2 right-2 flex h-2 w-2">
                             <span class="animate-ping absolute inline-flex h-full w-full rounded-full bg-red-400 opacity-75"></span>
                             <span class="relative inline-flex rounded-full h-2 w-2 bg-red-500"></span>
                         </span>
+                        <?php endif; ?>
                         <svg class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.5"><path d="M15 17h5l-1.405-1.405A2.032 2.032 0 0118 14.158V11a6.002 6.002 0 00-4-5.659V5a2 2 0 10-4 0v.341C7.67 6.165 6 8.388 6 11v3.159c0 .538-.214 1.055-.595 1.436L4 17h5m6 0v1a3 3 0 11-6 0v-1m6 0H9"/></svg>
                     </button>
+                    
                     <div x-show="open" @click.away="open = false" x-transition x-cloak
-                         class="absolute right-0 mt-3 w-72 md:w-80 bg-white rounded-2xl shadow-2xl border border-slate-100 p-4">
-                        <h3 class="font-bold text-slate-800 mb-4">Njoftimet</h3>
-                        <div class="text-xs text-slate-500 text-center py-4 italic">Nuk ka njoftime të reja</div>
+                         class="absolute right-0 mt-3 w-80 bg-white rounded-2xl shadow-2xl border border-slate-100 overflow-hidden ring-1 ring-black/5">
+                        <div class="p-4 border-b border-slate-50 bg-slate-50/50 flex justify-between items-center">
+                            <h3 class="font-bold text-slate-800 text-sm">Njoftimet</h3>
+                            <span class="text-[10px] bg-blue-100 text-blue-600 px-2 py-0.5 rounded-full font-bold"><?= count($announcements) ?> Reja</span>
+                        </div>
+                        <div class="max-h-96 overflow-y-auto">
+                            <?php if (empty($announcements)): ?>
+                                <div class="p-8 text-center">
+                                    <p class="text-xs text-slate-400 italic font-medium">Nuk ka njoftime të reja.</p>
+                                </div>
+                            <?php else: ?>
+                                <?php foreach ($announcements as $n): ?>
+                                    <div class="p-4 border-b border-slate-50 hover:bg-slate-50 transition-colors cursor-pointer">
+                                        <div class="flex justify-between items-start mb-1">
+                                            <h4 class="text-xs font-bold text-slate-800 uppercase tracking-tight"><?= htmlspecialchars($n['title']) ?></h4>
+                                            <span class="text-[9px] text-slate-400 font-bold"><?= date('H:i', strtotime($n['created_at'])) ?></span>
+                                        </div>
+                                        <p class="text-[11px] text-slate-500 leading-relaxed"><?= htmlspecialchars($n['content']) ?></p>
+                                    </div>
+                                <?php endforeach; ?>
+                            <?php endif; ?>
+                        </div>
                     </div>
                 </div>
 
