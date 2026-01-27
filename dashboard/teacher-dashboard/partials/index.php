@@ -152,7 +152,6 @@ if (isset($_SESSION['user']) && $_SESSION['user']['role'] === 'teacher') {
                 <li>Pas këtij afati, regjistrimi bllokohet automatikisht</li>
                 <li>
                     <strong>LIVE</strong> – regjistrim aktiv<br>
-                    <strong>HISTORIA</strong> – vetëm shikim i regjistrimeve të kaluara
                 </li>
             </ul>
         </section>
