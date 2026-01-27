@@ -10,6 +10,12 @@ if (session_status() === PHP_SESSION_NONE) {
     session_start();
 }
 
+$user = $_SESSION['user'] ?? null;
+if (!$user || $user['role'] !== 'parent') {
+    header('Location: /login.php');
+    exit;
+}
+
 if (!isset($_SESSION['user']['id'], $_SESSION['user']['school_id'])) {
     header("Location: /E-Shkolla/login");
     exit();
