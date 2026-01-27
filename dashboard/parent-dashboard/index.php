@@ -28,6 +28,9 @@ try {
 } catch (PDOException $e) {
     error_log("Database Error in Layout: " . $e->getMessage());
 }
+
+// Njoftimet për Prindin (Opsionale, nëse dëshironi t'i shfaqni si te mësuesi)
+$userNotifications = []; // Mund ta mbushni me query nëse keni tabelë njootimesh
 ?>
 <!DOCTYPE html>
 <html lang="en" class="h-full bg-slate-50"> 
@@ -51,27 +54,54 @@ try {
             background-color: #4f46e5;
             border-radius: 0 4px 4px 0;
         }
+        nav::-webkit-scrollbar { width: 4px; }
+        nav::-webkit-scrollbar-thumb { background: #e2e8f0; border-radius: 10px; }
     </style>
 </head>
 <body class="h-full font-sans antialiased text-slate-900" 
-      x-data="{ sidebarCollapsed: false, mobileOpen: false }">
+      x-data="{ sidebarCollapsed: false, mobileOpen: false, helpOpen: false }">
 
-    <div x-show="mobileOpen" x-cloak x-transition.opacity @click="mobileOpen = false"
-         class="fixed inset-0 z-40 bg-slate-900/40 backdrop-blur-sm lg:hidden"></div>
+    <div x-show="mobileOpen || helpOpen" x-cloak x-transition.opacity @click="mobileOpen = false; helpOpen = false"
+         class="fixed inset-0 z-40 bg-slate-900/40 backdrop-blur-sm"></div>
+
+    <template x-teleport="body">
+        <div x-show="helpOpen"
+             x-transition:enter="transition ease-in-out duration-300 transform"
+             x-transition:enter-start="translate-x-full"
+             x-transition:enter-end="translate-x-0"
+             x-transition:leave="transition ease-in-out duration-300 transform"
+             x-transition:leave-end="translate-x-full"
+             x-cloak
+             class="fixed inset-y-0 right-0 z-50 w-full max-w-md bg-white shadow-2xl border-l border-slate-100 flex flex-col">
+            <div class="flex items-center justify-between p-6 border-b border-slate-100 bg-slate-50/50">
+                <div class="flex items-center gap-3">
+                    <div class="p-2 bg-indigo-600 text-white rounded-lg">
+                        <svg class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path d="M8.228 9c.549-1.165 2.03-2 3.772-2 2.21 0 4 1.343 4 3 0 1.4-1.278 2.575-3.006 2.907-.542.104-.994.54-.994 1.093m0 3h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
+                    </div>
+                    <h2 class="text-xl font-bold text-slate-800">Ndihmë për Prindërit</h2>
+                </div>
+                <button @click="helpOpen = false" class="p-2 rounded-full hover:bg-slate-100"><svg class="h-6 w-6 text-slate-400" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path d="M6 18L18 6M6 6l12 12"/></svg></button>
+            </div>
+            <div class="flex-1 overflow-y-auto p-8 text-sm text-slate-600 space-y-6">
+                <section><h3 class="font-bold text-slate-800 mb-2">Monitorimi i Fëmijëve</h3><p>Këtu mund të shihni progresin akademik, notat dhe prezencën për të gjithë fëmijët tuaj të regjistruar në shkollë.</p></section>
+                <section><h3 class="font-bold text-slate-800 mb-2">Detyrat e Shtëpisë</h3><p>Ju mund të kontrolloni detyrat e dhëna nga mësuesit për të ndihmuar fëmijët në përgatitjen e tyre.</p></section>
+            </div>
+        </div>
+    </template>
 
     <aside class="fixed inset-y-0 left-0 z-50 flex flex-col bg-white shadow-[4px_0_24px_rgba(0,0,0,0.02)] border-r border-slate-100 custom-transition"
            :class="[sidebarCollapsed ? 'w-20' : 'w-72', mobileOpen ? 'translate-x-0' : '-translate-x-full lg:translate-x-0']">
 
         <a href="/E-Shkolla/parent-dashboard" class="flex h-20 shrink-0 items-center px-6 overflow-hidden border-b border-slate-50">
-            <img src="/E-Shkolla/images/icon.png" class="h-10 w-auto min-w-[40px] object-contain" alt="Logo">
-            <div x-show="!sidebarCollapsed" x-transition class="ml-3 whitespace-nowrap">
-                <h1 class="text-xl font-bold tracking-tight text-slate-800">E-Shkolla</h1>
-                <p class="text-[10px] font-bold uppercase tracking-widest text-indigo-600">Prindër</p>
+            <img src="/E-Shkolla/images/icon.png" class="h-9 w-auto min-w-[36px]" alt="Logo">
+            <div x-show="!sidebarCollapsed" x-transition.opacity class="ml-3 whitespace-nowrap">
+                <h1 class="text-lg font-bold tracking-tight text-slate-800 leading-none">E-Shkolla</h1>
+                <p class="text-[10px] font-bold uppercase tracking-widest text-indigo-600 mt-1">Prindër</p>
             </div>
         </a>
 
         <nav class="flex flex-1 flex-col overflow-y-auto px-4 py-6">
-            <ul role="list" class="flex flex-1 flex-col gap-y-2">
+            <ul role="list" class="flex flex-1 flex-col gap-y-1.5">
                 
                 <?php
                 $menuItems = [
@@ -87,27 +117,30 @@ try {
                     <a href="/E-Shkolla<?= $item['url'] ?>"
                        class="relative group flex items-center gap-x-3 rounded-xl p-3 text-sm font-semibold transition-all
                        <?= isActive($item['url']) ? 'bg-indigo-50 text-indigo-600 active-indicator' : 'text-slate-500 hover:bg-slate-50 hover:text-indigo-600' ?>">
-                        <svg class="h-6 w-6 shrink-0" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor">
-                            <path stroke-linecap="round" stroke-linejoin="round" d="<?= $item['icon'] ?>" />
-                        </svg>
-                        <span x-show="!sidebarCollapsed || mobileOpen" class="whitespace-nowrap"><?= $item['label'] ?></span>
+                        <svg class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path d="<?= $item['icon'] ?>" /></svg>
+                        <span x-show="!sidebarCollapsed" class="whitespace-nowrap"><?= $item['label'] ?></span>
                     </a>
                 </li>
                 <?php endforeach; ?>
 
-                <li class="mt-auto pt-4 border-t border-slate-50">
-                    <a href="/E-Shkolla/logout" class="group flex items-center gap-x-3 rounded-xl bg-red-50/50 p-3 text-sm font-semibold text-red-600 hover:bg-red-100 transition-all">
-                        <svg class="h-6 w-6 shrink-0" fill="none" viewBox="0 0 24 24" stroke-width="1.8" stroke="currentColor">
-                            <path stroke-linecap="round" stroke-linejoin="round" d="M15.75 9V5.25A2.25 2.25 0 0013.5 3h-6a2.25 2.25 0 00-2.25 2.25v13.5A2.25 2.25 0 007.5 21h6a2.25 2.25 0 002.25-2.25V15m3 0l3-3m0 0l-3-3m3 3H9" />
-                        </svg>
-                        <span x-show="!sidebarCollapsed || mobileOpen" class="whitespace-nowrap">Çkyçu</span>
+                <li class="mt-auto">
+                    <button @click="helpOpen = true" class="w-full flex items-center gap-x-3 rounded-xl p-3 text-sm font-semibold text-slate-500 hover:bg-indigo-50 hover:text-indigo-600">
+                        <svg class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path d="M8.228 9c.549-1.165 2.03-2 3.772-2 2.21 0 4 1.343 4 3 0 1.4-1.278 2.575-3.006 2.907-.542.104-.994.54-.994 1.093m0 3h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
+                        <span x-show="!sidebarCollapsed">Ndihmë</span>
+                    </button>
+                </li>
+
+                <li class="mt-2">
+                    <a href="/E-Shkolla/logout" class="group flex items-center gap-x-3 rounded-xl bg-red-50/50 p-3 text-sm font-semibold text-red-600 hover:bg-red-50 transition-all">
+                        <svg class="h-5 w-5 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1" /></svg>
+                        <span x-show="!sidebarCollapsed" class="whitespace-nowrap">Çkyçu</span>
                     </a>
                 </li>
             </ul>
         </nav>
 
-        <button @click="sidebarCollapsed = !sidebarCollapsed" class="hidden lg:flex items-center justify-center h-12 border-t border-slate-100 text-slate-400 hover:text-slate-600">
-            <svg :class="sidebarCollapsed ? 'rotate-180' : ''" class="h-5 w-5 transition-transform" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path d="M11 19l-7-7 7-7m8 14l-7-7 7-7" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>
+        <button @click="sidebarCollapsed = !sidebarCollapsed" class="hidden lg:flex items-center justify-center h-12 border-t border-slate-50 text-slate-400 hover:text-indigo-600">
+            <svg :class="sidebarCollapsed ? 'rotate-180' : ''" class="h-5 w-5 transition-transform duration-300" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path d="M11 19l-7-7 7-7" /></svg>
         </button>
     </aside>
 
@@ -119,22 +152,28 @@ try {
             </button>
 
             <div class="hidden lg:block">
-                <p class="text-slate-500">Mirëseerdhët, Prind: <span class="font-semibold text-slate-800"><?= htmlspecialchars($parentName) ?></span></p>
+                <p class="text-sm font-medium text-slate-500 italic">Mirëseerdhët, <span class="text-slate-800 font-bold not-italic"><?= htmlspecialchars($parentName) ?></span></p>
             </div>
 
-            <div class="flex items-center gap-4">
-                <div class="flex items-center gap-3 pl-4 border-l border-slate-100">
-                    <span class="hidden md:block text-sm font-semibold text-slate-700"><?= htmlspecialchars($parentName) ?></span>
-                    <div class="h-9 w-9 rounded-full bg-indigo-600 flex items-center justify-center text-white text-sm font-bold shadow-sm">
-                        <?= strtoupper(substr(htmlspecialchars($parentName), 0, 1)) ?>
+            <div class="flex items-center gap-3">
+                <div class="relative" x-data="{ open: false }">
+                    <button @click="open = !open" class="p-2 text-slate-400 hover:text-indigo-600 relative transition-colors">
+                        <svg class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.5"><path d="M15 17h5l-1.405-1.405A2.032 2.032 0 0118 14.158V11a6.002 6.002 0 00-4-5.659V5a2 2 0 10-4 0v.341C7.67 6.165 6 8.388 6 11v3.159c0 .538-.214 1.055-.595 1.436L4 17h5m6 0v1a3 3 0 11-6 0v-1m6 0H9"/></svg>
+                    </button>
+                </div>
+
+                <div class="flex items-center gap-3 pl-3 border-l border-slate-100">
+                    <span class="hidden md:block text-xs font-bold text-slate-700"><?= htmlspecialchars($parentName) ?></span>
+                    <div class="h-9 w-9 rounded-full bg-indigo-600 flex items-center justify-center text-white text-sm font-black shadow-lg shadow-indigo-100 uppercase">
+                        <?= substr(htmlspecialchars($parentName), 0, 1) ?>
                     </div>
                 </div>
             </div>
         </header>
 
-        <main class="p-4 lg:p-8 flex-1">
+        <main class="p-4 lg:p-10 flex-1">
             <div class="max-w-7xl mx-auto">
-                <?= $content ?? '<div class="bg-white p-8 rounded-3xl border border-slate-100 shadow-sm">Përmbajtja nuk u gjet.</div>' ?>
+                <?= $content ?? '<div class="flex flex-col items-center justify-center h-[60vh] text-slate-400"><p class="italic">Zgjidhni një opsion nga menuja...</p></div>' ?>
             </div>
         </main>
     </div>
