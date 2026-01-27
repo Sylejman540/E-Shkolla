@@ -1,17 +1,17 @@
 <?php
-// 1. Siguria dhe Menaxhimi i Sesionit
 if (session_status() === PHP_SESSION_NONE) {
     session_start();
 }
 
-// Authorization Guard
 if (!isset($_SESSION['user']['id']) || $_SESSION['user']['role'] !== 'parent') {
     header("Location: /E-Shkolla/login");
     exit();
 }
 
 require_once __DIR__ . '/../../db.php';
-$userId = $_SESSION['user']['id'];
+
+$userId     = (int) $_SESSION['user']['id'];
+$schoolId   = (int) ($_SESSION['user']['school_id'] ?? 0);
 $currentUri = $_SERVER['REQUEST_URI'];
 
 function isActive($path) {
@@ -19,18 +19,39 @@ function isActive($path) {
     return str_contains($currentUri, $path);
 }
 
-// Marrja e të dhënave të prindit
+// ===============================
+// Parent name
+// ===============================
 $parentName = 'Prind';
+
 try {
     $stmt = $pdo->prepare("SELECT name FROM users WHERE id = ? LIMIT 1");
     $stmt->execute([$userId]);
     $parentName = $stmt->fetchColumn() ?: 'Prind';
 } catch (PDOException $e) {
-    error_log("Database Error in Layout: " . $e->getMessage());
+    error_log('Parent layout name error: ' . $e->getMessage());
 }
 
-// Njoftimet për Prindin (Opsionale, nëse dëshironi t'i shfaqni si te mësuesi)
-$userNotifications = []; // Mund ta mbushni me query nëse keni tabelë njootimesh
+// ===============================
+// Parent notifications
+// ===============================
+$userNotifications = [];
+
+try {
+    $stmt = $pdo->prepare("
+        SELECT title, content, created_at
+        FROM announcements
+        WHERE school_id = ?
+          AND target_role IN ('all', 'parent')
+          AND (expires_at IS NULL OR expires_at >= CURDATE())
+        ORDER BY created_at DESC
+        LIMIT 5
+    ");
+    $stmt->execute([$schoolId]);
+    $userNotifications = $stmt->fetchAll(PDO::FETCH_ASSOC);
+} catch (PDOException $e) {
+    error_log('Parent layout notifications error: ' . $e->getMessage());
+}
 ?>
 <!DOCTYPE html>
 <html lang="en" class="h-full bg-slate-50"> 
@@ -152,20 +173,51 @@ $userNotifications = []; // Mund ta mbushni me query nëse keni tabelë njootime
             </button>
 
             <div class="hidden lg:block">
-                <p class="text-sm font-medium text-slate-500 italic">Mirëseerdhët, <span class="text-slate-800 font-bold not-italic"><?= htmlspecialchars($parentName) ?></span></p>
+                <p class="text-sm font-medium text-slate-500 italic">Mirëseerdhe, Prof. <span class="text-slate-800 font-bold not-italic"><?= htmlspecialchars($parentName) ?></span></p>
             </div>
 
             <div class="flex items-center gap-3">
                 <div class="relative" x-data="{ open: false }">
-                    <button @click="open = !open" class="p-2 text-slate-400 hover:text-indigo-600 relative transition-colors">
+                    <button @click="open = !open" class="p-2 text-slate-400 hover:text-blue-600 relative transition-colors">
+                        <?php if (!empty($userNotifications)): ?>
+                        <span class="absolute top-2 right-2 flex h-2 w-2">
+                            <span class="animate-ping absolute inline-flex h-full w-full rounded-full bg-red-400 opacity-75"></span>
+                            <span class="relative inline-flex rounded-full h-2 w-2 bg-red-500"></span>
+                        </span>
+                        <?php endif; ?>
                         <svg class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.5"><path d="M15 17h5l-1.405-1.405A2.032 2.032 0 0118 14.158V11a6.002 6.002 0 00-4-5.659V5a2 2 0 10-4 0v.341C7.67 6.165 6 8.388 6 11v3.159c0 .538-.214 1.055-.595 1.436L4 17h5m6 0v1a3 3 0 11-6 0v-1m6 0H9"/></svg>
                     </button>
+                    
+                    <div x-show="open" @click.away="open = false" x-transition x-cloak
+                         class="absolute right-0 mt-3 w-80 bg-white rounded-2xl shadow-2xl border border-slate-100 overflow-hidden ring-1 ring-black/5">
+                        <div class="p-4 border-b border-slate-50 bg-slate-50/50 flex justify-between items-center">
+                            <h3 class="font-bold text-slate-800 text-sm">Njoftimet</h3>
+                            <span class="text-[10px] bg-blue-100 text-blue-600 px-2 py-0.5 rounded-full font-bold"><?= count($userNotifications) ?> Reja</span>
+                        </div>
+                        <div class="max-h-96 overflow-y-auto">
+                            <?php if (empty($userNotifications)): ?>
+                                <div class="p-8 text-center">
+                                    <p class="text-xs text-slate-400 italic font-medium">Nuk ka njoftime të reja.</p>
+                                </div>
+                            <?php else: ?>
+                                <?php foreach ($userNotifications as $n): ?>
+                                    <div class="p-4 border-b border-slate-50 hover:bg-slate-50 transition-colors cursor-pointer">
+                                        <div class="flex justify-between items-start mb-1">
+                                            <h4 class="text-xs font-bold text-slate-800 uppercase tracking-tight"><?= htmlspecialchars($n['title']) ?></h4>
+                                            <span class="text-[9px] text-slate-400 font-bold"><?= date('H:i', strtotime($n['created_at'])) ?></span>
+                                        </div>
+                                        <p class="text-[11px] text-slate-500 leading-relaxed line-clamp-2"><?= htmlspecialchars($n['content']) ?></p>
+                                    </div>
+                                <?php endforeach; ?>
+                            <?php endif; ?>
+                        </div>
+                    </div>
                 </div>
 
                 <div class="flex items-center gap-3 pl-3 border-l border-slate-100">
                     <span class="hidden md:block text-xs font-bold text-slate-700"><?= htmlspecialchars($parentName) ?></span>
-                    <div class="h-9 w-9 rounded-full bg-indigo-600 flex items-center justify-center text-white text-sm font-black shadow-lg shadow-indigo-100 uppercase">
-                        <?= substr(htmlspecialchars($parentName), 0, 1) ?>
+                    <div class="h-9 w-9 rounded-full bg-blue-600 flex items-center justify-center text-white text-sm font-black shadow-lg shadow-blue-200 uppercase">
+                        <?= substr($parentName, 0, 1) ?>
                     </div>
                 </div>
             </div>
