@@ -47,10 +47,10 @@ if (isset($_SESSION['user']) && $_SESSION['user']['role'] === 'teacher') {
     <script defer src="https://unpkg.com/alpinejs@3.x.x/dist/cdn.min.js"></script>
     <link rel="icon" href="/E-Shkolla/images/icon.png" type="image/png">
     <style>
+    <style>
         [x-cloak] { display: none !important; }
         .custom-transition { transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1); }
-        
-        /* The blue indicator for active links */
+
         .active-indicator::before {
             content: '';
             position: absolute;
@@ -61,23 +61,134 @@ if (isset($_SESSION['user']) && $_SESSION['user']['role'] === 'teacher') {
             background-color: #2563eb;
             border-radius: 0 4px 4px 0;
         }
-        
-        /* Custom scrollbar for the nav */
+
         nav::-webkit-scrollbar { width: 4px; }
         nav::-webkit-scrollbar-thumb { background: #e2e8f0; border-radius: 10px; }
     </style>
 </head>
-<body class="h-full font-sans antialiased text-slate-900"
-      x-data="{ 
-        sidebarCollapsed: false, 
-        mobileOpen: false,
-        toasts: []
-      }">
 
-    <div x-show="mobileOpen" x-cloak x-transition.opacity 
-         @click="mobileOpen = false"
-         class="fixed inset-0 z-40 bg-slate-900/40 backdrop-blur-sm lg:hidden">
+<body class="h-full font-sans antialiased text-slate-900"
+      x-data="{ sidebarCollapsed: false, mobileOpen: false, helpOpen: false, toasts: [] }">
+
+<!-- Overlay -->
+<div x-show="mobileOpen || helpOpen" x-cloak x-transition.opacity
+     @click="mobileOpen = false; helpOpen = false"
+     class="fixed inset-0 z-40 bg-slate-900/40 backdrop-blur-sm">
+</div>
+
+<!-- HELP DRAWER -->
+<template x-teleport="body">
+    <div x-show="helpOpen"
+         x-transition:enter="transition ease-in-out duration-300 transform"
+         x-transition:enter-start="translate-x-full"
+         x-transition:enter-end="translate-x-0"
+         x-transition:leave="transition ease-in-out duration-300 transform"
+         x-transition:leave-end="translate-x-full"
+         x-cloak
+         class="fixed inset-y-0 right-0 z-50 w-full max-w-md bg-white shadow-2xl border-l border-slate-100 flex flex-col">
+
+        <div class="flex items-center justify-between p-6 border-b border-slate-100 bg-slate-50/50">
+            <div class="flex items-center gap-3">
+                <div class="p-2 bg-blue-600 text-white rounded-lg">
+                    <svg class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+                        <path stroke-linecap="round" stroke-linejoin="round"
+                              d="M8.228 9c.549-1.165 2.03-2 3.772-2
+                              2.21 0 4 1.343 4 3
+                              0 1.4-1.278 2.575-3.006 2.907
+                              -.542.104-.994.54-.994 1.093m0 3h.01
+                              M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/>
+                    </svg>
+                </div>
+                <div>
+                    <h2 class="text-xl font-bold text-slate-800">Ndihmë për Mësuesit</h2>
+                    <p class="text-xs text-slate-500">Rregullat kryesore të sistemit</p>
+                </div>
+            </div>
+
+            <button @click="helpOpen = false" class="p-2 rounded-full hover:bg-white">
+                <svg class="h-6 w-6 text-slate-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path d="M6 18L18 6M6 6l12 12"/>
+                </svg>
+            </button>
+        </div>
+
+        <div class="flex-1 overflow-y-auto p-8 text-sm text-slate-600 space-y-8">
+
+        <!-- DASHBOARD -->
+        <section>
+            <h3 class="font-bold text-slate-800 mb-2">Dashboard</h3>
+            <p>
+                Dashboard-i shfaq një përmbledhje të shpejtë të aktiviteteve tuaja si mësues.
+                Prej këtu mund të navigoni drejt klasave, orarit dhe moduleve tjera.
+            </p>
+        </section>
+
+        <!-- KLASAT -->
+        <section>
+            <h3 class="font-bold text-slate-800 mb-2">Klasat e mia</h3>
+            <ul class="list-disc ml-5 space-y-1">
+                <li>Shfaqen vetëm klasat ku jeni të caktuar si mësues</li>
+                <li>Çdo klasë ka dashboard-in e vet</li>
+                <li>Brenda klasës menaxhoni prezencën, notat dhe detyrat</li>
+            </ul>
+        </section>
+
+        <!-- ORARI -->
+        <section>
+            <h3 class="font-bold text-slate-800 mb-2">Orari</h3>
+            <ul class="list-disc ml-5 space-y-1">
+                <li>Shfaqet vetëm orari juaj personal</li>
+                <li>Orari gjenerohet nga administrata e shkollës</li>
+                <li>Nuk mund të modifikohet nga mësuesi</li>
+            </ul>
+        </section>
+
+        <!-- PREZENCA -->
+        <section>
+            <h3 class="font-bold text-slate-800 mb-2">Prezenca</h3>
+            <ul class="list-disc ml-5 space-y-1">
+                <li>Prezenca regjistrohet për çdo orë mësimore</li>
+                <li>Mund të modifikohet vetëm për <strong>45 minuta</strong> pas regjistrimit</li>
+                <li>Pas këtij afati, regjistrimi bllokohet automatikisht</li>
+                <li>
+                    <strong>LIVE</strong> – regjistrim aktiv<br>
+                    <strong>HISTORIA</strong> – vetëm shikim i regjistrimeve të kaluara
+                </li>
+            </ul>
+        </section>
+
+        <!-- PRINDËRIT -->
+        <section>
+            <h3 class="font-bold text-slate-800 mb-2">Prindërit</h3>
+            <ul class="list-disc ml-5 space-y-1">
+                <li>Shfaqen prindërit e nxënësve të klasës suaj kujdestare</li>
+                <li>Informacioni është vetëm për shikim</li>
+            </ul>
+        </section>
+
+        <!-- CILËSIMET -->
+        <section>
+            <h3 class="font-bold text-slate-800 mb-2">Cilësimet</h3>
+            <ul class="list-disc ml-5 space-y-1">
+                <li>Mund të përditësoni të dhënat personale</li>
+                <li>Nuk mund të ndryshoni strukturën akademike</li>
+            </ul>
+        </section>
+
+        <!-- RREGULLA TË PËRGJITHSHME -->
+        <section class="pt-4 border-t border-slate-100">
+            <h3 class="font-bold text-slate-800 mb-2">Rregulla të Përgjithshme</h3>
+            <ul class="list-disc ml-5 space-y-1">
+                <li>Çdo veprim lidhet me llogarinë tuaj personale</li>
+                <li>Disa veprime janë të kufizuara nga koha dhe roli</li>
+                <li>Të dhënat ruhen automatikisht në sistem</li>
+            </ul>
+        </section>
+
     </div>
+
+    </div>
+</template>
 
     <aside class="fixed inset-y-0 left-0 z-50 flex flex-col bg-white shadow-[4px_0_24px_rgba(0,0,0,0.02)] border-r border-slate-100 custom-transition"
            :class="[sidebarCollapsed ? 'w-20' : 'w-72', mobileOpen ? 'translate-x-0' : '-translate-x-full lg:translate-x-0']">
@@ -170,6 +281,23 @@ if (isset($_SESSION['user']) && $_SESSION['user']['role'] === 'teacher') {
                         <span x-show="!sidebarCollapsed" class="whitespace-nowrap">Cilësimet</span>
                     </a>
                 </li>
+
+                            <li class="mt-auto">
+                <button @click="helpOpen = true"
+                        class="w-full flex items-center gap-x-3 rounded-xl p-3 text-sm font-semibold
+                               text-slate-500 hover:bg-blue-50 hover:text-blue-600">
+                    <svg class="h-5 w-5" fill="none" viewBox="0 0 24 24"
+                         stroke="currentColor" stroke-width="2">
+                        <path stroke-linecap="round" stroke-linejoin="round"
+                              d="M8.228 9c.549-1.165 2.03-2 3.772-2
+                              2.21 0 4 1.343 4 3
+                              0 1.4-1.278 2.575-3.006 2.907
+                              -.542.104-.994.54-.994 1.093m0 3h.01
+                              M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/>
+                    </svg>
+                    <span x-show="!sidebarCollapsed">Ndihmë</span>
+                </button>
+            </li>
 
                 <div class="mt-auto space-y-1">
                     <li>

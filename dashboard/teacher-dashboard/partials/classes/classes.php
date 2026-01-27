@@ -94,7 +94,7 @@ ob_start();
         </div>
     </div>
 
-<div class="grid grid-cols-1 md:grid-cols-3 gap-4">
+    <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
         
         <div class="bg-white rounded-xl border border-slate-200 py-4 px-5 flex items-center gap-4 shadow-sm hover:shadow-md transition-all group">
             <div class="flex-shrink-0 w-12 h-12 bg-blue-50 text-blue-600 rounded-xl flex items-center justify-center border border-blue-100 group-hover:bg-blue-600 group-hover:text-white transition-all duration-300">
@@ -145,10 +145,6 @@ ob_start();
                 <p class="text-xs text-slate-500">Menaxhimi i studentëve dhe prindërve të klasës <?= htmlspecialchars($pinnedClass['class_name']) ?>.</p>
             </div>
         </div>
-        <a href="/E-Shkolla/show-classes?class_id=<?= (int)$pinnedClass['id'] ?>" 
-           class="px-4 py-2 bg-indigo-600 text-white rounded-lg font-semibold text-xs hover:bg-indigo-700 transition-all shadow-sm">
-            Shiko Kujdestarinë
-        </a>
     </div>
     <?php endif; ?>
 
