@@ -15,15 +15,24 @@ if (!$studentId || !$schoolId) {
 }
 
 try {
-    // 1. Student & Class Info
     $stmt = $pdo->prepare("
-        SELECT s.name as s_name, c.grade as c_name, c.id as c_id, u.name as t_name
+        SELECT 
+            s.name  AS s_name,
+            c.grade AS c_name,
+            c.id    AS c_id,
+            u.name  AS t_name
         FROM students s
-        JOIN classes c ON s.class_id = c.id
-        LEFT JOIN users u ON c.class_header = u.id
-        WHERE s.student_id = ? AND s.school_id = ? 
+        JOIN classes c 
+            ON s.class_id = c.id
+        LEFT JOIN teachers t 
+            ON c.class_header = t.id
+        LEFT JOIN users u 
+            ON t.user_id = u.id
+        WHERE s.student_id = ?
+        AND s.school_id  = ?
         LIMIT 1
     ");
+
     $stmt->execute([$studentId, $schoolId]);
     $student = $stmt->fetch();
 
