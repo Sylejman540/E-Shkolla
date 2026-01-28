@@ -58,6 +58,27 @@ if (!$check->fetchColumn()) {
 ===================================================== */
 $today = date('Y-m-d');
 
+/* =====================================================
+   AUTO-ARCHIVE ASSIGNMENTS (OVERDUE > 2 DAYS)
+===================================================== */
+$stmt = $pdo->prepare("
+    UPDATE assignments
+    SET status = 'inactive'
+    WHERE school_id = ?
+      AND teacher_id = ?
+      AND class_id = ?
+      AND status = 'active'
+      AND due_date IS NOT NULL
+      AND due_date < DATE_SUB(CURDATE(), INTERVAL 2 DAY)
+");
+
+$stmt->execute([
+    $schoolId,
+    $teacherId,
+    $classId
+]);
+
+
 /* -------- Assignments (ONLY THIS CLASS) -------- */
 $stmt = $pdo->prepare("
     SELECT id, title, description, status, due_date, created_at
