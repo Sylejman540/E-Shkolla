@@ -1,5 +1,10 @@
 <?php
 session_start();
+
+if (!isset($_SESSION['user']) || $_SESSION['user']['role'] !== 'super_admin') {
+    header("Location: /E-Shkolla/login");
+    exit();
+}
 require_once '../../../../db.php';
 
 if (!isset($_SESSION['user']) || $_SESSION['user']['role'] !== 'super_admin') {

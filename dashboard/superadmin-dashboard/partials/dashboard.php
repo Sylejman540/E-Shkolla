@@ -3,6 +3,11 @@ if (session_status() === PHP_SESSION_NONE) {
     session_start();
 }
 
+if (!isset($_SESSION['user']) || $_SESSION['user']['role'] !== 'super_admin') {
+    header("Location: /E-Shkolla/login");
+    exit();
+}
+
 require_once __DIR__ . '/../../../db.php'; 
 
 /** --- 1. DATA AGGREGATION (SQL & PHP) --- **/

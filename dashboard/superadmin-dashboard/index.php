@@ -1,4 +1,10 @@
 <?php
+
+if (!isset($_SESSION['user']) || $_SESSION['user']['role'] !== 'super_admin') {
+    header("Location: /E-Shkolla/login");
+    exit();
+}
+
 $current = $_SERVER['REQUEST_URI'];
 
 function isActive($path) {
