@@ -26,6 +26,20 @@ function isActive($path) {
     return str_contains($currentUri, $path);
 }
 
+function announcementDateLabel(string $date): string {
+    $ts = strtotime($date);
+
+    if (date('Y-m-d', $ts) === date('Y-m-d')) {
+        return 'Sot';
+    }
+
+    if (date('Y-m-d', $ts) === date('Y-m-d', strtotime('-1 day'))) {
+        return 'Dje';
+    }
+
+    return date('d.m.Y', $ts);
+}
+
 // 4. Data Fetching (Scoped for the Layout)
 $studentName = 'Nxënës';
 try {
@@ -218,16 +232,52 @@ $hasAnnouncements = !empty($announcements);
             </div>
 
             <div class="flex items-center gap-2 lg:gap-4">
-                <div class="relative" x-data="{ open: false }">
-                    <button @click="open = !open" class="p-2 text-slate-400 hover:text-blue-600 relative transition-colors">
-                        <?php if (!empty($announcement)): ?>
+                <div class="relative"
+                    x-data="{
+                        open: false,
+                        latest: '<?= $announcements[0]['created_at'] ?? null ?>',
+                        lastSeen: localStorage.getItem('announcements_seen_at'),
+
+                        hasNew() {
+                            if (!this.latest) return false;
+                            if (!this.lastSeen) return true;
+                            return new Date(this.latest).getTime() > new Date(this.lastSeen).getTime();
+                        },
+
+                        markSeen() {
+                            if (this.latest) {
+                                localStorage.setItem('announcements_seen_at', this.latest);
+                                this.lastSeen = this.latest;
+                            }
+                        }
+                    }">
+
+
+                <button
+                    @click="open = !open; if (open) markSeen()"
+                    class="p-2 text-slate-400 hover:text-blue-600 relative transition-colors">
+
+                    <template x-if="hasNew()">
                         <span class="absolute top-2 right-2 flex h-2 w-2">
                             <span class="animate-ping absolute inline-flex h-full w-full rounded-full bg-red-400 opacity-75"></span>
                             <span class="relative inline-flex rounded-full h-2 w-2 bg-red-500"></span>
                         </span>
-                        <?php endif; ?>
-                        <svg class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.5"><path d="M15 17h5l-1.405-1.405A2.032 2.032 0 0118 14.158V11a6.002 6.002 0 00-4-5.659V5a2 2 0 10-4 0v.341C7.67 6.165 6 8.388 6 11v3.159c0 .538-.214 1.055-.595 1.436L4 17h5m6 0v1a3 3 0 11-6 0v-1m6 0H9"/></svg>
-                    </button>
+                    </template>
+
+                    <svg class="h-6 w-6" fill="none" viewBox="0 0 24 24"
+                        stroke="currentColor" stroke-width="1.5">
+                        <path stroke-linecap="round" stroke-linejoin="round"
+                            d="M15 17h5l-1.405-1.405A2.032 2.032 0 0118 14.158V11
+                                a6.002 6.002 0 00-4-5.659V5
+                                a2 2 0 10-4 0v.341
+                                C7.67 6.165 6 8.388 6 11v3.159
+                                c0 .538-.214 1.055-.595 1.436L4 17h5
+                                m6 0v1a3 3 0 11-6 0v-1m6 0H9"/>
+                    </svg>
+                </button>
+
+
+
                     
                     <div x-show="open" @click.away="open = false" x-transition x-cloak
                          class="absolute right-0 mt-3 w-80 bg-white rounded-2xl shadow-2xl border border-slate-100 overflow-hidden ring-1 ring-black/5">
@@ -245,7 +295,9 @@ $hasAnnouncements = !empty($announcements);
                                     <div class="p-4 border-b border-slate-50 hover:bg-slate-50 transition-colors cursor-pointer">
                                         <div class="flex justify-between items-start mb-1">
                                             <h4 class="text-xs font-bold text-slate-800 uppercase tracking-tight"><?= htmlspecialchars($n['title']) ?></h4>
-                                            <span class="text-[9px] text-slate-400 font-bold"><?= date('H:i', strtotime($n['created_at'])) ?></span>
+                                            <span class="text-[9px] text-slate-400 font-bold">
+                                                <?= announcementDateLabel($n['created_at']) . ' / ' . date('H:i', strtotime($n['created_at'])) ?>
+                                            </span>
                                         </div>
                                         <p class="text-[11px] text-slate-500 leading-relaxed"><?= htmlspecialchars($n['content']) ?></p>
                                     </div>
