@@ -87,5 +87,70 @@ $stmt->execute([
     $expiresAt ?: null
 ]);
 
+$emails = [];
+
+if ($target === 'parent') {
+
+$stmt = $pdo->prepare("
+    SELECT DISTINCT u.email
+    FROM users u
+    JOIN parents p ON p.user_id = u.id
+    JOIN parent_student sp ON sp.parent_id = p.id
+    JOIN students s ON s.user_id = sp.student_id
+    WHERE u.school_id = ?
+      AND s.class_id = ?
+      AND u.email IS NOT NULL
+");
+
+    $stmt->execute([$schoolId, $classId]);
+    $emails = $stmt->fetchAll(PDO::FETCH_COLUMN);
+
+} elseif ($target === 'student') {
+
+    $stmt = $pdo->prepare("
+        SELECT DISTINCT u.email
+        FROM users u
+        JOIN students s ON s.user_id = u.id
+        WHERE u.school_id = ?
+          AND s.class_id = ?
+          AND u.email IS NOT NULL
+    ");
+    $stmt->execute([$schoolId, $classId]);
+    $emails = $stmt->fetchAll(PDO::FETCH_COLUMN);
+
+} elseif ($target === 'all') {
+
+    $stmt = $pdo->prepare("
+        SELECT DISTINCT email
+        FROM users
+        WHERE school_id = ?
+          AND email IS NOT NULL
+    ");
+    $stmt->execute([$schoolId]);
+    $emails = $stmt->fetchAll(PDO::FETCH_COLUMN);
+}
+
+if (!empty($emails)) {
+
+    $subject = "Njoftim nga shkolla";
+    $message = "
+        <h3>" . htmlspecialchars($title) . "</h3>
+        <p>" . nl2br(htmlspecialchars($content)) . "</p>
+        <hr>
+        <small>E dërguar nga E-Shkolla</small>
+    ";
+
+    $headers = [
+        "MIME-Version: 1.0",
+        "Content-Type: text/html; charset=UTF-8",
+        "From: E-Shkolla <no-reply@yourdomain.com>"
+    ];
+
+    foreach ($emails as $email) {
+        mail($email, $subject, $message, implode("\r\n", $headers));
+    }
+}
+
+
 header('Location: /E-Shkolla/teacher-notices');
 exit;
