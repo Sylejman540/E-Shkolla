@@ -18,12 +18,11 @@ $offset  = ($page - 1) * $perPage;
 if (!$schoolId || !$teacherId || !$classId || !$subjectId) die('Missing parameters');
 
 /* =====================================================
-    2. STABLE LESSON CONTEXT (INTEGRATED LOGIC)
+    2. STABLE LESSON CONTEXT
 ===================================================== */
 $lessonDate = $_GET['lesson_date'] ?? null;
 $lessonTime = $_GET['lesson_start_time'] ?? null;
 
-// Fallback: If parameters are lost, fetch the last recorded lesson for this context
 if (!$lessonDate || !$lessonTime) {
     $stmt = $pdo->prepare("
         SELECT lesson_date, lesson_start_time 
@@ -39,30 +38,45 @@ if (!$lessonDate || !$lessonTime) {
 }
 
 /* ===============================
-    3. ACTIONS
+    3. ACTIONS (POST)
 ================================ */
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     $action = $_POST['action'] ?? '';
+    $studentId = (int) ($_POST['student_id'] ?? 0);
 
+    // ACTION: MARK ALL PRESENT (With Lock Protection)
     if ($action === 'mark_all_present') {
         $stmt = $pdo->prepare("SELECT student_id FROM student_class WHERE class_id = ?");
         $stmt->execute([$classId]);
-        $studentIds = $stmt->fetchAll(PDO::FETCH_COLUMN);
+        $allStudentIds = $stmt->fetchAll(PDO::FETCH_COLUMN);
 
-        foreach ($studentIds as $sId) {
-            $stmt = $pdo->prepare("INSERT INTO attendance (school_id, student_id, class_id, subject_id, teacher_id, lesson_date, lesson_start_time, present, missing, updated_at)
-                VALUES (?, ?, ?, ?, ?, ?, ?, 1, 0, NOW())
-                ON DUPLICATE KEY UPDATE present = 1, missing = 0, teacher_id = VALUES(teacher_id), updated_at = NOW()");
-            $stmt->execute([$schoolId, $sId, $classId, $subjectId, $teacherId, $lessonDate, $lessonTime]);
+        $stmt = $pdo->prepare("SELECT student_id, updated_at FROM attendance 
+                               WHERE class_id = ? AND subject_id = ? AND lesson_date = ? AND lesson_start_time = ?");
+        $stmt->execute([$classId, $subjectId, $lessonDate, $lessonTime]);
+        $existingRecords = $stmt->fetchAll(PDO::FETCH_KEY_PAIR);
+
+        foreach ($allStudentIds as $sId) {
+            $isLocked = false;
+            if (isset($existingRecords[$sId])) {
+                $isLocked = (time() - strtotime($existingRecords[$sId])) < (45 * 60);
+            }
+
+            if (!$isLocked) {
+                $stmt = $pdo->prepare("INSERT INTO attendance (school_id, student_id, class_id, subject_id, teacher_id, lesson_date, lesson_start_time, present, missing, updated_at)
+                    VALUES (?, ?, ?, ?, ?, ?, ?, 1, 0, NOW())
+                    ON DUPLICATE KEY UPDATE present = 1, missing = 0, teacher_id = VALUES(teacher_id), updated_at = NOW()");
+                $stmt->execute([$schoolId, $sId, $classId, $subjectId, $teacherId, $lessonDate, $lessonTime]);
+            }
         }
         echo json_encode(['status' => 'success']); exit;
     }
 
-    $studentId = (int) ($_POST['student_id'] ?? 0);
+    // ACTION: SAVE SINGLE
     if ($action === 'save') {
-        $status = $_POST['status'];
+        $status = $_POST['status'] ?? '';
         $present = ($status === 'present') ? 1 : 0;
         $missing = ($status === 'missing') ? 1 : 0;
+
         $stmt = $pdo->prepare("INSERT INTO attendance (school_id, student_id, class_id, subject_id, teacher_id, lesson_date, lesson_start_time, present, missing, updated_at)
                                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, NOW())
                                ON DUPLICATE KEY UPDATE present = VALUES(present), missing = VALUES(missing), updated_at = NOW()");
@@ -70,6 +84,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         echo json_encode(['status' => 'success']); exit;
     }
 
+    // ACTION: RESET
     if ($action === 'reset') {
         $stmt = $pdo->prepare("DELETE FROM attendance WHERE student_id = ? AND class_id = ? AND subject_id = ? AND lesson_date = ? AND lesson_start_time = ?");
         $stmt->execute([$studentId, $classId, $subjectId, $lessonDate, $lessonTime]);
