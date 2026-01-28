@@ -1,0 +1,12 @@
+# Environment / secrets
+security.env
+.env
+
+# Vendor (optional – see note below)
+vendor/
+
+# OS / editor junk
+.DS_Store
+Thumbs.db
+.vscode/
+.idea/
