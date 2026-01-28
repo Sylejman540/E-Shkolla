@@ -124,6 +124,45 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 $_SESSION[$lock_key]['count']++;
             }
         }
+
+    // ... inside your POST and lockout check ...
+
+if (filter_var($email, FILTER_VALIDATE_EMAIL)) {
+    $stmt = $pdo->prepare("SELECT id, email, password, role, school_id, status FROM users WHERE email = ? LIMIT 1");
+    $stmt->execute([$email]);
+    $user = $stmt->fetch(PDO::FETCH_ASSOC);
+
+    if (!$user) {
+        // Email was not found
+        $error = "Ky email nuk ekziston në sistem.";
+        $_SESSION[$lock_key]['count']++;
+    } else {
+        // Email exists, now check password
+        if (password_verify($password, $user['password'])) {
+            
+            if ($user['status'] !== 'active') {
+                $error = "Llogaria juaj është jo-aktive.";
+                $_SESSION[$lock_key]['count']++;
+            } else {
+                // SUCCESSFUL LOGIN LOGIC START
+                session_regenerate_id(true);
+                unset($_SESSION[$lock_key]);
+                
+                $_SESSION['user'] = [
+                    'id' => (int) $user['id'],
+                    'email' => $user['email'],
+                    'school_id' => (int) $user['school_id'],
+                    'role' => $user['role']
+                ];
+                // ... rest of your session/redirect logic ...
+            }
+        } else {
+            // Email was right, but password was wrong
+            $error = "Fjalëkalimi është i pasaktë.";
+            $_SESSION[$lock_key]['count']++;
+        }
+    }
+}
     }
 }
 ?>
@@ -168,6 +207,12 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         <h2 class="text-2xl font-semibold text-gray-900 dark:text-white">Kyçu në llogarinë tënde</h2>
         <p class="mt-2 text-sm text-gray-600 dark:text-gray-400">Qasje e sigurt në panelin shkollor</p>
       </div>
+
+      <?php if ($error): ?>
+<div class="mb-4 rounded-lg bg-red-50 p-4 text-sm text-red-800 dark:bg-red-900/30 dark:text-red-400 border border-red-200 dark:border-red-800" role="alert">
+    <span class="font-bold">Gabim!</span> <?= htmlspecialchars($error) ?>
+</div>
+<?php endif; ?>
 
       <form method="POST" class="space-y-5">
         <input type="hidden" name="csrf_token" value="<?= htmlspecialchars($_SESSION['csrf_token']) ?>">
