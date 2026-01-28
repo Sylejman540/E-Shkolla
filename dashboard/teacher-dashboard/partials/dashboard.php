@@ -76,9 +76,16 @@ $summaryStmt = $pdo->prepare("SELECT COUNT(*) AS total_lessons, COUNT(DISTINCT c
 $summaryStmt->execute([$teacherId]);
 $summary = $summaryStmt->fetch(PDO::FETCH_ASSOC);
 
-$headStmt = $pdo->prepare("SELECT grade FROM classes WHERE class_header = ? AND status = 'active' LIMIT 1");
-$headStmt->execute([$userId]);
+$headStmt = $pdo->prepare("
+    SELECT grade 
+    FROM classes 
+    WHERE class_header = ?
+      AND status = 'active'
+    LIMIT 1
+");
+$headStmt->execute([$teacherId]);
 $headClass = $headStmt->fetch(PDO::FETCH_ASSOC);
+
 
 $pendingAssignmentsStmt = $pdo->prepare("SELECT COUNT(*) FROM assignments WHERE teacher_id = ? AND status = 'submitted'");
 $pendingAssignmentsStmt->execute([$teacherId]);

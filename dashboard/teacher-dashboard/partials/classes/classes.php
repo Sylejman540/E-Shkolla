@@ -51,8 +51,15 @@ $totalPages = ceil($totalItems / $itemsPerPage);
 /* =====================================================
     DATA FETCHING
 ===================================================== */
-$headerStmt = $pdo->prepare("SELECT id, grade as class_name FROM classes WHERE class_header = ? AND school_id = ? AND status = 'active' AND academic_year = ? LIMIT 1");
-$headerStmt->execute([$userId, $schoolId, $academicYear]);
+$headerStmt = $pdo->prepare("
+    SELECT grade 
+    FROM classes 
+    WHERE class_header = ?
+      AND status = 'active'
+    LIMIT 1
+");
+$headerStmt->execute([$teacherId]);
+
 $pinnedClass = $headerStmt->fetch(PDO::FETCH_ASSOC);
 
 $stmt = $pdo->prepare("
@@ -137,11 +144,11 @@ ob_start();
     <div class="bg-indigo-50/50 border border-indigo-100 rounded-xl p-4 flex flex-col md:flex-row items-center justify-between gap-4">
         <div class="flex items-center gap-4">
             <div class="h-12 w-12 bg-white rounded-lg flex items-center justify-center text-lg font-bold text-indigo-600 border border-indigo-100 shadow-sm">
-                <?= htmlspecialchars($pinnedClass['class_name']) ?>
+                <?= htmlspecialchars($pinnedClass['grade']) ?>
             </div>
             <div>
                 <h4 class="text-sm font-bold text-slate-900">Kujdestaria e Klasës</h4>
-                <p class="text-xs text-slate-500">Menaxhimi i studentëve dhe prindërve të klasës <?= htmlspecialchars($pinnedClass['class_name']) ?>.</p>
+                <p class="text-xs text-slate-500">Menaxhimi i studentëve dhe prindërve të klasës <?= htmlspecialchars($pinnedClass['grade']) ?>.</p>
             </div>
         </div>
     </div>
