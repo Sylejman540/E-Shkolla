@@ -4,6 +4,7 @@ if (session_status() === PHP_SESSION_NONE) {
 }
 
 require_once __DIR__ . '/../../../../../db.php';
+require_once __DIR__ . '/../../../../../helpers/Mailer.php';
 
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 
@@ -48,17 +49,78 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         VALUES (?, ?, ?, ?, ?, ?, ?, ?)
     ");
 
-    $stmt->execute([
-        $classId,
-        $teacherId,
-        $schoolId,
-        $title,
-        $description,
-        $dueDate,
-        $status,
-        $completedAt
-    ]);
+$stmt->execute([
+    $classId,
+    $teacherId,
+    $schoolId,
+    $title,
+    $description,
+    $dueDate,
+    $status,
+    $completedAt
+]);
 
+// Redirect immediately
+header("Location: /E-Shkolla/class-assignments?class_id={$classId}");
+
+// Flush response (fast UX)
+if (function_exists('fastcgi_finish_request')) {
+    fastcgi_finish_request();
+}
+
+/* ===============================
+   SEND EMAIL TO STUDENTS
+================================ */
+
+// Get teacher name
+$stmt = $pdo->prepare("
+    SELECT u.name
+    FROM users u
+    JOIN teachers t ON t.user_id = u.id
+    WHERE t.id = ?
+    LIMIT 1
+");
+$stmt->execute([$teacherId]);
+$teacherName = $stmt->fetchColumn() ?: 'Mësuesi';
+
+// Get student emails for this class
+$stmt = $pdo->prepare("
+    SELECT DISTINCT s.email
+    FROM student_class sc
+    JOIN students s ON s.student_id = sc.student_id
+    WHERE sc.class_id = ?
+      AND s.email IS NOT NULL
+      AND s.email != ''
+");
+$stmt->execute([$classId]);
+$studentEmails = $stmt->fetchAll(PDO::FETCH_COLUMN);
+
+// Send email
+if (!empty($studentEmails)) {
+
+    $body = "
+    <div style='font-family:Arial,sans-serif;font-size:14px'>
+        <p><strong>Është publikuar një detyrë e re</strong></p>
+
+        <p>
+            <strong>Titulli:</strong> {$title}<br>
+            <strong>Mësuesi:</strong> {$teacherName}<br>
+            <strong>Afati:</strong> {$dueDate}
+        </p>
+
+        <p>{$description}</p>
+
+        <hr>
+        <small>E-Shkolla • Njoftim automatik</small>
+    </div>
+    ";
+
+    sendSchoolEmail(
+        $studentEmails,
+        'Detyrë e re',
+        $body
+    );
+}
     header("Location: /E-Shkolla/class-assignments?class_id={$classId}");
     exit;
 }
