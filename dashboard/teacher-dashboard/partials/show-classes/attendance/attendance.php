@@ -1,112 +1,216 @@
 <?php
 if (session_status() === PHP_SESSION_NONE) session_start();
+
 require_once __DIR__ . '/../../../../../db.php';
+require_once __DIR__ . '/../../../../../helpers/ParentEmails.php';
+require_once __DIR__ . '/../../../../../helpers/Mailer.php';
 
 /* ===============================
-    1. SESSION + PARAMS
+   SESSION + PARAMS
 ================================ */
 $schoolId  = (int) ($_SESSION['user']['school_id'] ?? 0);
 $teacherId = (int) ($_SESSION['user']['teacher_id'] ?? 0);
 $classId   = (int) ($_GET['class_id'] ?? 0);
 $subjectId = (int) ($_GET['subject_id'] ?? 0);
-$view      = $_GET['view'] ?? 'live'; 
+$view      = $_GET['view'] ?? 'live';
 
-$page    = (int)($_GET['page'] ?? 1);
-$perPage = 25;
-$offset  = ($page - 1) * $perPage;
-
-if (!$schoolId || !$teacherId || !$classId || !$subjectId) die('Missing parameters');
-
-/* =====================================================
-    2. STABLE LESSON CONTEXT
-===================================================== */
-$lessonDate = $_GET['lesson_date'] ?? null;
-$lessonTime = $_GET['lesson_start_time'] ?? null;
-
-if (!$lessonDate || !$lessonTime) {
-    $stmt = $pdo->prepare("
-        SELECT lesson_date, lesson_start_time 
-        FROM attendance 
-        WHERE class_id = ? AND subject_id = ? 
-        ORDER BY updated_at DESC LIMIT 1
-    ");
-    $stmt->execute([$classId, $subjectId]);
-    $last = $stmt->fetch(PDO::FETCH_ASSOC);
-
-    $lessonDate = $last['lesson_date'] ?? date('Y-m-d');
-    $lessonTime = $last['lesson_start_time'] ?? date('H:i:00');
+if (!$schoolId || !$teacherId || !$classId || !$subjectId) {
+    http_response_code(400);
+    exit('Missing parameters');
 }
 
 /* ===============================
-    3. ACTIONS (POST)
+   STABLE LESSON CONTEXT
+================================ */
+$lessonDate = $_GET['lesson_date'] ?? date('Y-m-d');
+$lessonTime = $_GET['lesson_start_time'] ?? date('H:i:00');
+
+/* ===============================
+   POST ACTIONS
 ================================ */
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
-    $action = $_POST['action'] ?? '';
+
+    $action    = $_POST['action'] ?? '';
     $studentId = (int) ($_POST['student_id'] ?? 0);
 
-    // ACTION: MARK ALL PRESENT (With Lock Protection)
-    if ($action === 'mark_all_present') {
-        $stmt = $pdo->prepare("SELECT student_id FROM student_class WHERE class_id = ?");
-        $stmt->execute([$classId]);
-        $allStudentIds = $stmt->fetchAll(PDO::FETCH_COLUMN);
+    /* ===============================
+       SAVE ATTENDANCE (FAST)
+    ================================ */
+    if ($action === 'save' && $studentId) {
 
-        $stmt = $pdo->prepare("SELECT student_id, updated_at FROM attendance 
-                               WHERE class_id = ? AND subject_id = ? AND lesson_date = ? AND lesson_start_time = ?");
-        $stmt->execute([$classId, $subjectId, $lessonDate, $lessonTime]);
-        $existingRecords = $stmt->fetchAll(PDO::FETCH_KEY_PAIR);
-
-        foreach ($allStudentIds as $sId) {
-            $isLocked = false;
-            if (isset($existingRecords[$sId])) {
-                $isLocked = (time() - strtotime($existingRecords[$sId])) < (45 * 60);
-            }
-
-            if (!$isLocked) {
-                $stmt = $pdo->prepare("INSERT INTO attendance (school_id, student_id, class_id, subject_id, teacher_id, lesson_date, lesson_start_time, present, missing, updated_at)
-                    VALUES (?, ?, ?, ?, ?, ?, ?, 1, 0, NOW())
-                    ON DUPLICATE KEY UPDATE present = 1, missing = 0, teacher_id = VALUES(teacher_id), updated_at = NOW()");
-                $stmt->execute([$schoolId, $sId, $classId, $subjectId, $teacherId, $lessonDate, $lessonTime]);
-            }
-        }
-        echo json_encode(['status' => 'success']); exit;
-    }
-
-    // ACTION: SAVE SINGLE
-    if ($action === 'save') {
-        $status = $_POST['status'] ?? '';
+        $status  = $_POST['status'] ?? '';
         $present = ($status === 'present') ? 1 : 0;
         $missing = ($status === 'missing') ? 1 : 0;
 
-        $stmt = $pdo->prepare("INSERT INTO attendance (school_id, student_id, class_id, subject_id, teacher_id, lesson_date, lesson_start_time, present, missing, updated_at)
-                               VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, NOW())
-                               ON DUPLICATE KEY UPDATE present = VALUES(present), missing = VALUES(missing), updated_at = NOW()");
-        $stmt->execute([$schoolId, $studentId, $classId, $subjectId, $teacherId, $lessonDate, $lessonTime, $present, $missing]);
-        echo json_encode(['status' => 'success']); exit;
+        try {
+            // 🔒 DB TRANSACTION
+            $pdo->beginTransaction();
+
+            $stmt = $pdo->prepare("
+                INSERT INTO attendance (
+                    school_id, student_id, class_id, subject_id,
+                    teacher_id, lesson_date, lesson_start_time,
+                    present, missing, updated_at
+                ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, NOW())
+                ON DUPLICATE KEY UPDATE
+                    present = VALUES(present),
+                    missing = VALUES(missing),
+                    updated_at = NOW()
+            ");
+
+            $stmt->execute([
+                $schoolId,
+                $studentId,
+                $classId,
+                $subjectId,
+                $teacherId,
+                $lessonDate,
+                $lessonTime,
+                $present,
+                $missing
+            ]);
+
+            // ✅ COMMIT FIRST
+            $pdo->commit();
+
+        } catch (Exception $e) {
+            $pdo->rollBack();
+            error_log('ATTENDANCE ERROR: ' . $e->getMessage());
+            http_response_code(500);
+            echo json_encode(['status' => 'error']);
+            exit;
+        }
+
+        /* ===============================
+           RESPOND TO UI IMMEDIATELY
+        ================================ */
+        echo json_encode(['status' => 'ok']);
+
+        // 🚀 Flush response (NON-BLOCKING)
+        if (function_exists('fastcgi_finish_request')) {
+            fastcgi_finish_request();
+        }
+
+        /* ===============================
+           EMAIL (ASYNC, AFTER RESPONSE)
+        ================================ */
+        if ($missing === 1) {
+
+            // Student name
+            $stmt = $pdo->prepare("
+                SELECT name FROM students
+                WHERE student_id = ? LIMIT 1
+            ");
+            $stmt->execute([$studentId]);
+            $studentName = $stmt->fetchColumn() ?: 'Nxënës';
+
+            // Parent emails
+            $parentEmails = getParentEmailsByStudent($studentId, $pdo);
+
+            if (!empty($parentEmails)) {
+
+                $dateKosovo = date('d.m.Y');
+                $timeKosovo = date('H:i');
+
+                sendSchoolEmail(
+                    $parentEmails,
+                    'Njoftim për mungesë',
+                    "
+                    <div style='font-family:Arial,sans-serif;font-size:14px'>
+                        <p><strong>Njoftim mungese</strong></p>
+                        <p>
+                            Nxënësi / Nxënësja
+                            <strong>{$studentName}</strong>
+                            është shënuar si <strong>MUNGON</strong>.
+                        </p>
+                        <p>
+                            <strong>Data:</strong> {$dateKosovo}<br>
+                            <strong>Ora:</strong> {$timeKosovo}
+                        </p>
+                        <hr>
+                        <small>E-Shkolla • Ora lokale (Kosovë)</small>
+                    </div>
+                    "
+                );
+            }
+        }
+
+        exit;
     }
 
-    // ACTION: RESET
-    if ($action === 'reset') {
-        $stmt = $pdo->prepare("DELETE FROM attendance WHERE student_id = ? AND class_id = ? AND subject_id = ? AND lesson_date = ? AND lesson_start_time = ?");
-        $stmt->execute([$studentId, $classId, $subjectId, $lessonDate, $lessonTime]);
-        echo json_encode(['status' => 'success']); exit;
+    /* ===============================
+       RESET (UNLOCK)
+    ================================ */
+    if ($action === 'reset' && $studentId) {
+
+        $pdo->prepare("
+            DELETE FROM attendance
+            WHERE school_id = ?
+              AND student_id = ?
+              AND class_id = ?
+              AND subject_id = ?
+              AND lesson_date = ?
+              AND lesson_start_time = ?
+              AND teacher_id = ?
+        ")->execute([
+            $schoolId,
+            $studentId,
+            $classId,
+            $subjectId,
+            $lessonDate,
+            $lessonTime,
+            $teacherId
+        ]);
+
+        echo json_encode(['status' => 'reset']);
+        exit;
     }
 }
 
 /* ===============================
-    4. DATA FETCH
+   DATA FETCH (UI)
 ================================ */
 if ($view === 'history') {
-    $stmt = $pdo->prepare("SELECT a.*, s.name FROM attendance a JOIN students s ON s.student_id = a.student_id 
-                           WHERE a.class_id = ? AND a.subject_id = ? 
-                           ORDER BY a.lesson_date DESC, a.lesson_start_time DESC LIMIT $perPage OFFSET $offset");
+
+    $stmt = $pdo->prepare("
+        SELECT a.*, s.name
+        FROM attendance a
+        JOIN students s ON s.student_id = a.student_id
+        WHERE a.class_id = ? AND a.subject_id = ?
+        ORDER BY a.lesson_date DESC, a.lesson_start_time DESC
+        LIMIT 25
+    ");
     $stmt->execute([$classId, $subjectId]);
+
 } else {
-    $stmt = $pdo->prepare("SELECT s.student_id, s.name, a.present, a.missing, a.updated_at FROM student_class sc
-                           JOIN students s ON s.student_id = sc.student_id
-                           LEFT JOIN attendance a ON a.student_id = s.student_id AND a.class_id = ? AND a.subject_id = ? AND a.lesson_date = ? AND a.lesson_start_time = ?
-                           WHERE sc.class_id = ? ORDER BY s.name ASC");
-    $stmt->execute([$classId, $subjectId, $lessonDate, $lessonTime, $classId]);
+
+    $stmt = $pdo->prepare("
+        SELECT
+            s.student_id,
+            s.name,
+            a.present,
+            a.missing,
+            a.updated_at
+        FROM student_class sc
+        JOIN students s ON s.student_id = sc.student_id
+        LEFT JOIN attendance a
+            ON a.student_id = s.student_id
+            AND a.class_id = ?
+            AND a.subject_id = ?
+            AND a.lesson_date = ?
+            AND a.lesson_start_time = ?
+        WHERE sc.class_id = ?
+        ORDER BY s.name ASC
+    ");
+    $stmt->execute([
+        $classId,
+        $subjectId,
+        $lessonDate,
+        $lessonTime,
+        $classId
+    ]);
 }
+
 $rows = $stmt->fetchAll(PDO::FETCH_ASSOC);
 
 ob_start();
@@ -260,6 +364,7 @@ function markAllPresentBulk() {
         body: `action=mark_all_present`
     }).then(() => location.reload());
 }
+
 </script>
 
 <?php
