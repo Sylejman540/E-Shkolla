@@ -19,6 +19,11 @@ if (!isset($_SESSION['user']['id'], $_SESSION['user']['school_id'])) {
 $userId   = (int) $_SESSION['user']['id'];
 $schoolId = (int) $_SESSION['user']['school_id'];
 
+// Pagination Settings
+$limit = 8; // Tasks per page
+$page = isset($_GET['page']) ? max(1, (int)$_GET['page']) : 1;
+$offset = ($page - 1) * $limit;
+
 try {
     $stmt = $pdo->prepare("SELECT id FROM parents WHERE user_id = ? AND school_id = ? LIMIT 1");
     $stmt->execute([$userId, $schoolId]);
@@ -26,7 +31,6 @@ try {
 
     if (!$parentId) die('Profili i prindit nuk u gjet');
 
-    // Marrim studentin dhe klasën (JOIN me classes për të shmangur gabimin e kaluar)
     $stmt = $pdo->prepare("
         SELECT s.student_id, s.name, c.grade, c.id AS class_id
         FROM parent_student ps
@@ -52,21 +56,32 @@ try {
     if (!$currentStudent) die('Akses i paautorizuar');
     $classId = (int) $currentStudent['class_id'];
 
-    /* =========================
-       4. FETCH ASSIGNMENTS (KORRIGJIM)
-       Heqim JOIN me subjects nëse subject_id nuk ekziston
-    ========================= */
     $assignments = [];
+    $totalPages = 0;
+
     if ($classId) {
-        // Provoni këtë Query pa JOIN me subjects për të parë nëse punon
+        // 1. Count total assignments for pagination
+        $countStmt = $pdo->prepare("
+            SELECT COUNT(*) 
+            FROM assignments 
+            WHERE class_id = ? AND school_id = ? AND status = 'active'
+        ");
+        $countStmt->execute([$classId, $schoolId]);
+        $totalItems = (int) $countStmt->fetchColumn();
+        $totalPages = ceil($totalItems / $limit);
+
+        // 2. Fetch paginated assignments
         $stmt = $pdo->prepare("
             SELECT title, description, due_date
             FROM assignments
-            WHERE class_id = ? AND school_id = ?
-            ORDER BY due_date DESC
+            WHERE class_id = ?
+            AND school_id = ?
+            AND status = 'active'
+            ORDER BY due_date ASC
+            LIMIT $limit OFFSET $offset
         ");
         $stmt->execute([$classId, $schoolId]);
-        $assignments = $stmt->fetchAll(PDO::FETCH_ASSOC);
+        $assignments = $stmt->fetchAll(PDO::FETCH_ASSOC); 
     }
 } catch (Exception $e) {
     die("<div class='p-6 text-red-600 font-bold'>Gabim: " . $e->getMessage() . "</div>");
@@ -136,6 +151,33 @@ ob_start();
             </div>
         <?php endif; ?>
     </div>
+
+    <?php if ($totalPages > 1): ?>
+    <div class="flex justify-center items-center gap-2 mt-8">
+        <?php if ($page > 1): ?>
+            <a href="?student_id=<?= $studentId ?>&page=<?= $page - 1 ?>" 
+               class="p-2 bg-white border border-slate-100 rounded-lg text-slate-400 hover:text-indigo-600 transition-colors">
+               <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 19l-7-7 7-7"/></svg>
+            </a>
+        <?php endif; ?>
+
+        <div class="flex gap-1 bg-slate-50 p-1 rounded-xl border border-slate-100">
+            <?php for ($i = 1; $i <= $totalPages; $i++): ?>
+                <a href="?student_id=<?= $studentId ?>&page=<?= $i ?>" 
+                   class="px-3.5 py-1.5 rounded-lg text-[11px] font-bold transition-all <?= $i === $page ? 'bg-white text-indigo-600 shadow-sm ring-1 ring-slate-200' : 'text-slate-400 hover:text-slate-600' ?>">
+                    <?= $i ?>
+                </a>
+            <?php endfor; ?>
+        </div>
+
+        <?php if ($page < $totalPages): ?>
+            <a href="?student_id=<?= $studentId ?>&page=<?= $page + 1 ?>" 
+               class="p-2 bg-white border border-slate-100 rounded-lg text-slate-400 hover:text-indigo-600 transition-colors">
+               <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"/></svg>
+            </a>
+        <?php endif; ?>
+    </div>
+    <?php endif; ?>
 </div>
 
 <?php
