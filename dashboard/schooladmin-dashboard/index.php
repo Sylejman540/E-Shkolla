@@ -1,24 +1,42 @@
 <?php
-$current = $_SERVER['REQUEST_URI'];
+if (session_status() === PHP_SESSION_NONE) { session_start(); }
 
-/**
- * Checks if the current URL matches the path.
- * We check if the URI ends with the path or contains it followed by a slash 
- */
+if (!isset($_SESSION['user']['id']) || $_SESSION['user']['role'] !== 'school_admin') {
+    header("Location: /E-Shkolla/login");
+    exit();
+}
+
+require_once __DIR__ . '/../../db.php';
+
+$userId     = (int) $_SESSION['user']['id'];
+$schoolId   = (int) ($_SESSION['user']['school_id'] ?? 0);
+$currentUri = $_SERVER['REQUEST_URI'];
+
 function isActive($path) {
     $uri = $_SERVER['REQUEST_URI'];
     return (str_ends_with($uri, $path) || str_contains($uri, $path . '/'));
 }
 
-/**
- * Helper to check if any path in an array is active (used for dropdowns)
- */
 function isAnyActive(array $paths) {
     foreach ($paths as $path) {
         if (isActive($path)) return true;
     }
     return false;
 }
+
+$adminName = 'Admin';
+try {
+    $stmt = $pdo->prepare("SELECT name FROM users WHERE id = ? LIMIT 1");
+    $stmt->execute([$userId]);
+    $adminName = $stmt->fetchColumn() ?: 'Admin';
+} catch (PDOException $e) { error_log($e->getMessage()); }
+
+$userNotifications = [];
+try {
+    $stmt = $pdo->prepare("SELECT title, content, created_at FROM announcements WHERE school_id = ? AND target_role IN ('all', 'admin') ORDER BY created_at DESC LIMIT 5");
+    $stmt->execute([$schoolId]);
+    $userNotifications = $stmt->fetchAll(PDO::FETCH_ASSOC);
+} catch (PDOException $e) { error_log($e->getMessage()); }
 ?>
 <!DOCTYPE html>
 <html lang="en" class="h-full bg-slate-50"> 
@@ -31,9 +49,7 @@ function isAnyActive(array $paths) {
     <link rel="icon" href="/E-Shkolla/images/icon.png" type="image/png">
     <style>
         [x-cloak] { display: none !important; }
-        .custom-transition { transition: all 0.8s cubic-bezier(0.4, 0, 0.2, 1); }
-        
-        /* The blue indicator for active links */
+        .custom-transition { transition: all 0.4s cubic-bezier(0.4, 0, 0.2, 1); }
         .active-indicator::before {
             content: '';
             position: absolute;
@@ -41,38 +57,24 @@ function isAnyActive(array $paths) {
             top: 20%;
             height: 60%;
             width: 4px;
-            background-color: #2563eb;
+            background-color: #4f46e5;
             border-radius: 0 4px 4px 0;
         }
-        
-        /* Custom scrollbar for the nav */
         nav::-webkit-scrollbar { width: 4px; }
         nav::-webkit-scrollbar-thumb { background: #e2e8f0; border-radius: 10px; }
     </style>
 </head>
 <body class="h-full font-sans antialiased text-slate-900"
-      x-data="{ 
-        sidebarCollapsed: false, 
-        mobileOpen: false, 
-        helpOpen: false 
-      }">
+      x-data="{ sidebarCollapsed: false, mobileOpen: false, helpOpen: false }">
 
-    <div x-show="mobileOpen || helpOpen" x-cloak x-transition.opacity 
-         @click="mobileOpen = false; helpOpen = false"
-         class="fixed inset-0 z-40 bg-slate-900/40 backdrop-blur-sm">
-    </div>
+    <div x-show="mobileOpen || helpOpen" x-cloak x-transition.opacity @click="mobileOpen = false; helpOpen = false"
+         class="fixed inset-0 z-40 bg-slate-900/40 backdrop-blur-sm"></div>
 
+    
     <template x-teleport="body">
-        <div x-show="helpOpen" 
-            x-transition:enter="transition ease-in-out duration-300 transform"
-            x-transition:enter-start="translate-x-full"
-            x-transition:enter-end="translate-x-0"
-            x-transition:leave="transition ease-in-out duration-300 transform"
-            x-transition:leave-start="translate-x-0"
-            x-transition:leave-end="translate-x-full"
-            x-cloak
-            class="fixed inset-y-0 right-0 z-50 w-full max-w-md bg-white shadow-2xl border-l border-slate-100 flex flex-col">
-            
+        <div x-show="helpOpen"  x-transition:enter="transition ease-in-out duration-300 transform" x-transition:enter-start="translate-x-full" x-transition:enter-end="translate-x-0" x-transition:leave="transition ease-in-out duration-300 transform" x-transition:leave-start="translate-x-0" x-transition:leave-end="translate-x-full"
+            x-cloak class="fixed inset-y-0 right-0 z-50 w-full max-w-md bg-white shadow-2xl border-l border-slate-100 flex flex-col">
+
             <div class="flex items-center justify-between p-6 border-b border-slate-100 bg-slate-50/50">
                 <div class="flex items-center gap-3">
                     <div class="p-2 bg-blue-600 text-white rounded-lg shadow-sm">
@@ -80,10 +82,12 @@ function isAnyActive(array $paths) {
                             <path stroke-linecap="round" stroke-linejoin="round" d="M8.228 9c.549-1.165 2.03-2 3.772-2 2.21 0 4 1.343 4 3 0 1.4-1.278 2.575-3.006 2.907-.542.104-.994.54-.994 1.093m0 3h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
                         </svg>
                     </div>
+
                     <div>
                         <h2 class="text-xl font-bold text-slate-800">Udhëzuesi i Operimeve</h2>
                         <p class="text-xs text-slate-500 font-medium">Ndiqni rregullat e sistemit</p>
                     </div>
+
                 </div>
                 <button @click="helpOpen = false" class="text-slate-400 hover:text-slate-600 p-2 rounded-full hover:bg-white transition-all">
                     <svg class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path d="M6 18L18 6M6 6l12 12" /></svg>
@@ -91,8 +95,7 @@ function isAnyActive(array $paths) {
             </div>
 
             <div class="flex-1 overflow-y-auto p-8">
-                <div class="space-y-8">
-                    
+                <div class="space-y-8">                    
                     <section>
                         <h3 class="text-xs font-bold uppercase tracking-widest text-blue-600 mb-4">Hierarkia e Regjistrimit</h3>
                         <div class="p-4 bg-blue-50/50 rounded-xl border border-blue-100 relative overflow-hidden">
@@ -107,7 +110,6 @@ function isAnyActive(array $paths) {
                             </ol>
                         </div>
                     </section>
-
                     <section>
                         <h3 class="text-xs font-bold uppercase tracking-widest text-slate-400 mb-4">Përdorimi i CSV</h3>
                         <div class="space-y-4">
@@ -117,12 +119,13 @@ function isAnyActive(array $paths) {
                                     Butoni i importit <strong>CSV</strong> është i pranishëm në pjesën e sipërme të çdo faqeje (Mësuesit, Nxënësit, etj).
                                 </p>
                             </div>
-                            
+
                             <div class="p-4 bg-amber-50 rounded-xl border border-amber-100 border-dashed">
                                 <h4 class="font-bold text-amber-900 text-sm flex items-center gap-2">
                                     <svg class="h-4 w-4" fill="currentColor" viewBox="0 0 20 20"><path d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" /></svg>
                                     Jeni konfuz me formatin?
                                 </h4>
+
                                 <p class="text-xs text-amber-800 mt-1">
                                     Nëse nuk jeni të sigurt si të plotësoni të dhënat, shkarkoni <strong>"Template-in CSV"</strong> që ekziston brenda dritares së importit në çdo faqe. Plotësoni atë dhe bëni upload përsëri.
                                 </p>
@@ -148,7 +151,7 @@ function isAnyActive(array $paths) {
             <img src="/E-Shkolla/images/icon.png" class="h-9 w-auto min-w-[36px]" alt="Logo">
             <div x-show="!sidebarCollapsed" x-transition.opacity class="ml-3 whitespace-nowrap">
                 <h1 class="text-lg font-bold tracking-tight text-slate-800 leading-none">E-Shkolla</h1>
-                <p class="text-[10px] font-bold uppercase tracking-widest text-blue-600 mt-1">School Admin</p>
+                <p class="text-[10px] font-bold uppercase tracking-widest text-indigo-600 mt-1">School Admin</p>
             </div>
         </a>
 
@@ -158,17 +161,17 @@ function isAnyActive(array $paths) {
                 <li>
                     <a href="/E-Shkolla/school-admin-dashboard"
                        class="relative group flex items-center gap-x-3 rounded-xl p-3 text-sm font-semibold transition-all
-                       <?= isActive('/school-admin-dashboard') ? 'bg-blue-50 text-blue-600 active-indicator' : 'text-slate-500 hover:bg-slate-50 hover:text-blue-600' ?>">
+                       <?= isActive('/school-admin-dashboard') ? 'bg-indigo-50 text-indigo-600 active-indicator' : 'text-slate-500 hover:bg-slate-50 hover:text-indigo-600' ?>">
                         <svg class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
                             <path stroke-linecap="round" stroke-linejoin="round" d="M4 6a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2H6a2 2 0 01-2-2V6zM14 6a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2h-2a2 2 0 01-2-2V6zM4 16a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2H6a2 2 0 01-2-2v-2zM14 16a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2h-2a2 2 0 01-2-2v-2z" />
                         </svg>
-                        <span x-show="!sidebarCollapsed" class="whitespace-nowrap">Dashboard</span>
+                        <span x-show="!sidebarCollapsed" class="whitespace-nowrap">Paneli</span>
                     </a>
                 </li>
 
                 <li x-data="{ open: localStorage.getItem('menu-users') === 'true' || <?= isAnyActive(['/teachers', '/students', '/parents']) ? 'true' : 'false' ?> }">
                     <button @click="open = !open; localStorage.setItem('menu-users', open)" 
-                            class="w-full group flex items-center gap-x-3 rounded-xl p-3 text-sm font-semibold text-slate-500 hover:bg-slate-50 hover:text-blue-600 transition-all">
+                            class="w-full group flex items-center gap-x-3 rounded-xl p-3 text-sm font-semibold text-slate-500 hover:bg-slate-50 hover:text-indigo-600 transition-all">
                         <svg class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
                             <path stroke-linecap="round" stroke-linejoin="round" d="M12 4.354a4 4 0 110 5.292M15 21H3v-1a6 6 0 0112 0v1zm0 0h6v-1a6 6 0 00-9-5.197M13 7a4 4 0 11-8 0 4 4 0 018 0z" />
                         </svg>
@@ -176,15 +179,15 @@ function isAnyActive(array $paths) {
                         <svg x-show="!sidebarCollapsed" :class="open ? 'rotate-180' : ''" class="h-4 w-4 transition-transform duration-200" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7" /></svg>
                     </button>
                     <ul x-show="open && !sidebarCollapsed" x-cloak x-transition class="mt-1 ml-4 border-l-2 border-slate-100 space-y-1">
-                        <li><a href="/E-Shkolla/teachers" class="block p-2 pl-6 text-xs font-medium <?= isActive('/teachers') ? 'text-blue-600 font-bold' : 'text-slate-500 hover:text-blue-600' ?>">Mësuesit</a></li>
-                        <li><a href="/E-Shkolla/students" class="block p-2 pl-6 text-xs font-medium <?= isActive('/students') ? 'text-blue-600 font-bold' : 'text-slate-500 hover:text-blue-600' ?>">Nxënësit</a></li>
-                        <li><a href="/E-Shkolla/parents" class="block p-2 pl-6 text-xs font-medium <?= isActive('/parents') ? 'text-blue-600 font-bold' : 'text-slate-500 hover:text-blue-600' ?>">Prindërit</a></li>
+                        <li><a href="/E-Shkolla/teachers" class="block p-2 pl-6 text-xs font-medium <?= isActive('/teachers') ? 'text-indigo-600 font-bold' : 'text-slate-500 hover:text-indigo-600' ?>">Mësuesit</a></li>
+                        <li><a href="/E-Shkolla/students" class="block p-2 pl-6 text-xs font-medium <?= isActive('/students') ? 'text-indigo-600 font-bold' : 'text-slate-500 hover:text-indigo-600' ?>">Nxënësit</a></li>
+                        <li><a href="/E-Shkolla/parents" class="block p-2 pl-6 text-xs font-medium <?= isActive('/parents') ? 'text-indigo-600 font-bold' : 'text-slate-500 hover:text-indigo-600' ?>">Prindërit</a></li>
                     </ul>
                 </li>
 
                 <li x-data="{ open: localStorage.getItem('menu-academy') === 'true' || <?= isAnyActive(['/classes', '/subjects', '/schedule']) ? 'true' : 'false' ?> }">
                     <button @click="open = !open; localStorage.setItem('menu-academy', open)" 
-                            class="w-full group flex items-center gap-x-3 rounded-xl p-3 text-sm font-semibold text-slate-500 hover:bg-slate-50 hover:text-blue-600 transition-all">
+                            class="w-full group flex items-center gap-x-3 rounded-xl p-3 text-sm font-semibold text-slate-500 hover:bg-slate-50 hover:text-indigo-600 transition-all">
                         <svg class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
                             <path stroke-linecap="round" stroke-linejoin="round" d="M12 6.253v13m0-13C10.832 5.477 9.246 5 7.5 5S4.168 5.477 3 6.253v13C4.168 18.477 5.754 18 7.5 18s3.246.477 4.5 1.253m0-13C13.168 5.477 14.754 5 16.5 5c1.747 0 3.332.477 4.5 1.253v13C19.832 18.477 18.247 18 16.5 18c-1.746 0-3.332.477-4.5 1.253" />
                         </svg>
@@ -192,21 +195,19 @@ function isAnyActive(array $paths) {
                         <svg x-show="!sidebarCollapsed" :class="open ? 'rotate-180' : ''" class="h-4 w-4 transition-transform duration-200" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7" /></svg>
                     </button>
                     <ul x-show="open && !sidebarCollapsed" x-cloak x-transition class="mt-1 ml-4 border-l-2 border-slate-100 space-y-1">
-                        <li><a href="/E-Shkolla/classes" class="block p-2 pl-6 text-xs font-medium <?= isActive('/classes') ? 'text-blue-600 font-bold' : 'text-slate-500 hover:text-blue-600' ?>">Klasat</a></li>
-                        <li><a href="/E-Shkolla/subjects" class="block p-2 pl-6 text-xs font-medium <?= isActive('/subjects') ? 'text-blue-600 font-bold' : 'text-slate-500 hover:text-blue-600' ?>">Lëndët</a></li>
-                        <li><a href="/E-Shkolla/schedule" class="block p-2 pl-6 text-xs font-medium <?= isActive('/schedule') ? 'text-blue-600 font-bold' : 'text-slate-500 hover:text-blue-600' ?>">Orari</a></li>
+                        <li><a href="/E-Shkolla/classes" class="block p-2 pl-6 text-xs font-medium <?= isActive('/classes') ? 'text-indigo-600 font-bold' : 'text-slate-500 hover:text-indigo-600' ?>">Klasat</a></li>
+                        <li><a href="/E-Shkolla/subjects" class="block p-2 pl-6 text-xs font-medium <?= isActive('/subjects') ? 'text-indigo-600 font-bold' : 'text-slate-500 hover:text-indigo-600' ?>">Lëndët</a></li>
+                        <li><a href="/E-Shkolla/schedule" class="block p-2 pl-6 text-xs font-medium <?= isActive('/schedule') ? 'text-indigo-600 font-bold' : 'text-slate-500 hover:text-indigo-600' ?>">Orari</a></li>
                     </ul>
                 </li>
                 
                 <li>
                     <a href="/E-Shkolla/school-announcement"
-                    class="relative group flex items-center gap-x-3 rounded-xl p-3 text-sm font-semibold transition-all
-                    <?= isActive('/school-announcement') ? 'bg-blue-50 text-blue-600 active-indicator' : 'text-slate-500 hover:bg-slate-50 hover:text-blue-600' ?>">
-                        
+                       class="relative group flex items-center gap-x-3 rounded-xl p-3 text-sm font-semibold transition-all
+                       <?= isActive('/school-announcement') ? 'bg-indigo-50 text-indigo-600 active-indicator' : 'text-slate-500 hover:bg-slate-50 hover:text-indigo-600' ?>">
                         <svg class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
                             <path stroke-linecap="round" stroke-linejoin="round" d="M11 5.882V19.24a1.76 1.76 0 01-3.417.592l-2.147-6.15M18 13a3 3 0 100-6M5.436 13.683A4.001 4.001 0 017 6h1.832c4.1 0 7.625-1.234 9.168-3v14c-1.543-1.766-5.067-3-9.168-3H7a3.988 3.988 0 01-1.564-.317z" />
                         </svg>
-
                         <span x-show="!sidebarCollapsed" class="whitespace-nowrap">Komunikimi</span>
                     </a>
                 </li>
@@ -214,10 +215,10 @@ function isAnyActive(array $paths) {
                 <li>
                     <a href="/E-Shkolla/school-settings"
                        class="relative group flex items-center gap-x-3 rounded-xl p-3 text-sm font-semibold transition-all
-                       <?= isActive('/school-settings') ? 'bg-blue-50 text-blue-600 active-indicator' : 'text-slate-500 hover:bg-slate-50 hover:text-blue-600' ?>">
+                       <?= isActive('/school-settings') ? 'bg-indigo-50 text-indigo-600 active-indicator' : 'text-slate-500 hover:bg-slate-50 hover:text-indigo-600' ?>">
                         <svg class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
                             <path stroke-linecap="round" stroke-linejoin="round" d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z" />
-                            <path stroke-linecap="round" stroke-linejoin="round" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
+                            <circle cx="12" cy="12" r="3" />
                         </svg>
                         <span x-show="!sidebarCollapsed" class="whitespace-nowrap">Cilësimet</span>
                     </a>
@@ -226,14 +227,13 @@ function isAnyActive(array $paths) {
                 <div class="mt-auto space-y-1">
                     <li>
                         <button @click="helpOpen = true" 
-                                class="w-full group flex items-center gap-x-3 rounded-xl p-3 text-sm font-semibold text-slate-500 hover:bg-blue-50 hover:text-blue-600 transition-all">
+                                class="w-full group flex items-center gap-x-3 rounded-xl p-3 text-sm font-semibold text-slate-500 hover:bg-indigo-50 hover:text-indigo-600 transition-all">
                             <svg class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
                                 <path stroke-linecap="round" stroke-linejoin="round" d="M8.228 9c.549-1.165 2.03-2 3.772-2 2.21 0 4 1.343 4 3 0 1.4-1.278 2.575-3.006 2.907-.542.104-.994.54-.994 1.093m0 3h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
                             </svg>
                             <span x-show="!sidebarCollapsed" class="whitespace-nowrap">Ndihmë</span>
                         </button>
                     </li>
-
                     <li>
                         <a href="/E-Shkolla/logout" class="group flex items-center gap-x-3 rounded-xl bg-red-50/50 p-3 text-sm font-semibold text-red-600 hover:bg-red-50 transition-all">
                             <svg class="h-5 w-5 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
@@ -246,7 +246,7 @@ function isAnyActive(array $paths) {
             </ul>
         </nav>
 
-        <button @click="sidebarCollapsed = !sidebarCollapsed" class="hidden lg:flex items-center justify-center h-12 border-t border-slate-50 text-slate-400 hover:text-blue-600 transition-colors">
+        <button @click="sidebarCollapsed = !sidebarCollapsed" class="hidden lg:flex items-center justify-center h-12 border-t border-slate-50 text-slate-400 hover:text-indigo-600 transition-colors">
             <svg :class="sidebarCollapsed ? 'rotate-180' : ''" class="h-5 w-5 transition-transform duration-300" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
                 <path stroke-linecap="round" stroke-linejoin="round" d="M11 19l-7-7 7-7m8 14l-7-7 7-7" />
             </svg>
@@ -255,42 +255,60 @@ function isAnyActive(array $paths) {
 
     <div :class="sidebarCollapsed ? 'lg:pl-20' : 'lg:pl-72'" class="min-h-screen custom-transition flex flex-col lg:pl-72">
         
-        <header class="md:hidden sticky top-0 z-30 h-16 flex items-center justify-between bg-white/80 backdrop-blur-md border-b border-slate-100 px-4 lg:px-8">
-            <a href="/E-Shkolla/school-admin-dashboard" class="flex h-20 shrink-0 items-center overflow-hidden border-b border-slate-50">
-            <img src="/E-Shkolla/images/icon.png" class="h-9 w-auto min-w-[36px]" alt="Logo">
-            <div x-show="!sidebarCollapsed" x-transition.opacity class="ml-3 whitespace-nowrap">
-                <h1 class="text-lg font-bold tracking-tight text-slate-800 leading-none">E-Shkolla</h1>
-                <p class="text-[10px] font-bold uppercase tracking-widest text-blue-600 mt-1">School Admin</p>
-            </div>
-            </a>
-        
+        <header class="sticky top-0 z-30 h-16 flex items-center justify-between bg-white/80 backdrop-blur-md border-b border-slate-100 px-4 lg:px-8">
             <button @click="mobileOpen = true" class="p-2 lg:hidden text-slate-600 hover:bg-slate-50 rounded-lg transition-colors">
                 <svg class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path d="M4 6h16M4 12h16M4 18h16"/></svg>
             </button>
+
+            <div class="hidden lg:block">
+                <p class="text-slate-500 text-sm">Përshëndetje, <span class="font-semibold text-slate-800"><?= htmlspecialchars($adminName) ?></span></p>
+            </div>
+
+            <div class="flex items-center gap-2 lg:gap-4">
+                <div class="relative" x-data="{ open: false, latest: '<?= $userNotifications[0]['created_at'] ?? '' ?>', lastSeen: localStorage.getItem('admin_seen_at') }">
+                    <button @click="open = !open; if(open){ lastSeen = latest; localStorage.setItem('admin_seen_at', latest); }" 
+                            class="p-2 text-slate-400 hover:text-indigo-600 relative transition-colors">
+                        <template x-if="latest && (!lastSeen || new Date(latest) > new Date(lastSeen))">
+                            <span class="absolute top-2 right-2 flex h-2 w-2">
+                                <span class="animate-ping absolute inline-flex h-full w-full rounded-full bg-red-400 opacity-75"></span>
+                                <span class="relative inline-flex rounded-full h-2 w-2 bg-red-500"></span>
+                            </span>
+                        </template>
+                        <svg class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.5">
+                            <path d="M15 17h5l-1.405-1.405A2.032 2.032 0 0118 14.158V11a6.002 6.002 0 00-4-5.659V5a2 2 0 10-4 0v.341C7.67 6.165 6 8.388 6 11v3.159c0 .538-.214 1.055-.595 1.436L4 17h5m6 0v1a3 3 0 11-6 0v-1m6 0H9" />
+                        </svg>
+                    </button>
+                    <div x-show="open" @click.away="open = false" x-transition x-cloak class="absolute right-0 mt-3 w-80 bg-white rounded-2xl shadow-2xl border border-slate-100 overflow-hidden ring-1 ring-black/5">
+                        <div class="p-4 border-b border-slate-50 bg-slate-50/50 flex justify-between items-center">
+                            <h3 class="font-bold text-slate-800 text-xs uppercase tracking-wider">Njoftimet</h3>
+                        </div>
+                        <div class="max-h-80 overflow-y-auto">
+                            <?php if(empty($userNotifications)): ?>
+                                <p class="p-6 text-center text-xs text-slate-400 italic">Nuk ka njoftime.</p>
+                            <?php else: foreach($userNotifications as $n): ?>
+                                <div class="p-4 border-b border-slate-50 hover:bg-slate-50 transition-colors">
+                                    <h4 class="text-xs font-bold text-slate-800"><?= htmlspecialchars($n['title']) ?></h4>
+                                    <p class="text-[11px] text-slate-500 mt-1"><?= htmlspecialchars($n['content']) ?></p>
+                                </div>
+                            <?php endforeach; endif; ?>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="flex items-center gap-3 pl-4 border-l border-slate-100">
+                    <span class="hidden md:block text-sm font-semibold text-slate-700"><?= htmlspecialchars($adminName) ?></span>
+                    <div class="h-9 w-9 rounded-full bg-indigo-600 flex items-center justify-center text-white text-sm font-bold shadow-sm">
+                        <?= strtoupper(substr(htmlspecialchars($adminName), 0, 1)) ?>
+                    </div>
+                </div>
+            </div>
         </header>
 
         <main class="p-4 lg:p-10 flex-1">
             <div class="max-w-7xl mx-auto">
-                <?= $content ?? '<div class="flex flex-col items-center justify-center h-[60vh] text-slate-400"><p class="italic">Zgjidhni një opsion nga menuja...</p></div>' ?>
+                <?= $content ?? '<div class="flex flex-col items-center justify-center h-[60vh] text-slate-400"><p class="italic">Sistemi është gati. Zgjidhni një kategori...</p></div>' ?>
             </div>
         </main>
-    </div>
-
-    <div class="fixed bottom-6 right-6 z-[100] flex flex-col gap-3 w-full max-w-sm pointer-events-none">
-        <template x-for="toast in toasts" :key="toast.id">
-            <div x-show="toast.visible" 
-                 x-transition:enter="transition ease-out duration-300 transform"
-                 x-transition:enter-start="translate-y-4 opacity-0 scale-95"
-                 x-transition:leave="transition ease-in duration-200"
-                 x-transition:leave-end="opacity-0 scale-90"
-                 class="pointer-events-auto flex items-center p-4 bg-white rounded-2xl shadow-2xl border border-slate-100 ring-1 ring-black/5">
-                <div :class="toast.type === 'success' ? 'bg-emerald-100 text-emerald-600' : 'bg-rose-100 text-rose-600'" class="p-2 rounded-xl mr-4 shrink-0">
-                    <svg x-show="toast.type === 'success'" class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="3"><path d="M5 13l4 4L19 7"/></svg>
-                    <svg x-show="toast.type === 'error'" class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="3"><path d="M6 18L18 6M6 6l12 12"/></svg>
-                </div>
-                <p class="text-sm font-bold text-slate-700" x-text="toast.message"></p>
-            </div>
-        </template>
     </div>
 
 </body>
