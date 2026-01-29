@@ -9,7 +9,7 @@ if (session_status() === PHP_SESSION_NONE) {
     session_set_cookie_params([
         'lifetime' => 60 * 60 * 24 * 7,
         'path'     => '/',
-        'secure'   => false, // true on HTTPS
+        'secure'   => false, // set TRUE on HTTPS
         'httponly' => true,
         'samesite' => 'Lax'
     ]);
@@ -32,6 +32,8 @@ header('X-XSS-Protection: 1; mode=block');
 if (!isset($_SESSION['csrf_token'])) {
     $_SESSION['csrf_token'] = bin2hex(random_bytes(32));
 }
+
+$error = null;
 
 /* =========================================================
    AUTO LOGIN (REMEMBER ME)
@@ -81,18 +83,17 @@ if (!isset($_SESSION['user']) && isset($_COOKIE['remember_token'])) {
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 
     if (!hash_equals($_SESSION['csrf_token'], $_POST['csrf_token'] ?? '')) {
-        http_response_code(403);
-        exit('Invalid CSRF token');
+        $error = "Kërkesë e pavlefshme. Ju lutemi provoni përsëri.";
+        goto render;
     }
 
     $email    = trim($_POST['email'] ?? '');
     $password = $_POST['password'] ?? '';
     $remember = !empty($_POST['remember']);
-    $ip       = $_SERVER['REMOTE_ADDR'];
 
     if (!filter_var($email, FILTER_VALIDATE_EMAIL)) {
-        http_response_code(401);
-        exit('Invalid credentials');
+        $error = "Emaili nuk është i saktë.";
+        goto render;
     }
 
     $stmt = $pdo->prepare("
@@ -104,28 +105,31 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     $stmt->execute([$email]);
     $user = $stmt->fetch(PDO::FETCH_ASSOC);
 
-    if (!$user || !password_verify($password, $user['password'])) {
-        http_response_code(401);
-        exit('Invalid credentials');
+    /* EMAIL NOT FOUND */
+    if (!$user) {
+        $error = "Emaili nuk është i saktë.";
+        goto render;
     }
 
+    /* PASSWORD WRONG */
+    if (!password_verify($password, $user['password'])) {
+        $error = "Fjalëkalimi nuk është i saktë.";
+        goto render;
+    }
+
+    /* ACCOUNT INACTIVE */
     if ($user['status'] !== 'active') {
-        http_response_code(403);
-        exit('Account inactive');
+        $error = "Llogaria juaj nuk është aktive. Kontaktoni administratorin.";
+        goto render;
     }
 
-    /* =========================================================
-       LOGOUT OTHER DEVICES
-    ========================================================= */
+    /* LOGOUT OTHER DEVICES */
     $pdo->prepare("DELETE FROM user_sessions WHERE user_id = ?")
         ->execute([$user['id']]);
-
     $pdo->prepare("DELETE FROM remember_tokens WHERE user_id = ?")
         ->execute([$user['id']]);
 
-    /* =========================================================
-       CREATE SESSION
-    ========================================================= */
+    /* CREATE SESSION */
     session_regenerate_id(true);
 
     $_SESSION['user'] = [
@@ -137,19 +141,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 
     $_SESSION['login_time'] = time();
 
-    $pdo->prepare("
-        INSERT INTO user_sessions (user_id, session_id, ip_address, user_agent, last_activity)
-        VALUES (?, ?, ?, ?, NOW())
-    ")->execute([
-        $user['id'],
-        session_id(),
-        $ip,
-        $_SERVER['HTTP_USER_AGENT'] ?? ''
-    ]);
-
-    /* =========================================================
-       REMEMBER ME
-    ========================================================= */
+    /* REMEMBER ME */
     if ($remember) {
         $token = bin2hex(random_bytes(32));
 
@@ -161,20 +153,10 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             hash('sha256', $token)
         ]);
 
-        setcookie(
-            'remember_token',
-            $token,
-            time() + (60 * 60 * 24 * 30),
-            '/',
-            '',
-            false, // true on HTTPS
-            true
-        );
+        setcookie('remember_token', $token, time() + 2592000, '/', '', false, true);
     }
 
-    /* =========================================================
-       REDIRECT
-    ========================================================= */
+    /* REDIRECT */
     $redirects = [
         'super_admin'  => '/E-Shkolla/super-admin-dashboard',
         'school_admin' => '/E-Shkolla/school-admin-dashboard',
@@ -186,6 +168,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     header('Location: ' . ($redirects[$user['role']] ?? '/'));
     exit;
 }
+
+render:
 ?>
 <!DOCTYPE html>
 <html lang="sq" class="h-full scroll-smooth">
@@ -214,7 +198,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 
 <div class="flex min-h-full">
 
-  <!-- LEFT SIDE -->
+  <!-- LEFT -->
   <div class="flex w-full flex-col justify-center px-6 py-12 lg:w-1/2 lg:px-16">
     <div class="mx-auto w-full max-w-md">
 
@@ -239,14 +223,15 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         </p>
       </div>
 
-      <!-- ERROR MESSAGE PLACEHOLDER -->
-      <!--
-      <div class="mb-4 rounded-lg bg-red-50 p-4 text-sm text-red-800 border border-red-200">
-        <span class="font-bold">Gabim!</span> Mesazh gabimi
+      <!-- 🔴 ERROR (OLD STYLE – IDENTICAL) -->
+      <?php if (!empty($error)): ?>
+      <div class="mb-4 rounded-lg bg-red-50 p-4 text-sm text-red-800 dark:bg-red-900/30 dark:text-red-400 border border-red-200 dark:border-red-800">
+        <span class="font-bold">Gabim!</span> <?= htmlspecialchars($error) ?>
       </div>
-      -->
+      <?php endif; ?>
 
       <form method="POST" class="space-y-5">
+        <input type="hidden" name="csrf_token" value="<?= htmlspecialchars($_SESSION['csrf_token']) ?>">
 
         <div>
           <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
@@ -256,6 +241,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             type="email"
             name="email"
             required
+            value="<?= htmlspecialchars($_POST['email'] ?? '') ?>"
             placeholder="emri@email.com"
             class="w-full rounded-lg border border-gray-300 bg-white px-4 py-2.5 text-gray-900 outline-none transition
                    focus:border-blue-500 focus:ring-2 focus:ring-blue-500/20
@@ -280,23 +266,16 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                      focus:border-blue-500 focus:ring-2 focus:ring-blue-500/20
                      dark:bg-gray-900 dark:border-gray-700 dark:text-white">
 
-            <button type="button"
-                    id="togglePassword"
-                    class="absolute inset-y-0 right-0 flex items-center px-3 text-gray-500 hover:text-blue-600">
-              <svg id="eyeIcon" xmlns="http://www.w3.org/2000/svg"
-                   class="h-5 w-5" fill="none" viewBox="0 0 24 24"
-                   stroke="currentColor">
-                <path stroke-linecap="round" stroke-linejoin="round"
-                      stroke-width="1.5"
-                      d="M2.458 12C3.732 7.943 7.523 5 12 5
-                         c4.478 0 8.268 2.943 9.542 7
-                         -1.274 4.057 -5.064 7 -9.542 7
-                         -4.477 0 -8.268 -2.943 -9.542 -7z"/>
-                <path stroke-linecap="round" stroke-linejoin="round"
-                      stroke-width="1.5"
-                      d="M15 12a3 3 0 11-6 0
-                         3 3 0 016 0z"/>
+             <button type="button" id="togglePassword" class="absolute inset-y-0 right-0 flex items-center px-3 text-gray-500 hover:text-blue-600 dark:text-gray-400" aria-label="Shfaq ose fshih fjalëkalimin">
+
+              <svg id="eyeIcon" xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z"/>
+
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"/>
+
               </svg>
+
             </button>
           </div>
         </div>
@@ -320,7 +299,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     </div>
   </div>
 
-  <!-- RIGHT SIDE -->
+  <!-- RIGHT -->
   <div class="relative hidden lg:block w-1/2 overflow-hidden">
     <img src="https://images.pexels.com/photos/4145192/pexels-photo-4145192.jpeg"
          alt="Nxënës"
@@ -344,25 +323,26 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 </div>
 
 <script>
-const toggleBtn = document.getElementById('togglePassword');
-const passwordInput = document.getElementById('password');
-const eyeIcon = document.getElementById('eyeIcon');
+  const toggleBtn = document.getElementById('togglePassword');
+  const passwordInput = document.getElementById('password');
+  const eyeIcon = document.getElementById('eyeIcon');
 
-toggleBtn.addEventListener('click', () => {
-  const isPassword = passwordInput.type === 'password';
-  passwordInput.type = isPassword ? 'text' : 'password';
+  toggleBtn.addEventListener('click', () => {
+    const isPassword = passwordInput.type === 'password';
+    passwordInput.type = isPassword ? 'text' : 'password';
 
-  eyeIcon.innerHTML = isPassword
-    ? `<path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5"
-         d="M3 3l18 18" />`
-    : `<path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5"
-         d="M2.458 12C3.732 7.943 7.523 5 12 5
-            c4.478 0 8.268 2.943 9.542 7
-            -1.274 4.057 -5.064 7 -9.542 7
-            -4.477 0 -8.268 -2.943 -9.542 -7z"/>`;
-});
+    if (isPassword) {
+      // "Eye off" icon path
+      eyeIcon.innerHTML = `
+        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M13.875 18.825A10.05 10.05 0 0112 19c-4.478 0-8.268-2.943-9.542-7a9.956 9.956 0 012.362-4.162M6.423 6.423A9.956 9.956 0 0112 5c4.478 0 8.268 2.943 9.542 7a9.978 9.978 0 01-4.043 5.362M15 12a3 3 0 00-3-3M3 3l18 18" />`;
+    } else {
+      // "Eye on" icon path
+      eyeIcon.innerHTML = `
+        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z"/>
+        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"/>`;
+    }
+  });
 </script>
 
 </body>
 </html>
-
