@@ -50,8 +50,7 @@ try {
         JOIN teachers t ON t.id = g.teacher_id
         JOIN users u ON u.id = t.user_id
         WHERE g.student_id = ? 
-          AND g.school_id = ? 
-          AND g.created_at < CURDATE()
+        AND g.school_id = ?
         ORDER BY g.created_at DESC
     ");
     $stmt->execute([$studentId, $schoolId]);
