@@ -19,6 +19,11 @@ if (!isset($_SESSION['user']['id'], $_SESSION['user']['school_id'])) {
 $userId   = (int) $_SESSION['user']['id'];
 $schoolId = (int) $_SESSION['user']['school_id'];
 
+// Pagination Settings
+$limit = 10; // Records per page
+$page = isset($_GET['page']) ? max(1, (int)$_GET['page']) : 1;
+$offset = ($page - 1) * $limit;
+
 try {
     $stmt = $pdo->prepare("SELECT id, name FROM parents WHERE user_id = ? AND school_id = ? LIMIT 1");
     $stmt->execute([$userId, $schoolId]);
@@ -40,7 +45,17 @@ try {
 
     $studentId = (int) ($_GET['student_id'] ?? $children[0]['student_id']);
 
-    // LOGJIKA E ARKIVIMIT (Grouped by Day)
+    // 1. Get total count for pagination
+    $countStmt = $pdo->prepare("
+        SELECT COUNT(DISTINCT DATE(created_at)) 
+        FROM attendance 
+        WHERE student_id = ? AND school_id = ? AND created_at < CURDATE()
+    ");
+    $countStmt->execute([$studentId, $schoolId]);
+    $totalDays = (int) $countStmt->fetchColumn();
+    $totalPages = ceil($totalDays / $limit);
+
+    // 2. Fetch Paginated Records
     $stmt = $pdo->prepare("
         SELECT 
             DATE(a.created_at)               AS day,
@@ -51,16 +66,15 @@ try {
         FROM attendance a
         WHERE a.student_id = ?
           AND a.school_id  = ?
-          AND a.created_at >= DATE_SUB(CURDATE(), INTERVAL 14 DAY)
           AND a.created_at < CURDATE()
         GROUP BY DATE(a.created_at)
         ORDER BY day DESC
-        LIMIT 30
+        LIMIT $limit OFFSET $offset
     ");
     $stmt->execute([$studentId, $schoolId]);
     $attendanceRecords = $stmt->fetchAll(PDO::FETCH_ASSOC);
 
-    // Fixed Statistics Calculation
+    // Stats calculation (based on current view or you can query total if preferred)
     $grandTotalLessons = 0;
     $grandTotalAbsences = 0;
     foreach($attendanceRecords as $row) {
@@ -104,7 +118,7 @@ ob_start();
 
     <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6 text-sm">
         <div class="bg-white rounded-[20px] border border-slate-100 p-5 shadow-sm">
-            <p class="text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-1">Pjesëmarrja (Arkivë)</p>
+            <p class="text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-1">Pjesëmarrja (Faqja <?= $page ?>)</p>
             <div class="flex items-center gap-3">
                 <span class="text-2xl font-bold text-slate-800"><?= $presenceRate ?>%</span>
                 <div class="flex-1 bg-slate-100 h-1 rounded-full overflow-hidden">
@@ -115,7 +129,7 @@ ob_start();
 
         <div class="bg-white rounded-[20px] border border-slate-100 p-5 shadow-sm flex items-center justify-between">
             <div>
-                <p class="text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-1">Mungesa Totale</p>
+                <p class="text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-1">Mungesat në këtë faqe</p>
                 <span class="text-2xl font-bold text-slate-800"><?= $grandTotalAbsences ?></span>
             </div>
             <div class="w-10 h-10 bg-rose-50 text-rose-500 rounded-xl flex items-center justify-center text-xs font-bold">❌</div>
@@ -179,6 +193,31 @@ ob_start();
             </tbody>
         </table>
     </div>
+
+    <?php if ($totalPages > 1): ?>
+    <div class="flex justify-center items-center gap-2 mt-6">
+        <?php if ($page > 1): ?>
+            <a href="?student_id=<?= $studentId ?>&page=<?= $page - 1 ?>" class="p-2 bg-white border border-slate-100 rounded-lg text-slate-400 hover:text-indigo-600 transition-colors">
+                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 19l-7-7 7-7"/></svg>
+            </a>
+        <?php endif; ?>
+
+        <div class="flex gap-1 bg-slate-50 p-1 rounded-xl border border-slate-100">
+            <?php for ($i = 1; $i <= $totalPages; $i++): ?>
+                <a href="?student_id=<?= $studentId ?>&page=<?= $i ?>" 
+                   class="px-3.5 py-1.5 rounded-lg text-[11px] font-bold transition-all <?= $i === $page ? 'bg-white text-indigo-600 shadow-sm ring-1 ring-slate-200' : 'text-slate-400 hover:text-slate-600' ?>">
+                    <?= $i ?>
+                </a>
+            <?php endfor; ?>
+        </div>
+
+        <?php if ($page < $totalPages): ?>
+            <a href="?student_id=<?= $studentId ?>&page=<?= $page + 1 ?>" class="p-2 bg-white border border-slate-100 rounded-lg text-slate-400 hover:text-indigo-600 transition-colors">
+                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"/></svg>
+            </a>
+        <?php endif; ?>
+    </div>
+    <?php endif; ?>
 </div>
 
 <?php
