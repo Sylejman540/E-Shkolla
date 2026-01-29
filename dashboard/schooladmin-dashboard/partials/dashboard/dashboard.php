@@ -5,7 +5,7 @@
  * Filozofia: Qartësi > Metriçe | Veprim > Zhurmë
  */
 
-require_once __DIR__ . '/../../../db.php';
+require_once __DIR__ . '/../../../../db.php';
 
 if (session_status() === PHP_SESSION_NONE) {
     session_start();
@@ -74,7 +74,7 @@ $riskScore = min(100, $riskScore);
 
 // Veprimi i fundit administrativ
 $stmt = $pdo->prepare("
-    SELECT action_title, created_at
+    SELECT action_title, status, created_at
     FROM admin_logs
     WHERE school_id = ?
     ORDER BY created_at DESC
@@ -106,7 +106,7 @@ $gradeDist = $stmt->fetchAll(PDO::FETCH_KEY_PAIR);
 $updatedAt = date('H:i');
 
 ob_start();
-?>
+?>  
 
 <!-- MODALI I VEPRIMIT -->
 <div id="actionModal" class="hidden fixed inset-0 bg-slate-900/60 backdrop-blur-sm z-50 flex items-center justify-center p-4">
@@ -219,6 +219,14 @@ ob_start();
                     <?php if ($lastAction): ?>
                         <p class="text-xs text-slate-400 italic">
                             Veprimi i fundit: <?= htmlspecialchars($lastAction['action_title']) ?>
+                            ·
+                            <span class="font-semibold">
+                                <?= match ($lastAction['status']) {
+                                    'closed'    => 'Mbyllur',
+                                    'follow_up' => 'Në ndjekje',
+                                    default     => 'Në pritje'
+                                } ?>
+                            </span>
                         </p>
                     <?php endif; ?>
                 </div>
@@ -236,15 +244,17 @@ ob_start();
                                     <?= $c['rate'] ?>% vijueshmëri sot
                                 </p>
                             </div>
-                            <button
-                                onclick="openActionModal(
-                                    'notify',
-                                    'Njofto mësimdhënësin — Klasa <?= $c['grade'] ?>',
-                                    'Kërko sqarim lidhur me rënien e vijueshmërisë sot.'
-                                )"
-                                class="bg-slate-900 text-white text-xs font-black uppercase px-4 py-2 rounded-lg">
-                                Ndërmerr veprim
-                            </button>
+<button
+    onclick="openActionModal(
+        'notify_teacher',
+        'Njofto mësimdhënësin — Klasa <?= $c['grade'] ?>',
+        'Kërko sqarim lidhur me rënien e vijueshmërisë sot.',
+        { class_id: <?= (int)$c['id'] ?> }
+    )"
+    class="bg-slate-900 text-white text-xs font-black uppercase px-4 py-2 rounded-lg">
+    Ndërmerr veprim
+</button>
+
                         </div>
                     <?php endforeach; ?>
                 <?php endif; ?>
@@ -331,25 +341,57 @@ new Chart(document.getElementById('trendChart'), {
 const modal = document.getElementById('actionModal');
 const confirmBtn = document.getElementById('confirmBtn');
 
-function openActionModal(type, title, description) {
+let currentAction = {
+    type: null,
+    title: null,
+    context: {}
+};
+
+function openActionModal(type, title, description, context = {}) {
+    currentAction.type = type;
+    currentAction.title = title;
+    currentAction.context = context;
+
     document.getElementById('modalTitle').innerText = title;
     document.getElementById('modalDescription').innerText = description;
-    modal.classList.remove('hidden');
+    document.getElementById('actionMessage').value = '';
 
-    confirmBtn.onclick = () => {
-        fetch('handle_command.php', {
-            method: 'POST',
-            headers: {'Content-Type':'application/json'},
-            body: JSON.stringify({ type, title })
-        }).then(() => location.reload());
-    };
+    modal.classList.remove('hidden');
 }
 
 function closeModal() {
     modal.classList.add('hidden');
 }
+
+confirmBtn.onclick = () => {
+    fetch('/E-Shkolla/dashboard/schooladmin-dashboard/partials/dashboard/handle_action.php', {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({
+            type: currentAction.type,
+            title: currentAction.title,
+            note: document.getElementById('actionMessage').value || '',
+            context: currentAction.context
+        })
+    })
+    .then(res => res.json())
+    .then(data => {
+        if (data.status === 'ok') {
+            closeModal();
+            location.reload();
+        } else {
+            alert(data.error || 'Gabim gjatë ruajtjes');
+        }
+    })
+    .catch(err => {
+        console.error(err);
+        alert('Gabim rrjeti');
+    });
+};
 </script>
 
 <?php
 $content = ob_get_clean();
-require_once __DIR__ . '/../index.php';
+require_once __DIR__ . '/../../index.php';
