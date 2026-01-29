@@ -19,6 +19,46 @@ if (session_status() === PHP_SESSION_NONE) {
 
 require_once __DIR__ . '/../db.php';
 
+function hydrateRoleId(array &$sessionUser, PDO $pdo): void
+{
+    switch ($sessionUser['role']) {
+
+        case 'teacher':
+            $stmt = $pdo->prepare("
+                SELECT id
+                FROM teachers
+                WHERE user_id = ? AND school_id = ?
+                LIMIT 1
+            ");
+            $stmt->execute([$sessionUser['id'], $sessionUser['school_id']]);
+            $sessionUser['teacher_id'] = (int) $stmt->fetchColumn();
+            break;
+
+        case 'student':
+            $stmt = $pdo->prepare("
+                SELECT student_id
+                FROM students
+                WHERE user_id = ? AND school_id = ?
+                LIMIT 1
+            ");
+            $stmt->execute([$sessionUser['id'], $sessionUser['school_id']]);
+            $sessionUser['student_id'] = (int) $stmt->fetchColumn();
+            break;
+
+        case 'parent':
+            $stmt = $pdo->prepare("
+                SELECT id
+                FROM parents
+                WHERE user_id = ? AND school_id = ?
+                LIMIT 1
+            ");
+            $stmt->execute([$sessionUser['id'], $sessionUser['school_id']]);
+            $sessionUser['parent_id'] = (int) $stmt->fetchColumn();
+            break;
+    }
+}
+
+
 /* =========================================================
    SECURITY HEADERS
 ========================================================= */
@@ -61,6 +101,9 @@ if (!isset($_SESSION['user']) && isset($_COOKIE['remember_token'])) {
             'school_id' => (int)$user['school_id'],
             'role'      => $user['role']
         ];
+
+        hydrateRoleId($_SESSION['user'], $pdo);
+
 
         $_SESSION['login_time'] = time();
 
@@ -139,6 +182,9 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         'role'      => $user['role']
     ];
 
+    hydrateRoleId($_SESSION['user'], $pdo);
+
+
     $_SESSION['login_time'] = time();
 
     /* REMEMBER ME */
@@ -164,6 +210,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         'student'      => '/E-Shkolla/student-dashboard',
         'parent'       => '/E-Shkolla/parent-dashboard'
     ];
+
 
     header('Location: ' . ($redirects[$user['role']] ?? '/'));
     exit;
