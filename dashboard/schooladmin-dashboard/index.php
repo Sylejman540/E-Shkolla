@@ -151,7 +151,7 @@ try {
             <img src="/E-Shkolla/images/icon.png" class="h-9 w-auto min-w-[36px]" alt="Logo">
             <div x-show="!sidebarCollapsed" x-transition.opacity class="ml-3 whitespace-nowrap">
                 <h1 class="text-lg font-bold tracking-tight text-slate-800 leading-none">E-Shkolla</h1>
-                <p class="text-[10px] font-bold uppercase tracking-widest text-indigo-600 mt-1">School Admin</p>
+                <p class="text-[10px] font-bold uppercase tracking-widest text-indigo-600 mt-1">Administrator Shkollor</p>
             </div>
         </a>
 
@@ -265,36 +265,6 @@ try {
             </div>
 
             <div class="flex items-center gap-2 lg:gap-4">
-                <div class="relative" x-data="{ open: false, latest: '<?= $userNotifications[0]['created_at'] ?? '' ?>', lastSeen: localStorage.getItem('admin_seen_at') }">
-                    <button @click="open = !open; if(open){ lastSeen = latest; localStorage.setItem('admin_seen_at', latest); }" 
-                            class="p-2 text-slate-400 hover:text-indigo-600 relative transition-colors">
-                        <template x-if="latest && (!lastSeen || new Date(latest) > new Date(lastSeen))">
-                            <span class="absolute top-2 right-2 flex h-2 w-2">
-                                <span class="animate-ping absolute inline-flex h-full w-full rounded-full bg-red-400 opacity-75"></span>
-                                <span class="relative inline-flex rounded-full h-2 w-2 bg-red-500"></span>
-                            </span>
-                        </template>
-                        <svg class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.5">
-                            <path d="M15 17h5l-1.405-1.405A2.032 2.032 0 0118 14.158V11a6.002 6.002 0 00-4-5.659V5a2 2 0 10-4 0v.341C7.67 6.165 6 8.388 6 11v3.159c0 .538-.214 1.055-.595 1.436L4 17h5m6 0v1a3 3 0 11-6 0v-1m6 0H9" />
-                        </svg>
-                    </button>
-                    <div x-show="open" @click.away="open = false" x-transition x-cloak class="absolute right-0 mt-3 w-80 bg-white rounded-2xl shadow-2xl border border-slate-100 overflow-hidden ring-1 ring-black/5">
-                        <div class="p-4 border-b border-slate-50 bg-slate-50/50 flex justify-between items-center">
-                            <h3 class="font-bold text-slate-800 text-xs uppercase tracking-wider">Njoftimet</h3>
-                        </div>
-                        <div class="max-h-80 overflow-y-auto">
-                            <?php if(empty($userNotifications)): ?>
-                                <p class="p-6 text-center text-xs text-slate-400 italic">Nuk ka njoftime.</p>
-                            <?php else: foreach($userNotifications as $n): ?>
-                                <div class="p-4 border-b border-slate-50 hover:bg-slate-50 transition-colors">
-                                    <h4 class="text-xs font-bold text-slate-800"><?= htmlspecialchars($n['title']) ?></h4>
-                                    <p class="text-[11px] text-slate-500 mt-1"><?= htmlspecialchars($n['content']) ?></p>
-                                </div>
-                            <?php endforeach; endif; ?>
-                        </div>
-                    </div>
-                </div>
-
                 <div class="flex items-center gap-3 pl-4 border-l border-slate-100">
                     <span class="hidden md:block text-sm font-semibold text-slate-700"><?= htmlspecialchars($adminName) ?></span>
                     <div class="h-9 w-9 rounded-full bg-indigo-600 flex items-center justify-center text-white text-sm font-bold shadow-sm">
