@@ -253,7 +253,7 @@ function isAnyActive(array $paths) {
         </button>
     </aside>
 
-    <div :class="sidebarCollapsed ? 'lg:pl-20' : 'lg:pl-72'" class="min-h-screen custom-transition flex flex-col">
+    <div :class="sidebarCollapsed ? 'lg:pl-20' : 'lg:pl-72'" class="min-h-screen custom-transition flex flex-col lg:pl-72">
         
         <header class="md:hidden sticky top-0 z-30 h-16 flex items-center justify-between bg-white/80 backdrop-blur-md border-b border-slate-100 px-4 lg:px-8">
             <a href="/E-Shkolla/school-admin-dashboard" class="flex h-20 shrink-0 items-center overflow-hidden border-b border-slate-50">
