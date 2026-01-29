@@ -29,8 +29,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     $value     = $_POST['value'] ?? '';
 
     $allowed = [
-        'p1_homework','p1_activity','p1_goje','p1_project','p1_test','p1_final',
-        'p2_homework','p2_activity','p2_goje','p2_project','p2_test','p2_final',
+        'p1_homework','p1_activity','p1_oral','p1_project','p1_test','p1_final',
+        'p2_homework','p2_activity','p2_oral','p2_project','p2_test','p2_final',
         'grade','comment'
     ];
 
