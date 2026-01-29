@@ -23,16 +23,14 @@ $lessonDate = $_GET['lesson_date'] ?? date('Y-m-d');
 $lessonTime = $_GET['lesson_start_time'] ?? date('H:i:00');
 
 /* ===============================
-   POST ACTIONS
+   POST ACTIONS (AJAX)
 ================================ */
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     $action    = $_POST['action'] ?? '';
     $studentId = (int) ($_POST['student_id'] ?? 0);
 
-    // 1. MARK ALL PRESENT (BULK)
+    // 1. MARK ALL PRESENT (Respects 30min Lock)
     if ($action === 'mark_all_present') {
-        // We only insert/update students who:
-        // A) Have no record OR B) Were updated more than 30 mins ago
         $stmt = $pdo->prepare("
             INSERT INTO attendance (school_id, student_id, class_id, subject_id, teacher_id, lesson_date, lesson_start_time, present, missing, updated_at)
             SELECT ?, s.student_id, ?, ?, ?, ?, ?, 1, 0, NOW()
@@ -54,13 +52,13 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         exit;
     }
 
-    // 2. SAVE INDIVIDUAL (PRESENT/MISSING)
+    // 2. SAVE INDIVIDUAL + EMAIL LOGIC
     if ($action === 'save' && $studentId) {
         $status  = $_POST['status'] ?? '';
         $present = ($status === 'present') ? 1 : 0;
         $missing = ($status === 'missing') ? 1 : 0;
 
-        // Verify lock before saving manually
+        // Verify Lock (Server-side safety)
         $check = $pdo->prepare("SELECT updated_at FROM attendance WHERE student_id = ? AND lesson_date = ? AND lesson_start_time = ? AND subject_id = ?");
         $check->execute([$studentId, $lessonDate, $lessonTime, $subjectId]);
         $lastUpdate = $check->fetchColumn();
@@ -77,26 +75,42 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         ");
         $stmt->execute([$schoolId, $studentId, $classId, $subjectId, $teacherId, $lessonDate, $lessonTime, $present, $missing]);
 
+        // --- EMAIL IF MISSING ---
         if ($missing === 1) {
-            // Optional: Email logic here
+            $nameStmt = $pdo->prepare("SELECT name FROM students WHERE student_id = ? LIMIT 1");
+            $nameStmt->execute([$studentId]);
+            $studentName = $nameStmt->fetchColumn() ?: 'Nxënës';
+
+            $parentEmails = getParentEmailsByStudent($studentId, $pdo);
+            if (!empty($parentEmails)) {
+                $dateKosovo = date('d.m.Y');
+                $timeKosovo = date('H:i');
+                sendSchoolEmail(
+                    $parentEmails,
+                    'Njoftim për mungesë',
+                    "<div style='font-family:Arial;font-size:14px;'>
+                        <p><strong>Njoftim mungese</strong></p>
+                        <p>Nxënësi <strong>{$studentName}</strong> është shënuar si <strong>MUNGON</strong>.</p>
+                        <p>Data: {$dateKosovo}<br>Ora: {$timeKosovo}</p>
+                    </div>"
+                );
+            }
         }
         echo json_encode(['status' => 'ok']);
         exit;
     }
 
-    // 3. RESET (UNLOCK & DELETE)
+    // 3. RESET (DELETE DATA & UNLOCK)
     if ($action === 'reset' && $studentId) {
-        $pdo->prepare("
-            DELETE FROM attendance 
-            WHERE student_id = ? AND class_id = ? AND subject_id = ? AND lesson_date = ? AND lesson_start_time = ?
-        ")->execute([$studentId, $classId, $subjectId, $lessonDate, $lessonTime]);
+        $pdo->prepare("DELETE FROM attendance WHERE student_id = ? AND class_id = ? AND subject_id = ? AND lesson_date = ? AND lesson_start_time = ?")
+            ->execute([$studentId, $classId, $subjectId, $lessonDate, $lessonTime]);
         echo json_encode(['status' => 'reset']);
         exit;
     }
 }
 
 /* ===============================
-   FETCH DATA
+   FETCH DATA FOR UI
 ================================ */
 $stmt = $pdo->prepare("
     SELECT s.student_id, s.name, a.present, a.missing, a.updated_at
@@ -113,14 +127,14 @@ $rows = $stmt->fetchAll(PDO::FETCH_ASSOC);
 ob_start();
 ?>
 
-<div class="attendance-view px-4 py-6 max-w-6xl mx-auto">
+<div class="attendance-view px-4 py-6 max-w-6xl mx-auto font-sans">
     <div class="flex justify-between items-end mb-6 pb-5 border-b border-slate-100">
         <div>
             <h1 class="text-xl font-bold text-slate-900">Regjistrimi i Prezencës</h1>
             <p class="text-xs text-slate-500"><?= $lessonDate ?> | <?= substr($lessonTime, 0, 5) ?></p>
         </div>
-        <button onclick="markAllPresentBulk()" class="bg-indigo-600 text-white px-4 py-2 rounded-lg text-xs font-bold shadow-sm hover:bg-indigo-700 transition-all">
-            Marko të gjithë Prezent (jo të bllokuar)
+        <button onclick="markAllPresentBulk()" class="bg-indigo-600 text-white px-4 py-2 rounded-lg text-xs font-bold hover:bg-indigo-700 transition-all shadow-sm">
+            Marko të gjithë Prezent
         </button>
     </div>
 
@@ -130,27 +144,24 @@ ob_start();
                 <tr>
                     <th class="px-5 py-3 text-[10px] font-bold text-slate-400 uppercase">Nxënësi</th>
                     <th class="px-5 py-3 text-[10px] font-bold text-slate-400 uppercase text-center">Veprimet</th>
-                    <th class="px-5 py-3 text-[10px] font-bold text-slate-400 uppercase text-right">Statusi</th>
+                    <th class="px-5 py-3 text-[10px] font-bold text-slate-400 uppercase text-right pr-8">Statusi</th>
                 </tr>
             </thead>
             <tbody class="divide-y divide-slate-50">
                 <?php foreach ($rows as $r): 
                     $isLocked = false;
                     if (!empty($r['updated_at'])) {
-                        // LOCK FOR 30 MINUTES
                         $isLocked = (time() - strtotime($r['updated_at'])) < (30 * 60);
                     }
                 ?>
-                <tr class="<?= $isLocked ? 'bg-slate-50/30' : '' ?>">
+                <tr class="<?= $isLocked ? 'bg-slate-50/50' : 'hover:bg-slate-50/30' ?> transition-colors">
                     <td class="px-5 py-4">
                         <div class="flex items-center gap-2">
                             <span class="text-sm font-medium <?= $isLocked ? 'text-slate-400' : 'text-slate-700' ?>">
                                 <?= htmlspecialchars($r['name']) ?>
                             </span>
                             <?php if($isLocked): ?>
-                                <span title="E bllokuar për 30min" class="text-amber-500">
-                                    <svg class="w-3.5 h-3.5" fill="currentColor" viewBox="0 0 20 20"><path d="M5 9V7a5 5 0 0110 0v2a2 2 0 012 2v5a2 2 0 01-2 2H5a2 2 0 01-2-2v-5a2 2 0 012-2zm8-2v2H7V7a3 3 0 016 0z"/></svg>
-                                </span>
+                                <svg class="w-3.5 h-3.5 text-amber-500" fill="currentColor" viewBox="0 0 20 20"><path d="M5 9V7a5 5 0 0110 0v2a2 2 0 012 2v5a2 2 0 01-2 2H5a2 2 0 01-2-2v-5a2 2 0 012-2zm8-2v2H7V7a3 3 0 016 0z"/></svg>
                             <?php endif; ?>
                         </div>
                     </td>
@@ -167,7 +178,7 @@ ob_start();
                             </button>
                         </div>
                     </td>
-                    <td class="px-5 py-4 text-right">
+                    <td class="px-5 py-4 text-right pr-8">
                         <?php if ($r['present']): ?>
                             <span class="px-2 py-1 bg-emerald-100 text-emerald-700 text-[10px] font-bold rounded uppercase">Prezent</span>
                         <?php elseif ($r['missing']): ?>
@@ -184,7 +195,7 @@ ob_start();
 </div>
 
 <script>
-async function handleAction(body) {
+async function handlePost(body) {
     await fetch(location.href, {
         method: 'POST',
         headers: {'Content-Type': 'application/x-www-form-urlencoded'},
@@ -194,17 +205,17 @@ async function handleAction(body) {
 }
 
 function save(id, status) {
-    handleAction(`action=save&student_id=${id}&status=${status}`);
+    handlePost(`action=save&student_id=${id}&status=${status}`);
 }
 
 function resetA(id) {
-    if(!confirm("Restart do të fshijë rekordin dhe do të zhbllokojë regjistrimin. Vazhdo?")) return;
-    handleAction(`action=reset&student_id=${id}`);
+    if(!confirm("Ky veprim fshin të dhënat për këtë orë dhe zhbllokon rreshtin. Vazhdo?")) return;
+    handlePost(`action=reset&student_id=${id}`);
 }
 
 function markAllPresentBulk() {
-    if(!confirm("Shëno të gjithë si prezent? (Nxënësit e bllokuar nuk do të ndryshohen)")) return;
-    handleAction(`action=mark_all_present`);
+    if(!confirm("Shëno të gjithë si prezent? Nxënësit e bllokuar nuk do të ndryshohen.")) return;
+    handlePost(`action=mark_all_present`);
 }
 </script>
 
