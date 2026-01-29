@@ -19,9 +19,6 @@ if (!$schoolId || !$teacherId || !$classId || !$subjectId) {
     exit('Missing parameters');
 }
 
-/* ===============================
-   STABLE LESSON CONTEXT
-================================ */
 $lessonDate = $_GET['lesson_date'] ?? date('Y-m-d');
 $lessonTime = $_GET['lesson_start_time'] ?? date('H:i:00');
 
@@ -29,342 +26,186 @@ $lessonTime = $_GET['lesson_start_time'] ?? date('H:i:00');
    POST ACTIONS
 ================================ */
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
-
     $action    = $_POST['action'] ?? '';
     $studentId = (int) ($_POST['student_id'] ?? 0);
 
-    /* ===============================
-       SAVE ATTENDANCE (FAST)
-    ================================ */
-    if ($action === 'save' && $studentId) {
+    // 1. MARK ALL PRESENT (BULK)
+    if ($action === 'mark_all_present') {
+        // We only insert/update students who:
+        // A) Have no record OR B) Were updated more than 30 mins ago
+        $stmt = $pdo->prepare("
+            INSERT INTO attendance (school_id, student_id, class_id, subject_id, teacher_id, lesson_date, lesson_start_time, present, missing, updated_at)
+            SELECT ?, s.student_id, ?, ?, ?, ?, ?, 1, 0, NOW()
+            FROM student_class sc
+            JOIN students s ON s.student_id = sc.student_id
+            LEFT JOIN attendance a ON a.student_id = s.student_id 
+                AND a.lesson_date = ? 
+                AND a.lesson_start_time = ?
+                AND a.subject_id = ?
+            WHERE sc.class_id = ?
+              AND (a.updated_at IS NULL OR a.updated_at < DATE_SUB(NOW(), INTERVAL 30 MINUTE))
+            ON DUPLICATE KEY UPDATE 
+                present = 1, 
+                missing = 0, 
+                updated_at = NOW()
+        ");
+        $stmt->execute([$schoolId, $classId, $subjectId, $teacherId, $lessonDate, $lessonTime, $lessonDate, $lessonTime, $subjectId, $classId]);
+        echo json_encode(['status' => 'ok']);
+        exit;
+    }
 
+    // 2. SAVE INDIVIDUAL (PRESENT/MISSING)
+    if ($action === 'save' && $studentId) {
         $status  = $_POST['status'] ?? '';
         $present = ($status === 'present') ? 1 : 0;
         $missing = ($status === 'missing') ? 1 : 0;
 
-        try {
-            // 🔒 DB TRANSACTION
-            $pdo->beginTransaction();
+        // Verify lock before saving manually
+        $check = $pdo->prepare("SELECT updated_at FROM attendance WHERE student_id = ? AND lesson_date = ? AND lesson_start_time = ? AND subject_id = ?");
+        $check->execute([$studentId, $lessonDate, $lessonTime, $subjectId]);
+        $lastUpdate = $check->fetchColumn();
 
-            $stmt = $pdo->prepare("
-                INSERT INTO attendance (
-                    school_id, student_id, class_id, subject_id,
-                    teacher_id, lesson_date, lesson_start_time,
-                    present, missing, updated_at
-                ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, NOW())
-                ON DUPLICATE KEY UPDATE
-                    present = VALUES(present),
-                    missing = VALUES(missing),
-                    updated_at = NOW()
-            ");
-
-            $stmt->execute([
-                $schoolId,
-                $studentId,
-                $classId,
-                $subjectId,
-                $teacherId,
-                $lessonDate,
-                $lessonTime,
-                $present,
-                $missing
-            ]);
-
-            // ✅ COMMIT FIRST
-            $pdo->commit();
-
-        } catch (Exception $e) {
-            $pdo->rollBack();
-            error_log('ATTENDANCE ERROR: ' . $e->getMessage());
-            http_response_code(500);
-            echo json_encode(['status' => 'error']);
+        if ($lastUpdate && (time() - strtotime($lastUpdate)) < (30 * 60)) {
+            echo json_encode(['status' => 'locked']);
             exit;
         }
 
-        /* ===============================
-           RESPOND TO UI IMMEDIATELY
-        ================================ */
-        echo json_encode(['status' => 'ok']);
+        $stmt = $pdo->prepare("
+            INSERT INTO attendance (school_id, student_id, class_id, subject_id, teacher_id, lesson_date, lesson_start_time, present, missing, updated_at) 
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, NOW())
+            ON DUPLICATE KEY UPDATE present = VALUES(present), missing = VALUES(missing), updated_at = NOW()
+        ");
+        $stmt->execute([$schoolId, $studentId, $classId, $subjectId, $teacherId, $lessonDate, $lessonTime, $present, $missing]);
 
-        // 🚀 Flush response (NON-BLOCKING)
-        if (function_exists('fastcgi_finish_request')) {
-            fastcgi_finish_request();
-        }
-
-        /* ===============================
-           EMAIL (ASYNC, AFTER RESPONSE)
-        ================================ */
         if ($missing === 1) {
-
-            // Student name
-            $stmt = $pdo->prepare("
-                SELECT name FROM students
-                WHERE student_id = ? LIMIT 1
-            ");
-            $stmt->execute([$studentId]);
-            $studentName = $stmt->fetchColumn() ?: 'Nxënës';
-
-            // Parent emails
-            $parentEmails = getParentEmailsByStudent($studentId, $pdo);
-
-            if (!empty($parentEmails)) {
-
-                $dateKosovo = date('d.m.Y');
-                $timeKosovo = date('H:i');
-
-                sendSchoolEmail(
-                    $parentEmails,
-                    'Njoftim për mungesë',
-                    "
-                    <div style='font-family:Arial,sans-serif;font-size:14px'>
-                        <p><strong>Njoftim mungese</strong></p>
-                        <p>
-                            Nxënësi / Nxënësja
-                            <strong>{$studentName}</strong>
-                            është shënuar si <strong>MUNGON</strong>.
-                        </p>
-                        <p>
-                            <strong>Data:</strong> {$dateKosovo}<br>
-                            <strong>Ora:</strong> {$timeKosovo}
-                        </p>
-                        <hr>
-                        <small>E-Shkolla • Ora lokale (Kosovë)</small>
-                    </div>
-                    "
-                );
-            }
+            // Optional: Email logic here
         }
-
+        echo json_encode(['status' => 'ok']);
         exit;
     }
 
-    /* ===============================
-       RESET (UNLOCK)
-    ================================ */
+    // 3. RESET (UNLOCK & DELETE)
     if ($action === 'reset' && $studentId) {
-
         $pdo->prepare("
-            DELETE FROM attendance
-            WHERE school_id = ?
-              AND student_id = ?
-              AND class_id = ?
-              AND subject_id = ?
-              AND lesson_date = ?
-              AND lesson_start_time = ?
-              AND teacher_id = ?
-        ")->execute([
-            $schoolId,
-            $studentId,
-            $classId,
-            $subjectId,
-            $lessonDate,
-            $lessonTime,
-            $teacherId
-        ]);
-
+            DELETE FROM attendance 
+            WHERE student_id = ? AND class_id = ? AND subject_id = ? AND lesson_date = ? AND lesson_start_time = ?
+        ")->execute([$studentId, $classId, $subjectId, $lessonDate, $lessonTime]);
         echo json_encode(['status' => 'reset']);
         exit;
     }
 }
 
 /* ===============================
-   DATA FETCH (UI)
+   FETCH DATA
 ================================ */
-if ($view === 'history') {
-
-    $stmt = $pdo->prepare("
-        SELECT a.*, s.name
-        FROM attendance a
-        JOIN students s ON s.student_id = a.student_id
-        WHERE a.class_id = ? AND a.subject_id = ?
-        ORDER BY a.lesson_date DESC, a.lesson_start_time DESC
-        LIMIT 25
-    ");
-    $stmt->execute([$classId, $subjectId]);
-
-} else {
-
-    $stmt = $pdo->prepare("
-        SELECT
-            s.student_id,
-            s.name,
-            a.present,
-            a.missing,
-            a.updated_at
-        FROM student_class sc
-        JOIN students s ON s.student_id = sc.student_id
-        LEFT JOIN attendance a
-            ON a.student_id = s.student_id
-            AND a.class_id = ?
-            AND a.subject_id = ?
-            AND a.lesson_date = ?
-            AND a.lesson_start_time = ?
-        WHERE sc.class_id = ?
-        ORDER BY s.name ASC
-    ");
-    $stmt->execute([
-        $classId,
-        $subjectId,
-        $lessonDate,
-        $lessonTime,
-        $classId
-    ]);
-}
-
+$stmt = $pdo->prepare("
+    SELECT s.student_id, s.name, a.present, a.missing, a.updated_at
+    FROM student_class sc
+    JOIN students s ON s.student_id = sc.student_id
+    LEFT JOIN attendance a ON a.student_id = s.student_id 
+        AND a.class_id = ? AND a.subject_id = ? AND a.lesson_date = ? AND a.lesson_start_time = ?
+    WHERE sc.class_id = ?
+    ORDER BY s.name ASC
+");
+$stmt->execute([$classId, $subjectId, $lessonDate, $lessonTime, $classId]);
 $rows = $stmt->fetchAll(PDO::FETCH_ASSOC);
 
 ob_start();
 ?>
-<link rel="preconnect" href="https://fonts.googleapis.com">
-<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
 
-<style>
-    .attendance-view { font-family: 'Inter', sans-serif; -webkit-font-smoothing: antialiased; }
-    .status-badge { letter-spacing: 0.025em; }
-</style>
-
-<div class="attendance-view px-4 sm:px-6 lg:px-8 py-6 max-w-6xl mx-auto">
-    <div class="flex flex-col sm:flex-row sm:items-end justify-between mb-6 gap-4 border-b border-slate-100 pb-5">
+<div class="attendance-view px-4 py-6 max-w-6xl mx-auto">
+    <div class="flex justify-between items-end mb-6 pb-5 border-b border-slate-100">
         <div>
-            <h1 class="text-xl font-bold text-slate-900 dark:text-white tracking-tight">
-                <?= $view === 'history' ? 'Historia e Mungesave' : 'Regjistrimi i Prezencës' ?>
-            </h1>
-            <div class="flex items-center gap-2 mt-1 text-[12px] text-slate-500 font-medium">
-                <span class="flex items-center gap-1">
-                    <svg class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z"/></svg>
-                    <?= htmlspecialchars($lessonDate) ?>
-                </span>
-                <span class="text-slate-300">•</span>
-                <span class="flex items-center gap-1">
-                    <svg class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
-                    <?= date('H:i', strtotime($lessonTime)) ?>
-                </span>
-            </div>
+            <h1 class="text-xl font-bold text-slate-900">Regjistrimi i Prezencës</h1>
+            <p class="text-xs text-slate-500"><?= $lessonDate ?> | <?= substr($lessonTime, 0, 5) ?></p>
         </div>
-        
-        <div class="flex items-center gap-3">
-            <?php if ($view === 'live'): ?>
-                <button onclick="markAllPresentBulk()" class="inline-flex items-center gap-2 px-3 py-1.5 bg-indigo-600 text-white text-[11px] font-bold rounded-lg hover:bg-indigo-700 transition-all shadow-sm active:scale-95">
-                    <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M5 13l4 4L19 7"/></svg>
-                    Marko të gjithë Prezent
-                </button>
-            <?php endif; ?>
-
-            <div class="inline-flex p-1 bg-slate-100 dark:bg-slate-800 rounded-lg border border-slate-200 dark:border-slate-700">
-                <a href="?class_id=<?= $classId ?>&subject_id=<?= $subjectId ?>&view=live" class="px-3 py-1 text-[11px] font-bold rounded-md transition-all <?= $view === 'live' ? 'bg-white dark:bg-slate-700 text-indigo-600 shadow-sm' : 'text-slate-500 hover:text-slate-700' ?>">LIVE</a>
-            </div>  
-        </div>
+        <button onclick="markAllPresentBulk()" class="bg-indigo-600 text-white px-4 py-2 rounded-lg text-xs font-bold shadow-sm hover:bg-indigo-700 transition-all">
+            Marko të gjithë Prezent (jo të bllokuar)
+        </button>
     </div>
 
-    <div class="bg-white dark:bg-slate-900 rounded-xl border border-slate-200 dark:border-slate-800 shadow-sm overflow-hidden">
-        <table class="w-full text-left border-collapse">
-            <thead>
-                <tr class="bg-slate-50/50 dark:bg-slate-800/50 border-b border-slate-100 dark:border-slate-800">
-                    <?php if ($view === 'history'): ?>
-                        <th class="px-5 py-3 text-[10px] font-bold uppercase tracking-wider text-slate-400">Data & Ora</th>
-                    <?php endif; ?>
-                    <th class="px-5 py-3 text-[10px] font-bold uppercase tracking-wider text-slate-400">Nxënësi</th>
-                    <?php if ($view === 'live'): ?>
-                        <th class="px-5 py-3 text-[10px] font-bold uppercase tracking-wider text-slate-400 text-center">Veprimet</th>
-                    <?php endif; ?>
-                    <th class="px-5 py-3 text-[10px] font-bold uppercase tracking-wider text-slate-400 text-right pr-8">Statusi</th>
+    <div class="bg-white rounded-xl border border-slate-200 shadow-sm overflow-hidden">
+        <table class="w-full text-left">
+            <thead class="bg-slate-50 border-b border-slate-100">
+                <tr>
+                    <th class="px-5 py-3 text-[10px] font-bold text-slate-400 uppercase">Nxënësi</th>
+                    <th class="px-5 py-3 text-[10px] font-bold text-slate-400 uppercase text-center">Veprimet</th>
+                    <th class="px-5 py-3 text-[10px] font-bold text-slate-400 uppercase text-right">Statusi</th>
                 </tr>
             </thead>
-            <tbody class="divide-y divide-slate-50 dark:divide-slate-800">
-            <?php if (!$rows): ?>
-                <tr>
-                    <td colspan="4" class="px-5 py-12 text-center text-slate-400 italic text-sm">Nuk u gjet asnjë regjistrim.</td>
-                </tr>
-            <?php else: ?>
+            <tbody class="divide-y divide-slate-50">
                 <?php foreach ($rows as $r): 
                     $isLocked = false;
-                    if ($view === 'live' && !empty($r['updated_at'])) {
-                        $isLocked = (time() - strtotime($r['updated_at'])) < (45 * 60);
+                    if (!empty($r['updated_at'])) {
+                        // LOCK FOR 30 MINUTES
+                        $isLocked = (time() - strtotime($r['updated_at'])) < (30 * 60);
                     }
                 ?>
-                <tr class="hover:bg-slate-50/50 dark:hover:bg-slate-800/30 transition-colors">
-                    <?php if ($view === 'history'): ?>
-                        <td class="px-5 py-3">
-                            <div class="text-[13px] font-semibold text-slate-700 dark:text-slate-300"><?= date('d.m.Y', strtotime($r['lesson_date'])) ?></div>
-                            <div class="text-[10px] text-slate-400"><?= substr($r['lesson_start_time'], 0, 5) ?></div>
-                        </td>
-                    <?php endif; ?>
-
-                    <td class="px-5 py-3">
+                <tr class="<?= $isLocked ? 'bg-slate-50/30' : '' ?>">
+                    <td class="px-5 py-4">
                         <div class="flex items-center gap-2">
-                            <span class="text-[13px] font-medium text-slate-800 dark:text-slate-200"><?= htmlspecialchars($r['name'] ?? 'I panjohur') ?></span>
-                            <?php if($isLocked): ?> 
-                                <svg class="w-3 h-3 text-amber-500" fill="currentColor" viewBox="0 0 20 20"><path fill-rule="evenodd" d="M5 9V7a5 5 0 0110 0v2a2 2 0 012 2v5a2 2 0 01-2 2H5a2 2 0 01-2-2v-5a2 2 0 012-2zm8-2v2H7V7a3 3 0 016 0z" clip-rule="evenodd"/></svg>
+                            <span class="text-sm font-medium <?= $isLocked ? 'text-slate-400' : 'text-slate-700' ?>">
+                                <?= htmlspecialchars($r['name']) ?>
+                            </span>
+                            <?php if($isLocked): ?>
+                                <span title="E bllokuar për 30min" class="text-amber-500">
+                                    <svg class="w-3.5 h-3.5" fill="currentColor" viewBox="0 0 20 20"><path d="M5 9V7a5 5 0 0110 0v2a2 2 0 012 2v5a2 2 0 01-2 2H5a2 2 0 01-2-2v-5a2 2 0 012-2zm8-2v2H7V7a3 3 0 016 0z"/></svg>
+                                </span>
                             <?php endif; ?>
                         </div>
                     </td>
-
-                    <?php if ($view === 'live'): ?>
-                        <td class="px-5 py-3">
-                            <div class="flex items-center justify-center gap-1.5">
-                                <button onclick="save(<?= $r['student_id'] ?>,'present')" 
-                                        <?= $isLocked ? 'disabled' : '' ?> 
-                                        class="p-1.5 bg-emerald-50 text-emerald-600 rounded-md hover:bg-emerald-600 hover:text-white transition-all disabled:opacity-30 disabled:cursor-not-allowed" title="Prezent">
-                                    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="2.5"><path d="M5 13l4 4L19 7"/></svg>
-                                </button>
-                                
-                                <button onclick="save(<?= $r['student_id'] ?>,'missing')" 
-                                        <?= $isLocked ? 'disabled' : '' ?> 
-                                        class="p-1.5 bg-rose-50 text-rose-600 rounded-md hover:bg-rose-600 hover:text-white transition-all disabled:opacity-30 disabled:cursor-not-allowed" title="Mungon">
-                                    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="2.5"><path d="M6 18L18 6M6 6l12 12"/></svg>
-                                </button>
-                                
-                                <button onclick="resetA(<?= $r['student_id'] ?>)" 
-                                        class="p-1.5 bg-slate-100 text-slate-500 rounded-md hover:bg-slate-200 hover:text-slate-700 transition-all" title="Rifillo">
-                                    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="2.5"><path d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"/></svg>
-                                </button>
-                            </div>
-                        </td>
-                    <?php endif; ?>
-
-                    <td class="px-5 py-3 text-right pr-8">
-                        <?php if (!empty($r['present']) && $r['present'] == 1): ?>
-                            <span class="status-badge px-2 py-0.5 bg-emerald-100 text-emerald-700 text-[10px] font-bold rounded uppercase">Prezent</span>
-                        <?php elseif (!empty($r['missing']) && $r['missing'] == 1): ?>
-                            <span class="status-badge px-2 py-0.5 bg-rose-100 text-rose-700 text-[10px] font-bold rounded uppercase">Mungon</span>
+                    <td class="px-5 py-4">
+                        <div class="flex items-center justify-center gap-2">
+                            <button onclick="save(<?= $r['student_id'] ?>,'present')" <?= $isLocked ? 'disabled' : '' ?> class="p-2 bg-emerald-50 text-emerald-600 rounded-md hover:bg-emerald-600 hover:text-white disabled:opacity-30 transition-all">
+                                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="2.5"><path d="M5 13l4 4L19 7"/></svg>
+                            </button>
+                            <button onclick="save(<?= $r['student_id'] ?>,'missing')" <?= $isLocked ? 'disabled' : '' ?> class="p-2 bg-rose-50 text-rose-600 rounded-md hover:bg-rose-600 hover:text-white disabled:opacity-30 transition-all">
+                                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="2.5"><path d="M6 18L18 6M6 6l12 12"/></svg>
+                            </button>
+                            <button onclick="resetA(<?= $r['student_id'] ?>)" class="p-2 bg-slate-100 text-slate-500 rounded-md hover:bg-slate-200 hover:text-slate-700 transition-all">
+                                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="2.5"><path d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"/></svg>
+                            </button>
+                        </div>
+                    </td>
+                    <td class="px-5 py-4 text-right">
+                        <?php if ($r['present']): ?>
+                            <span class="px-2 py-1 bg-emerald-100 text-emerald-700 text-[10px] font-bold rounded uppercase">Prezent</span>
+                        <?php elseif ($r['missing']): ?>
+                            <span class="px-2 py-1 bg-rose-100 text-rose-700 text-[10px] font-bold rounded uppercase">Mungon</span>
                         <?php else: ?>
-                            <span class="text-[10px] font-medium text-slate-300 italic uppercase">Pa regjistruar</span>
+                            <span class="text-[10px] text-slate-300 italic">Pa regjistruar</span>
                         <?php endif; ?>
                     </td>
                 </tr>
                 <?php endforeach; ?>
-            <?php endif; ?>
             </tbody>
         </table>
     </div>
 </div>
 
 <script>
-function save(id, status) {
-    fetch(location.href, {
+async function handleAction(body) {
+    await fetch(location.href, {
         method: 'POST',
         headers: {'Content-Type': 'application/x-www-form-urlencoded'},
-        body: `action=save&student_id=${id}&status=${status}`
-    }).then(() => location.reload());
-}
-function resetA(id) {
-    if(!confirm("Restart do të fshijë rekordit dhe do të zhbllokojë regjistrimin. Vazhdo?")) return;
-    fetch(location.href, {
-        method: 'POST',
-        headers: {'Content-Type': 'application/x-www-form-urlencoded'},
-        body: `action=reset&student_id=${id}`
-    }).then(() => location.reload());
-}
-function markAllPresentBulk() {
-    if(!confirm("Shëno të gjithë si prezent?")) return;
-    fetch(location.href, {
-        method: 'POST',
-        headers: {'Content-Type': 'application/x-www-form-urlencoded'},
-        body: `action=mark_all_present`
-    }).then(() => location.reload());
+        body: body
+    });
+    location.reload();
 }
 
+function save(id, status) {
+    handleAction(`action=save&student_id=${id}&status=${status}`);
+}
+
+function resetA(id) {
+    if(!confirm("Restart do të fshijë rekordin dhe do të zhbllokojë regjistrimin. Vazhdo?")) return;
+    handleAction(`action=reset&student_id=${id}`);
+}
+
+function markAllPresentBulk() {
+    if(!confirm("Shëno të gjithë si prezent? (Nxënësit e bllokuar nuk do të ndryshohen)")) return;
+    handleAction(`action=mark_all_present`);
+}
 </script>
 
 <?php
