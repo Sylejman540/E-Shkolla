@@ -174,7 +174,9 @@ ob_start();
                 <canvas id="teacherTrendChart"></canvas>
             </div>
         </div>
-
+    <div class="hidden print:flex justify-between pt-16 text-[11px] font-bold uppercase text-slate-400">
+        <div class="border-t border-slate-300 pt-2 w-40 text-center">Nënshkrimi</div>
+    </div>                
     </div>
 </div>
 
