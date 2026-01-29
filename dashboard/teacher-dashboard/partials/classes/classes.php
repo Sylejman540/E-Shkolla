@@ -181,7 +181,7 @@ ob_start();
                 
                 <div class="pt-3 border-t border-slate-50 flex items-center justify-between">
                     <span class="text-[9px] text-slate-400">ID: #<?= (int)$row['class_id'] ?></span>
-                    <a href="/E-Shkolla/show-classes?class_id=<?= (int)$row['class_id'] ?>&subject_id=<?= (int)$row['subject_id'] ?>" 
+                    <a href="/E-Shkolla/class-attendance?class_id=<?= (int)$row['class_id'] ?>&subject_id=<?= (int)$row['subject_id'] ?>" 
                        class="text-[10px] font-bold text-indigo-600 hover:text-indigo-800 transition-colors">
                         MENAXHO →
                     </a>
