@@ -20,16 +20,13 @@ $userId   = (int) $_SESSION['user']['id'];
 $schoolId = (int) $_SESSION['user']['school_id'];
 
 try {
-    // 1. Marrim emrin e prindit (zgjidhja për "root")
     $stmt = $pdo->prepare("SELECT id, name FROM parents WHERE user_id = ? AND school_id = ? LIMIT 1");
     $stmt->execute([$userId, $schoolId]);
     $parentRow = $stmt->fetch(PDO::FETCH_ASSOC);
     $parentId = (int)($parentRow['id'] ?? 0);
-    $parentRealName = $parentRow['name'] ?? 'Prind';
 
     if (!$parentId) die('Profili nuk u gjet');
 
-    // 2. Marrim listën e fëmijëve
     $stmt = $pdo->prepare("
         SELECT s.student_id, s.name
         FROM parent_student ps
@@ -43,28 +40,37 @@ try {
 
     $studentId = (int) ($_GET['student_id'] ?? $children[0]['student_id']);
 
-    /* ==========================================================
-       LOGJIKA E ARKIVIMIT (Vetëm rekordet e ditëve të kaluara)
-       Shtojmë: AND a.created_at < CURDATE()
-    ========================================================== */
+    // LOGJIKA E ARKIVIMIT (Grouped by Day)
     $stmt = $pdo->prepare("
-        SELECT a.present, a.created_at as date, sub.subject_name, u.name AS teacher_name
+        SELECT 
+            DATE(a.created_at)               AS day,
+            COUNT(*)                         AS total_lessons,
+            SUM(CASE WHEN a.present = 1 THEN 1 ELSE 0 END) AS present_count,
+            SUM(CASE WHEN a.present = 0 THEN 1 ELSE 0 END) AS absent_count,
+            SUM(CASE WHEN a.excused = 1 THEN 1 ELSE 0 END) AS excused_count
         FROM attendance a
-        JOIN subjects sub ON sub.id = a.subject_id
-        JOIN teachers t ON t.id = a.teacher_id
-        JOIN users u ON u.id = t.user_id
-        WHERE a.student_id = ? 
-          AND a.school_id = ? 
-          AND a.created_at < CURDATE() 
-        ORDER BY a.created_at DESC
+        WHERE a.student_id = ?
+          AND a.school_id  = ?
+          AND a.created_at >= DATE_SUB(CURDATE(), INTERVAL 14 DAY)
+          AND a.created_at < CURDATE()
+        GROUP BY DATE(a.created_at)
+        ORDER BY day DESC
+        LIMIT 30
     ");
     $stmt->execute([$studentId, $schoolId]);
     $attendanceRecords = $stmt->fetchAll(PDO::FETCH_ASSOC);
 
-    // Statistikat bazuar në arkivë
-    $totalLessons = count($attendanceRecords);
-    $absences     = count(array_filter($attendanceRecords, fn($r) => (int)$r['present'] === 0));
-    $presenceRate = $totalLessons > 0 ? round((($totalLessons - $absences) / $totalLessons) * 100) : 100;
+    // Fixed Statistics Calculation
+    $grandTotalLessons = 0;
+    $grandTotalAbsences = 0;
+    foreach($attendanceRecords as $row) {
+        $grandTotalLessons += (int)$row['total_lessons'];
+        $grandTotalAbsences += (int)$row['absent_count'];
+    }
+    
+    $presenceRate = $grandTotalLessons > 0 
+        ? round((($grandTotalLessons - $grandTotalAbsences) / $grandTotalLessons) * 100) 
+        : 100;
 
 } catch (Exception $e) {
     die("<div class='p-6 text-red-600 text-sm'>Gabim: " . $e->getMessage() . "</div>");
@@ -80,14 +86,14 @@ ob_start();
         <div class="relative z-10 flex flex-col md:flex-row md:items-center justify-between gap-4">
             <div>
                 <h2 class="text-2xl font-bold text-slate-800 tracking-tight">Arkiva e Prezencës</h2>
-                <p class="text-slate-400 text-xs mt-0.5 italic">Shfaqen vetëm të dhënat e ditëve të përfunduara.</p>
+                <p class="text-slate-400 text-xs mt-0.5 italic">Përmbledhje ditore e mungesave (Vetëm ditët e kaluara).</p>
             </div>
             
             <?php if (count($children) > 1): ?>
             <div class="flex gap-1.5 p-1 bg-slate-50 rounded-xl border border-slate-100">
                 <?php foreach ($children as $child): ?>
                     <a href="?student_id=<?= $child['student_id'] ?>" 
-                       class="px-4 py-1.5 rounded-lg text-[11px] font-bold transition-all <?= $child['student_id'] === $studentId ? 'bg-white text-indigo-600 shadow-sm ring-1 ring-slate-200' : 'text-slate-400 hover:text-slate-600' ?>">
+                       class="px-4 py-1.5 rounded-lg text-[11px] font-bold transition-all <?= (int)$child['student_id'] === $studentId ? 'bg-white text-indigo-600 shadow-sm ring-1 ring-slate-200' : 'text-slate-400 hover:text-slate-600' ?>">
                         <?= htmlspecialchars($child['name']) ?>
                     </a>
                 <?php endforeach; ?>
@@ -110,14 +116,14 @@ ob_start();
         <div class="bg-white rounded-[20px] border border-slate-100 p-5 shadow-sm flex items-center justify-between">
             <div>
                 <p class="text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-1">Mungesa Totale</p>
-                <span class="text-2xl font-bold text-slate-800"><?= $absences ?></span>
+                <span class="text-2xl font-bold text-slate-800"><?= $grandTotalAbsences ?></span>
             </div>
             <div class="w-10 h-10 bg-rose-50 text-rose-500 rounded-xl flex items-center justify-center text-xs font-bold">❌</div>
         </div>
 
         <div class="bg-slate-900 rounded-[20px] p-5 shadow-sm text-white relative">
             <p class="text-slate-400 text-[10px] font-bold uppercase tracking-widest">Informacion</p>
-            <p class="text-[11px] mt-2 leading-relaxed opacity-80">Regjistrimet e ditës së sotme do të shfaqen në panel pasi të kalojë mesnata.</p>
+            <p class="text-[11px] mt-2 leading-relaxed opacity-80">Regjistrimet e ditës së sotme do të shfaqen këtu pasi të kalojë mesnata.</p>
         </div>
     </div>
 
@@ -126,34 +132,50 @@ ob_start();
             <thead>
                 <tr class="bg-slate-50/50 border-b border-slate-100">
                     <th class="px-6 py-4 text-[10px] font-bold uppercase text-slate-400">Data</th>
-                    <th class="px-6 py-4 text-[10px] font-bold uppercase text-slate-400">Lënda</th>
-                    <th class="px-6 py-4 text-[10px] font-bold uppercase text-slate-400">Mësuesi</th>
+                    <th class="px-6 py-4 text-[10px] font-bold uppercase text-slate-400">Totali i Orëve</th>
+                    <th class="px-6 py-4 text-[10px] font-bold uppercase text-slate-400">Prezent</th>
+                    <th class="px-6 py-4 text-[10px] font-bold uppercase text-slate-400">Mungesa</th>
+                    <th class="px-6 py-4 text-[10px] font-bold uppercase text-slate-400">Arsyetuar</th>
                     <th class="px-6 py-4 text-center text-[10px] font-bold uppercase text-slate-400">Statusi</th>
                 </tr>
             </thead>
             <tbody class="divide-y divide-slate-50">
-                <?php if ($attendanceRecords): foreach ($attendanceRecords as $record): ?>
-                    <tr class="hover:bg-slate-50/30 transition-all">
-                        <td class="px-6 py-4 font-bold text-slate-700 text-xs"><?= date('d M, Y', strtotime($record['date'])) ?></td>
-                        <td class="px-6 py-4">
-                            <span class="px-2 py-0.5 bg-indigo-50 text-indigo-600 rounded text-[10px] font-bold uppercase"><?= htmlspecialchars($record['subject_name']) ?></span>
-                        </td>
-                        <td class="px-6 py-4 text-xs text-slate-500"><?= htmlspecialchars($record['teacher_name']) ?></td>
-                        <td class="px-6 py-4 text-center">
-                            <?php if ((int)$record['present'] === 1): ?>
-                                <span class="px-3 py-1 rounded-full text-[9px] font-bold uppercase bg-emerald-50 text-emerald-600 border border-emerald-100">Prezent</span>
-                            <?php else: ?>
-                                <span class="px-3 py-1 rounded-full text-[9px] font-bold uppercase bg-rose-50 text-rose-500 border border-rose-100">Mungesë</span>
-                            <?php endif; ?>
-                        </td>
-                    </tr>
-                <?php endforeach; else: ?>
-                    <tr>
-                        <td colspan="4" class="px-6 py-20 text-center">
-                            <p class="text-slate-400 text-xs italic">Nuk ka të dhëna të arkivuara (mungesat e sotme shfaqen nesër).</p>
-                        </td>
-                    </tr>
-                <?php endif; ?>
+            <?php if (empty($attendanceRecords)): ?>
+                <tr>
+                    <td colspan="6" class="px-6 py-10 text-center text-slate-400 italic">Nuk u gjet asnjë regjistrim në arkivë.</td>
+                </tr>
+            <?php else: ?>
+                <?php foreach ($attendanceRecords as $d): ?>
+                <tr class="hover:bg-slate-50/40 transition">
+                    <td class="px-6 py-4 text-xs font-bold text-slate-700">
+                        <?= date('d M Y', strtotime($d['day'])) ?>
+                    </td>
+                    <td class="px-6 py-4 text-xs text-slate-500">
+                        <?= $d['total_lessons'] ?> orë
+                    </td>
+                    <td class="px-6 py-4 text-xs text-emerald-600 font-bold">
+                        <?= $d['present_count'] ?> ✓
+                    </td>
+                    <td class="px-6 py-4 text-xs text-rose-500 font-bold">
+                        <?= $d['absent_count'] ?> ✗
+                    </td>
+                    <td class="px-6 py-4 text-xs text-amber-500 font-bold">
+                        <?= $d['excused_count'] ?> ~
+                    </td>
+                    <td class="px-6 py-4 text-center">
+                        <?php if ($d['absent_count'] > 0): ?>
+                            <span class="px-3 py-1 rounded-full bg-rose-50 text-rose-600 text-[9px] font-bold">
+                                Ka mungesa
+                            </span>
+                        <?php else: ?>
+                            <span class="px-3 py-1 rounded-full bg-emerald-50 text-emerald-600 text-[9px] font-bold">
+                                Në rregull
+                            </span>
+                        <?php endif; ?>
+                    </td>
+                </tr>
+                <?php endforeach; ?>
+            <?php endif; ?>
             </tbody>
         </table>
     </div>
