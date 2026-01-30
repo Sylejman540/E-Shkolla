@@ -11,210 +11,174 @@ if (!$user || $user['role'] !== 'parent') {
     exit;
 }
 
-if (!isset($_SESSION['user']['id'], $_SESSION['user']['school_id'])) {
-    header("Location: /E-Shkolla/login");
-    exit();
-}
-
 $userId   = (int) $_SESSION['user']['id'];
 $schoolId = (int) $_SESSION['user']['school_id'];
 
 try {
+    // 1. Get Parent ID
     $stmt = $pdo->prepare("SELECT id FROM parents WHERE user_id = ? AND school_id = ? LIMIT 1");
     $stmt->execute([$userId, $schoolId]);
     $parentId = (int) $stmt->fetchColumn();
 
     if (!$parentId) die('Profili i prindit nuk u gjet');
 
+    // 2. Get Children
     $stmt = $pdo->prepare("
-        SELECT s.student_id, s.name 
+        SELECT s.student_id, s.name, c.grade
         FROM parent_student ps
         JOIN students s ON s.student_id = ps.student_id
+        JOIN classes c ON s.class_id = c.id
         WHERE ps.parent_id = ? AND s.school_id = ?
     ");
     $stmt->execute([$parentId, $schoolId]);
     $children = $stmt->fetchAll(PDO::FETCH_ASSOC);
 
-    if (!$children) die('Nuk keni fëmijë të lidhur');
+    if (!$children) die('Nuk ka fëmijë të lidhur');
 
     $studentId = (int) ($_GET['student_id'] ?? $children[0]['student_id']);
 
-    /* ==========================================================
-        LOGJIKA E PAGINIMIT & ARKIVIMIT (Vonesa 24 orë)
-    ========================================================== */
-    $limit = 10; 
-    $page = isset($_GET['page']) ? max(1, (int)$_GET['page']) : 1;
-    $offset = ($page - 1) * $limit;
+    // Find current student info
+    $currentStudent = null;
+    foreach ($children as $c) {
+        if ((int)$c['student_id'] === $studentId) {
+            $currentStudent = $c;
+            break;
+        }
+    }
+    if (!$currentStudent) die('Akses i paautorizuar');
 
-    // Count total for pagination (Archived only)
-    $countStmt = $pdo->prepare("SELECT COUNT(*) FROM grades WHERE student_id = ? AND school_id = ? AND created_at < CURDATE()");
-    $countStmt->execute([$studentId, $schoolId]);
-    $totalRecords = (int) $countStmt->fetchColumn();
-    $totalPages = ceil($totalRecords / $limit);
-
+    // 3. Fetch Last 7 Days Attendance
     $stmt = $pdo->prepare("
-        SELECT g.grade, g.created_at, sub.subject_name, u.name AS teacher_name
-        FROM grades g
-        JOIN subjects sub ON sub.id = g.subject_id
-        JOIN teachers t ON t.id = g.teacher_id
-        JOIN users u ON u.id = t.user_id
-        WHERE g.student_id = ? 
-        AND g.school_id = ?
-        AND g.created_at < CURDATE()
-        ORDER BY g.created_at DESC
-        LIMIT $limit OFFSET $offset
+        SELECT 
+            lesson_date, 
+            COUNT(*) AS total_hours, 
+            SUM(present) AS present_count, 
+            SUM(missing) AS missing_count
+        FROM attendance
+        WHERE student_id = ? AND school_id = ?
+          AND lesson_date >= DATE_SUB(CURDATE(), INTERVAL 7 DAY)
+        GROUP BY lesson_date
+        ORDER BY lesson_date DESC
     ");
     $stmt->execute([$studentId, $schoolId]);
-    $grades = $stmt->fetchAll(PDO::FETCH_ASSOC);
+    $attendanceData = $stmt->fetchAll(PDO::FETCH_ASSOC);
 
-    // Mesatarja llogaritet mbi të gjitha notat e arkivuara (jo vetëm faqen aktuale)
-    $stmtAvg = $pdo->prepare("SELECT AVG(grade) FROM grades WHERE student_id = ? AND school_id = ? AND created_at < CURDATE()");
-    $stmtAvg->execute([$studentId, $schoolId]);
-    $averageGrade = round((float)$stmtAvg->fetchColumn(), 2);
+    // Day names translation
+    $daysAl = [
+        'Monday' => 'E hënë', 'Tuesday' => 'E martë', 'Wednesday' => 'E mërkurë',
+        'Thursday' => 'E enjte', 'Friday' => 'E premte', 'Saturday' => 'E shtunë', 'Sunday' => 'E diel'
+    ];
 
 } catch (Exception $e) {
-    die("<div class='p-6 text-red-600 text-sm'>Gabim: " . $e->getMessage() . "</div>");
+    die("<div class='p-6 text-red-600 font-bold'>Gabim: " . $e->getMessage() . "</div>");
 }
 
 ob_start();
 ?>
 
-<div class="max-w-7xl mx-auto space-y-6 pb-10 px-4 text-sm font-normal text-slate-600">
+<div class="max-w-7xl mx-auto space-y-6 pb-12 px-4 text-sm font-normal text-slate-600">
     
     <div class="bg-white rounded-[24px] border border-slate-100 shadow-sm p-6 relative overflow-hidden">
-        <div class="absolute top-0 left-0 w-1.5 h-full bg-indigo-500"></div>
-        <div class="flex flex-col md:flex-row justify-between items-center gap-4 relative z-10">
+        <div class="absolute top-0 right-0 -mr-10 -mt-10 w-40 h-40 bg-indigo-50 rounded-full opacity-40"></div>
+        <div class="relative z-10 flex flex-col md:flex-row md:items-center justify-between gap-4">
             <div>
-                <h2 class="text-2xl font-bold text-slate-800 tracking-tight">Notat & Rezultatet</h2>
-                <p class="text-slate-400 text-xs mt-0.5 italic">Arkiva akademike për: <span class="font-bold text-indigo-500"><?php 
-                    $currentChild = array_values(array_filter($children, fn($c) => (int)$c['student_id'] === $studentId))[0] ?? $children[0];
-                    echo htmlspecialchars($currentChild['name']); 
-                ?></span></p>
+                <h2 class="text-2xl font-bold text-slate-800 tracking-tight">Prezenca Ditore 🗓️</h2>
+                <p class="text-slate-400 text-xs mt-0.5">
+                    Klasa: <span class="font-bold text-slate-600"><?= htmlspecialchars($currentStudent['grade']) ?></span> | 
+                    Nxënësi: <span class="font-bold text-indigo-500"><?= htmlspecialchars($currentStudent['name']) ?></span>
+                </p>
             </div>
+            
+            <?php if (count($children) > 1): ?>
+            <div class="flex gap-1.5 p-1 bg-slate-50 rounded-xl border border-slate-100">
+                <?php foreach ($children as $child): ?>
+                    <a href="?student_id=<?= $child['student_id'] ?>" 
+                       class="px-4 py-1.5 rounded-lg text-[10px] font-bold transition-all <?= (int)$child['student_id'] === $studentId ? 'bg-white text-indigo-600 shadow-sm ring-1 ring-slate-200' : 'text-slate-400 hover:text-slate-600' ?>">
+                        <?= htmlspecialchars($child['name']) ?>
+                    </a>
+                <?php endforeach; ?>
+            </div>
+            <?php endif; ?>
+        </div>
+    </div>
 
-            <div class="flex items-center gap-4 bg-slate-50 px-5 py-3 rounded-2xl border border-slate-100">
-                <div class="text-right">
-                    <p class="text-[9px] font-bold text-slate-400 uppercase tracking-widest">Mesatarja</p>
-                    <p class="text-2xl font-bold text-indigo-600 leading-none"><?= number_format($averageGrade, 2) ?></p>
+    <?php
+        $weekTotal = array_sum(array_column($attendanceData, 'total_hours'));
+        $weekMissing = array_sum(array_column($attendanceData, 'missing_count'));
+    ?>
+    <div class="grid grid-cols-2 md:grid-cols-4 gap-4">
+        <div class="bg-indigo-50/50 border border-indigo-100 rounded-2xl p-4">
+            <p class="text-[10px] uppercase font-bold text-indigo-400 tracking-wider">Totale (7 ditë)</p>
+            <p class="text-xl font-black text-indigo-600"><?= $weekTotal ?> <span class="text-xs font-normal">orë</span></p>
+        </div>
+        <div class="bg-rose-50/50 border border-rose-100 rounded-2xl p-4">
+            <p class="text-[10px] uppercase font-bold text-rose-400 tracking-wider">Mungesa</p>
+            <p class="text-xl font-black text-rose-600"><?= $weekMissing ?> <span class="text-xs font-normal">orë</span></p>
+        </div>
+    </div>
+
+    <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-5">
+        <?php if (!empty($attendanceData)): ?>
+            <?php foreach ($attendanceData as $day): 
+                $dayNameEn = date('l', strtotime($day['lesson_date']));
+                $dayNameAl = $daysAl[$dayNameEn] ?? $dayNameEn;
+                $hasAbsence = $day['missing_count'] > 0;
+            ?>
+                <div class="bg-white rounded-[20px] border border-slate-100 p-5 shadow-sm flex flex-col justify-between group transition-hover hover:border-indigo-100">
+                    <div>
+                        <div class="flex justify-between items-start mb-4">
+                            <span class="px-2 py-1 bg-slate-50 text-slate-500 text-[9px] font-bold uppercase rounded-lg border border-slate-100">
+                                <?= $dayNameAl ?>
+                            </span>
+                            <div class="h-1.5 w-1.5 rounded-full <?= $hasAbsence ? 'bg-rose-500' : 'bg-emerald-500' ?>"></div>
+                        </div>
+
+                        <h4 class="font-bold text-slate-800 text-sm leading-snug">
+                            <?= date('d M, Y', strtotime($day['lesson_date'])) ?>
+                        </h4>
+                        
+                        <div class="mt-4 space-y-2">
+                            <div class="flex justify-between text-[11px]">
+                                <span class="text-slate-400">Orë të planifikuara:</span>
+                                <span class="font-bold text-slate-700"><?= $day['total_hours'] ?></span>
+                            </div>
+                            <div class="w-full bg-slate-50 h-1 rounded-full overflow-hidden">
+                                <?php $percent = ($day['total_hours'] > 0) ? ($day['present_count'] / $day['total_hours']) * 100 : 0; ?>
+                                <div class="h-full bg-indigo-400" style="width: <?= $percent ?>%"></div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="mt-5 pt-4 border-t border-slate-50 flex items-center justify-between">
+                        <div class="flex gap-3">
+                            <div class="flex flex-col">
+                                <span class="text-[8px] uppercase font-bold text-slate-300">Prezent</span>
+                                <span class="text-[11px] font-bold text-emerald-500"><?= $day['present_count'] ?> orë</span>
+                            </div>
+                            <div class="flex flex-col">
+                                <span class="text-[8px] uppercase font-bold text-slate-300">Mungesë</span>
+                                <span class="text-[11px] font-bold text-rose-500"><?= $day['missing_count'] ?> orë</span>
+                            </div>
+                        </div>
+                        <span class="text-[9px] font-bold uppercase <?= $hasAbsence ? 'text-rose-500' : 'text-emerald-500' ?>">
+                            <?= $hasAbsence ? 'Me Mungesa' : 'I rregullt' ?>
+                        </span>
+                    </div>
                 </div>
-                <div class="h-10 w-10 bg-white rounded-xl flex items-center justify-center shadow-sm text-lg">🏆</div>
-            </div>
-        </div>
-
-        <?php if (count($children) > 1): ?>
-        <div class="mt-4 flex gap-1.5">
-            <?php foreach ($children as $child): ?>
-                <a href="?student_id=<?= $child['student_id'] ?>" 
-                    class="px-4 py-1.5 rounded-lg text-[10px] font-bold transition-all <?= (int)$child['student_id'] === $studentId ? 'bg-indigo-600 text-white shadow-sm' : 'bg-slate-50 text-slate-400 hover:bg-slate-100' ?>">
-                    <?= htmlspecialchars($child['name']) ?>
-                </a>
             <?php endforeach; ?>
-        </div>
+        <?php else: ?>
+            <div class="col-span-full py-16 bg-white rounded-[32px] border border-dashed border-slate-200 text-center">
+                <p class="text-slate-400 text-xs italic">Nuk u gjet asnjë rekord i prezencës për 7 ditët e fundit.</p>
+            </div>
         <?php endif; ?>
     </div>
 
-    <div class="bg-white rounded-[24px] border border-slate-100 shadow-sm overflow-hidden">
-        <div class="p-5 border-b border-slate-50 flex items-center justify-between bg-slate-50/30">
-            <h3 class="text-sm font-bold text-slate-700">Historiku i Vlerësimeve</h3>
-            <span class="text-[10px] font-bold text-slate-400 uppercase">Totali: <?= $totalRecords ?> Nota</span>
-        </div>
-        
-        <div class="overflow-x-auto">
-            <table class="w-full text-left border-collapse">
-                <thead>
-                    <tr class="border-b border-slate-100">
-                        <th class="px-6 py-4 text-[10px] font-bold uppercase tracking-widest text-slate-400">Lënda</th>
-                        <th class="px-6 py-4 text-[10px] font-bold uppercase tracking-widest text-slate-400">Nota</th>
-                        <th class="px-6 py-4 text-[10px] font-bold uppercase tracking-widest text-slate-400">Mësuesi</th>
-                        <th class="px-6 py-4 text-[10px] font-bold uppercase tracking-widest text-slate-400">Data</th>
-                        <th class="px-6 py-4 text-right text-[10px] font-bold uppercase tracking-widest text-slate-400">Statusi</th>
-                    </tr>
-                </thead>
-                <tbody class="divide-y divide-slate-50">
-                    <?php if (!empty($grades)): ?>
-                        <?php foreach ($grades as $row): ?>
-                            <tr class="group hover:bg-slate-50/30 transition-all">
-                                <td class="px-6 py-4">
-                                    <span class="font-bold text-slate-700 text-xs"><?= htmlspecialchars($row['subject_name']) ?></span>
-                                </td>
-                                <td class="px-6 py-4">
-                                    <div class="flex items-center gap-3">
-                                        <span class="text-lg font-bold <?= $row['grade'] >= 4 ? 'text-emerald-500' : ($row['grade'] >= 2 ? 'text-amber-500' : 'text-rose-500') ?>">
-                                            <?= $row['grade'] ?>
-                                        </span>
-                                        <div class="w-12 h-1 bg-slate-100 rounded-full overflow-hidden hidden sm:block">
-                                            <div class="h-full <?= $row['grade'] >= 4 ? 'bg-emerald-400' : ($row['grade'] >= 2 ? 'bg-amber-400' : 'bg-rose-400') ?>" 
-                                                 style="width: <?= ($row['grade'] / 5) * 100 ?>%"></div>
-                                        </div>
-                                    </div>
-                                </td>
-                                <td class="px-6 py-4 text-xs text-slate-500 font-medium"><?= htmlspecialchars($row['teacher_name']) ?></td>
-                                <td class="px-6 py-4 text-xs text-slate-400"><?= date('d M, Y', strtotime($row['created_at'])) ?></td>
-                                <td class="px-6 py-4 text-right">
-                                    <?php 
-                                        $label = $row['grade'] == 5 ? 'Shkëlqyeshëm' : ($row['grade'] >= 4 ? 'Shumë mirë' : ($row['grade'] >= 2 ? 'Kalues' : 'Mbetës'));
-                                        $color = $row['grade'] == 5 ? 'bg-indigo-50 text-indigo-500 border-indigo-100' : ($row['grade'] >= 4 ? 'bg-emerald-50 text-emerald-500 border-emerald-100' : ($row['grade'] >= 2 ? 'bg-amber-50 text-amber-500 border-amber-100' : 'bg-rose-50 text-rose-500 border-rose-100'));
-                                    ?>
-                                    <span class="inline-flex items-center px-3 py-1 rounded-lg text-[9px] font-bold uppercase border <?= $color ?>">
-                                        <?= $label ?>
-                                    </span>
-                                </td>
-                            </tr>
-                        <?php endforeach; ?>
-                    <?php else: ?>
-                        <tr>
-                            <td colspan="5" class="px-6 py-20 text-center text-slate-400 text-xs italic">
-                                Nuk ka nota të arkivuara (vlerësimet e sotme shfaqen pas 24 orësh).
-                            </td>
-                        </tr>
-                    <?php endif; ?>
-                </tbody>
-            </table>
-        </div>
-    </div>
-
-    <?php if ($totalPages > 1): ?>
-    <div class="flex justify-center items-center gap-2 mt-6">
-        <?php if ($page > 1): ?>
-            <a href="?student_id=<?= $studentId ?>&page=<?= $page - 1 ?>" class="p-2 bg-white border border-slate-100 rounded-lg text-slate-400 hover:text-indigo-600 transition-colors">
-                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 19l-7-7 7-7"/></svg>
-            </a>
-        <?php endif; ?>
-
-        <div class="flex gap-1 bg-slate-50 p-1 rounded-xl border border-slate-100">
-            <?php for ($i = 1; $i <= $totalPages; $i++): ?>
-                <a href="?student_id=<?= $studentId ?>&page=<?= $i ?>" 
-                   class="px-3.5 py-1.5 rounded-lg text-[11px] font-bold transition-all <?= $i === $page ? 'bg-white text-indigo-600 shadow-sm ring-1 ring-slate-200' : 'text-slate-400 hover:text-slate-600' ?>">
-                    <?= $i ?>
-                </a>
-            <?php endfor; ?>
-        </div>
-
-        <?php if ($page < $totalPages): ?>
-            <a href="?student_id=<?= $studentId ?>&page=<?= $page + 1 ?>" class="p-2 bg-white border border-slate-100 rounded-lg text-slate-400 hover:text-indigo-600 transition-colors">
-                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"/></svg>
-            </a>
-        <?php endif; ?>
-    </div>
-    <?php endif; ?>
-
-    <div class="bg-slate-900 rounded-[24px] p-6 text-white shadow-lg flex flex-col md:flex-row items-center justify-between gap-6">
-        <div class="text-center md:text-left">
-            <h4 class="text-lg font-bold mb-1">Pse nuk shoh notën e sotme?</h4>
-            <p class="text-slate-400 text-xs leading-relaxed max-w-md">
-                Për të inkurajuar komunikimin direkt mes nxënësit dhe prindit, sistemi arkivon vlerësimet dhe i shfaq ato me një vonesë prej 24 orësh.
-            </p>
-        </div>
-        <div class="bg-white/5 backdrop-blur px-4 py-3 rounded-xl border border-white/10 text-center min-w-[160px]">
-            <p class="text-[9px] font-bold uppercase text-slate-500 mb-1">Statusi Aktual</p>
-            <span class="text-sm font-bold">
-                <?= $averageGrade >= 4.5 ? '🎖️ Ekselent' : ($averageGrade >= 3 ? '✅ Sukses' : '📈 Në Progres') ?>
-            </span>
-        </div>
-    </div>
+    <p class="text-center text-[10px] text-slate-400 italic">
+        Sistemi shfaq vetëm të dhënat për 7 ditët e fundit kalendarike.
+    </p>
 </div>
 
 <?php
 $content = ob_get_clean();
 require_once __DIR__ . '/../index.php';
-?>  
+?>
