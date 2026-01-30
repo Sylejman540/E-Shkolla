@@ -46,11 +46,6 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             throw new Exception('Format i pasaktë i email-it.');
         }
 
-        // 3. Phone Number Validation (Regex for common formats)
-        if (!empty($phone) && !preg_match('/^[0-9+ ]{8,15}$/', $phone)) {
-            throw new Exception('Numri i telefonit duhet të jetë vetëm me numra (8-15 shifra).');
-        }
-
         // 4. Password Strength (Only for new users)
         // Check if user doesn't exist yet
         $stmtCheck = $pdo->prepare("SELECT id FROM users WHERE email = ?");
@@ -58,9 +53,6 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         if (!$stmtCheck->fetch()) {
             if (strlen($password) < 8) {
                 throw new Exception('Fjalëkalimi duhet të jetë së paku 8 karaktere.');
-            }
-            if (!preg_match('/[A-Z]/', $password) || !preg_match('/[0-9]/', $password)) {
-                throw new Exception('Fjalëkalimi duhet të përmbajë të paktën një shkronjë të madhe dhe një numër.');
             }
         }
 
