@@ -1,8 +1,8 @@
 <?php
 /**
  * E-Shkolla — Paneli i Administratorit të Shkollës
- * Versioni: Command Center v1 (Human-Centric)
- * Filozofia: Qartësi > Metriçe | Veprim > Zhurmë
+ * Versioni: Command Center v2.0 (Analysis Integrated)
+ * Filozofia: Diagnozë > Supozim | Aksion i Bazuar në të Dhëna
  */
 
 require_once __DIR__ . '/../../../../db.php';
@@ -66,7 +66,7 @@ $stmt = $pdo->prepare("
 $stmt->execute([$schoolId]);
 $problemClasses = $stmt->fetchAll(PDO::FETCH_ASSOC);
 
-// Indeksi i rrezikut (i brendshëm)
+// Indeksi i rrezikut
 $riskScore = 0;
 if ($attendanceDiff < 0) $riskScore += abs($attendanceDiff) * 3;
 $riskScore += count($problemClasses) * 12;
@@ -108,197 +108,180 @@ $updatedAt = date('H:i');
 ob_start();
 ?>  
 
-<!-- MODALI I VEPRIMIT -->
-<div id="actionModal" class="hidden fixed inset-0 bg-slate-900/60 backdrop-blur-sm z-50 flex items-center justify-center p-4">
+<div id="diagModal" class="hidden fixed inset-0 bg-slate-900/40 backdrop-blur-sm z-[60] flex items-center justify-center p-4">
+    <div class="bg-white rounded-2xl max-w-md w-full shadow-2xl border border-slate-200 overflow-hidden">
+        <div class="p-6 border-b flex justify-between items-center bg-slate-50/50">
+            <div>
+                <h3 class="text-[10px] font-bold uppercase tracking-widest text-slate-400">Analiza e Sistemit</h3>
+                <p id="diagClassName" class="text-lg font-semibold text-slate-800">Klasa --</p>
+            </div>
+            <button onclick="closeDiag()" class="text-slate-400 hover:text-slate-600">✕</button>
+        </div>
+        
+        <div id="diagLoading" class="p-12 text-center">
+            <div class="animate-spin h-6 w-6 border-2 border-slate-800 border-t-transparent rounded-full mx-auto mb-3"></div>
+            <p class="text-[11px] font-medium text-slate-400 uppercase">Duke analizuar shkaqet...</p>
+        </div>
+
+        <div id="diagContent" class="hidden p-6 space-y-6">
+            <div class="bg-indigo-50 p-4 rounded-xl border border-indigo-100">
+                <p id="diagSummary" class="text-indigo-900 text-sm font-medium leading-snug"></p>
+            </div>
+            <div class="grid grid-cols-2 gap-4">
+                <div>
+                    <p class="text-[10px] font-bold uppercase text-slate-400 mb-2 tracking-tighter">Nxënësit Kritikë</p>
+                    <ul id="diagStudents" class="space-y-1 text-xs text-slate-600 font-medium"></ul>
+                </div>
+                <div>
+                    <p class="text-[10px] font-bold uppercase text-slate-400 mb-2 tracking-tighter">Lëndët/Trendi</p>
+                    <ul id="diagSubjects" class="space-y-1 text-xs text-slate-600 font-medium"></ul>
+                </div>
+            </div>
+            <div class="pt-4 flex gap-3">
+                <button onclick="closeDiag()" class="flex-1 text-xs font-bold text-slate-400 uppercase">Mbyll</button>
+                <button id="proceedToActionButton" class="flex-[2] bg-slate-900 text-white text-xs font-bold py-3 rounded-lg uppercase">Ndërmerr Veprim</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<div id="actionModal" class="hidden fixed inset-0 bg-slate-900/60 backdrop-blur-sm z-[70] flex items-center justify-center p-4">
     <div class="bg-white rounded-2xl max-w-md w-full shadow-xl border border-slate-200">
         <div class="p-6 border-b flex justify-between items-center">
-            <h3 id="modalTitle" class="text-sm font-black uppercase tracking-widest">Veprim Administrativ</h3>
+            <h3 id="modalTitle" class="text-sm font-semibold uppercase tracking-widest">Veprim Administrativ</h3>
             <button onclick="closeModal()" class="text-slate-400 hover:text-slate-600">✕</button>
         </div>
         <div class="p-6">
-            <p id="modalDescription" class="text-sm text-slate-600 mb-4"></p>
+            <p id="modalDescription" class="text-sm text-slate-500 mb-4"></p>
             <textarea id="actionMessage" rows="3"
-                class="w-full p-3 border rounded-lg text-sm"
+                class="w-full p-3 border rounded-lg text-sm focus:ring-2 focus:ring-slate-900 outline-none"
                 placeholder="Shënim i brendshëm (opsional)…"></textarea>
         </div>
         <div class="p-6 bg-slate-50 flex gap-3">
-            <button onclick="closeModal()" class="flex-1 text-xs font-black uppercase text-slate-500">Anulo</button>
-            <button id="confirmBtn" class="flex-1 bg-slate-900 text-white text-xs font-black uppercase rounded-lg py-2">
+            <button onclick="closeModal()" class="flex-1 text-xs font-bold uppercase text-slate-400">Anulo</button>
+            <button id="confirmBtn" class="flex-1 bg-slate-900 text-white text-xs font-bold uppercase rounded-lg py-2">
                 Konfirmo
             </button>
         </div>
     </div>
 </div>
 
-<div class="p-6 lg:p-10 bg-slate-50 min-h-screen text-slate-900">
+<div class="p-6 lg:p-8 bg-slate-50 min-h-screen text-slate-800 antialiased font-sans">
 
-    <!-- HEADER -->
     <div class="mb-10 border-b border-slate-200 pb-6">
-        <h1 class="text-3xl font-black"><?= htmlspecialchars($schoolName) ?></h1>
-        <p class="text-xs uppercase tracking-widest text-slate-400 mt-1">
-            Përmbledhje e Gjendjes së Shkollës · Përditësuar sot në <?= $updatedAt ?>
-        </p>
-    </div>
-
-    <!-- GJENDJA SOT -->
-    <div class="mb-8 bg-white p-6 rounded-2xl border border-slate-200">
-        <p class="text-xs uppercase text-slate-400 font-bold mb-2">
-            Gjendja e Shkollës Sot
-        </p>
-
-        <p class="text-2xl font-black">
-            <?= $riskScore > 50
-                ? 'Shkolla kërkon vëmendje sot.'
-                : 'Shkolla po funksionon normalisht sot.' ?>
-        </p>
-
-        <p class="mt-2 text-sm text-slate-600">
-            <?= $riskScore > 50
-                ? 'Janë vërejtur sinjale që kërkojnë monitorim në vijueshmëri ose performancë akademike.'
-                : 'Nuk janë identifikuar probleme kritike në vijueshmëri apo rezultate akademike.' ?>
-        </p>
-    </div>
-
-    <!-- FOKUSI I DITËS -->
-    <div class="mb-10 bg-slate-900 text-white p-6 rounded-2xl">
-        <p class="text-xs uppercase tracking-widest text-slate-400 mb-3 font-bold">
-            Fokusi i Ditës
-        </p>
-
-        <?php if (!empty($problemClasses)): ?>
-            <ul class="space-y-2 text-sm font-semibold">
-                <?php foreach (array_slice($problemClasses, 0, 2) as $c): ?>
-                    <li>
-                        • Ndiqni Klasën <?= htmlspecialchars($c['grade']) ?>
-                        (<?= $c['rate'] ?>% vijueshmëri)
-                    </li>
-                <?php endforeach; ?>
-            </ul>
-        <?php else: ?>
-            <p class="text-sm text-slate-300">
-                Nuk ka veprime urgjente për sot.
+        <h1 class="text-2xl font-semibold tracking-tight text-slate-900"><?= htmlspecialchars($schoolName) ?></h1>
+        <div class="flex items-center gap-2 mt-1">
+            <span class="h-1.5 w-1.5 rounded-full bg-emerald-500"></span>
+            <p class="text-[11px] font-medium text-slate-400 uppercase tracking-widest">
+                Sistemi Aktiv · <?= $updatedAt ?>
             </p>
-        <?php endif; ?>
+        </div>
+    </div>
+
+    <div class="grid grid-cols-1 lg:grid-cols-3 gap-6 mb-8">
+        <div class="lg:col-span-2 bg-white p-6 rounded-2xl border border-slate-200 shadow-sm">
+            <p class="text-[10px] font-bold uppercase text-slate-400 mb-2">Gjendja e Shkollës Sot</p>
+            <p class="text-xl font-semibold text-slate-900">
+                <?= $riskScore > 50 ? 'Kërkohet monitorim i shtuar.' : 'Operacionet janë brenda normës.' ?>
+            </p>
+            <p class="mt-1 text-sm text-slate-500 font-medium">
+                <?= $riskScore > 50
+                    ? 'Janë identifikuar anomali në vijueshmërinë e klasave specifike.'
+                    : 'Vijueshmëria dhe performanca janë stabile në rang shkolle.' ?>
+            </p>
+        </div>
+        <div class="bg-indigo-600 p-6 rounded-2xl text-white shadow-lg shadow-indigo-100">
+            <p class="text-[10px] font-bold uppercase opacity-70 mb-1">Indeksi i Rrezikut</p>
+            <div class="flex items-end gap-2">
+                <p class="text-3xl font-semibold leading-none"><?= $riskScore ?></p>
+                <p class="text-xs font-medium opacity-70 pb-1">/100</p>
+            </div>
+            <div class="mt-3 w-full bg-indigo-400/30 h-1 rounded-full overflow-hidden">
+                <div class="bg-white h-full" style="width: <?= $riskScore ?>%"></div>
+            </div>
+        </div>
     </div>
 
     <div class="grid grid-cols-1 lg:grid-cols-12 gap-8">
 
-        <!-- MAJTAS -->
-        <div class="lg:col-span-8 space-y-8">
-
-            <div class="bg-slate-50 p-5 rounded-xl border border-slate-200">
-                <p class="text-xs uppercase text-slate-400 font-bold mb-3">Pse kjo gjendje</p>
-                <ul class="text-sm space-y-1 text-slate-700">
-                    <li>• Trendi i vijueshmërisë është <?= $attendanceDiff < 0 ? 'në rënie' : 'i qëndrueshëm' ?></li>
-                    <li>• <?= count($problemClasses) ?> klasa janë nën pragun minimal të vijueshmërisë</li>
-                    <li>• Performanca akademike është brenda pritshmërive</li>
-                </ul>
-                <p class="mt-4 text-xs text-slate-400">
-                    Indeksi i rrezikut (i brendshëm): <?= $riskScore ?>/100
-                </p>
-            </div>
-
-            <div class="bg-white p-6 rounded-2xl border border-slate-200">
-                <p class="text-xs uppercase text-slate-400 font-bold mb-2">
-                    Çfarë mund të ndodhë në vazhdim
-                </p>
-                <p class="text-sm text-slate-700">
-                    Nëse trendi aktual vazhdon, vijueshmëria e përgjithshme mund të bjerë nën <strong>80%</strong>
-                    në ditët në vijim.
-                </p>
-                <p class="mt-2 text-xs text-slate-400">
-                    Besueshmëria: mesatare (bazuar në 7 ditët e fundit)
-                </p>
-            </div>
-
-            <div class="bg-white rounded-2xl border border-slate-200 overflow-hidden">
-                <div class="p-6 border-b bg-slate-50 flex justify-between items-center">
-                    <p class="text-xs uppercase font-bold text-slate-400">
-                        Klasat që kërkojnë vëmendje
-                    </p>
-                    <?php if ($lastAction): ?>
-                        <p class="text-xs text-slate-400 italic">
-                            Veprimi i fundit: <?= htmlspecialchars($lastAction['action_title']) ?>
-                            ·
-                            <span class="font-semibold">
-                                <?= match ($lastAction['status']) {
-                                    'closed'    => 'Mbyllur',
-                                    'follow_up' => 'Në ndjekje',
-                                    default     => 'Në pritje'
-                                } ?>
-                            </span>
-                        </p>
-                    <?php endif; ?>
+        <div class="lg:col-span-8 space-y-6">
+            
+            <div class="bg-white rounded-2xl border border-slate-200 shadow-sm overflow-hidden">
+                <div class="p-5 border-b bg-slate-50/50 flex justify-between items-center">
+                    <p class="text-[10px] font-bold uppercase text-slate-400 tracking-widest">Klasat nën prag (75%)</p>
                 </div>
 
                 <?php if (empty($problemClasses)): ?>
-                    <div class="p-12 text-center text-slate-400 text-sm">
-                        Të gjitha klasat janë brenda niveleve normale të vijueshmërisë.
+                    <div class="p-12 text-center text-slate-400 text-xs font-medium italic">
+                        Nuk ka klasa me vijueshmëri kritike sot.
                     </div>
                 <?php else: ?>
+                    <div class="divide-y divide-slate-100">
                     <?php foreach ($problemClasses as $c): ?>
-                        <div class="p-6 flex justify-between items-center hover:bg-slate-50">
+                        <div class="p-5 flex justify-between items-center hover:bg-slate-50 transition-colors">
                             <div>
-                                <p class="font-bold">Klasa <?= htmlspecialchars($c['grade']) ?></p>
-                                <p class="text-xs text-rose-600 uppercase">
+                                <p class="text-sm font-semibold text-slate-800">Klasa <?= htmlspecialchars($c['grade']) ?></p>
+                                <p class="text-[11px] font-bold text-rose-500 uppercase mt-0.5">
                                     <?= $c['rate'] ?>% vijueshmëri sot
                                 </p>
                             </div>
-<button
-    onclick="openActionModal(
-        'notify_teacher',
-        'Njofto mësimdhënësin — Klasa <?= $c['grade'] ?>',
-        'Kërko sqarim lidhur me rënien e vijueshmërisë sot.',
-        { class_id: <?= (int)$c['id'] ?> }
-    )"
-    class="bg-slate-900 text-white text-xs font-black uppercase px-4 py-2 rounded-lg">
-    Ndërmerr veprim
-</button>
-
+                            <button
+                                onclick="startDiagnosis(<?= (int)$c['id'] ?>, '<?= $c['grade'] ?>')"
+                                class="bg-slate-900 text-white text-[10px] font-bold uppercase px-4 py-2 rounded-lg hover:bg-slate-800 transition-colors">
+                                Diagnostiko
+                            </button>
                         </div>
                     <?php endforeach; ?>
+                    </div>
                 <?php endif; ?>
             </div>
 
-        </div>
-
-        <!-- DJATHTAS -->
-        <div class="lg:col-span-4 space-y-8">
-
-            <div class="bg-white p-6 rounded-2xl border border-slate-200">
-                <p class="text-xs uppercase font-bold text-slate-400 mb-4">
-                    Gjendja Akademike (30 ditët e fundit)
-                </p>
-                <div class="h-40">
-                    <canvas id="gradeChart"></canvas>
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+                <div class="bg-white p-6 rounded-2xl border border-slate-200">
+                    <p class="text-[10px] font-bold uppercase text-slate-400 mb-4 tracking-widest">Vijueshmëria (7 ditë)</p>
+                    <div class="h-32"><canvas id="trendChart"></canvas></div>
                 </div>
-                <p class="mt-4 text-xs text-slate-500 italic">
-                    Rritja e notave të ulëta mund të tregojë vështirësi në vlerësim ose ngarkesë të lëndëve.
-                </p>
-            </div>
-
-            <div class="bg-slate-900 p-6 rounded-2xl text-white">
-                <p class="text-xs uppercase text-slate-400 font-bold mb-4">
-                    Trendi i Vijueshmërisë
-                </p>
-                <div class="h-32">
-                    <canvas id="trendChart"></canvas>
+                <div class="bg-white p-6 rounded-2xl border border-slate-200">
+                    <p class="text-[10px] font-bold uppercase text-slate-400 mb-2 tracking-widest">Logu i Fundit</p>
+                    <?php if ($lastAction): ?>
+                        <p class="text-sm font-semibold text-slate-800"><?= htmlspecialchars($lastAction['action_title']) ?></p>
+                        <p class="text-xs text-slate-500 mt-1">Statusi: <span class="font-bold text-indigo-600 uppercase"><?= $lastAction['status'] ?></span></p>
+                    <?php else: ?>
+                        <p class="text-xs text-slate-400 italic mt-4">Nuk ka veprime të fundit.</p>
+                    <?php endif; ?>
                 </div>
             </div>
-
         </div>
-    </div>
 
-    <!-- MBYLLJE / SIGURI -->
-    <div class="mt-12 p-6 rounded-2xl bg-slate-100 text-slate-600 text-sm">
-        Sistemi monitoron vazhdimisht vijueshmërinë dhe performancën akademike.
-        Në rast të ndryshimeve të rëndësishme, do të njoftoheni menjëherë.
+        <div class="lg:col-span-4 space-y-6">
+            <div class="bg-white p-6 rounded-2xl border border-slate-200 shadow-sm">
+                <p class="text-[10px] font-bold uppercase text-slate-400 mb-6 tracking-widest">Notat (30 ditë)</p>
+                <div class="h-40"><canvas id="gradeChart"></canvas></div>
+            </div>
+            
+            <div class="bg-slate-900 p-6 rounded-2xl text-white shadow-xl">
+                <p class="text-[10px] font-bold uppercase text-slate-400 mb-3 tracking-widest">Fokusi i Ditës</p>
+                <?php if (!empty($problemClasses)): ?>
+                    <ul class="space-y-3">
+                        <?php foreach (array_slice($problemClasses, 0, 2) as $c): ?>
+                            <li class="flex items-center gap-3">
+                                <span class="h-1.5 w-1.5 rounded-full bg-rose-500"></span>
+                                <p class="text-xs font-medium">Klasa <?= htmlspecialchars($c['grade']) ?> kërkon ndjekje.</p>
+                            </li>
+                        <?php endforeach; ?>
+                    </ul>
+                <?php else: ?>
+                    <p class="text-xs text-slate-500">Monitorim rutinë.</p>
+                <?php endif; ?>
+            </div>
+        </div>
     </div>
 </div>
 
 <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
 <script>
-Chart.defaults.font.family = 'Inter, sans-serif';
+/* CHARTS */
+Chart.defaults.font.size = 10;
 Chart.defaults.color = '#94a3b8';
 
 new Chart(document.getElementById('gradeChart'), {
@@ -308,15 +291,11 @@ new Chart(document.getElementById('gradeChart'), {
         datasets: [{
             data: [<?= $gradeDist['5']??0 ?>,<?= $gradeDist['4']??0 ?>,<?= $gradeDist['3']??0 ?>,<?= $gradeDist['2']??0 ?>,<?= $gradeDist['1']??0 ?>],
             backgroundColor: '#1e293b',
-            borderRadius: 6,
-            barThickness: 16
+            borderRadius: 4,
+            barThickness: 12
         }]
     },
-    options: {
-        maintainAspectRatio: false,
-        plugins: { legend: { display: false } },
-        scales: { y: { display:false }, x: { display:true } }
-    }
+    options: { maintainAspectRatio: false, plugins: { legend: { display: false } }, scales: { y: { display:false }, x: { grid: { display: false }, border: { display: false } } } }
 });
 
 new Chart(document.getElementById('trendChart'), {
@@ -326,49 +305,63 @@ new Chart(document.getElementById('trendChart'), {
         datasets: [{
             data: <?= json_encode(array_column($trendData,'rate')) ?>,
             borderColor: '#6366f1',
-            borderWidth: 3,
+            borderWidth: 2,
             tension: 0.4,
             pointRadius: 0
         }]
     },
-    options: {
-        maintainAspectRatio: false,
-        plugins: { legend: { display:false } },
-        scales: { x:{display:false}, y:{display:false} }
-    }
+    options: { maintainAspectRatio: false, plugins: { legend: { display:false } }, scales: { x:{display:false}, y:{display:false} } }
 });
 
-const modal = document.getElementById('actionModal');
-const confirmBtn = document.getElementById('confirmBtn');
+/* DIAGNOSIS & MODAL LOGIC */
+const diagModal = document.getElementById('diagModal');
+const actionModal = document.getElementById('actionModal');
+let currentAction = { type: null, title: null, context: {} };
 
-let currentAction = {
-    type: null,
-    title: null,
-    context: {}
-};
+function startDiagnosis(classId, gradeName) {
+    document.getElementById('diagClassName').innerText = `Klasa ${gradeName}`;
+    diagModal.classList.remove('hidden');
+    document.getElementById('diagContent').classList.add('hidden');
+    document.getElementById('diagLoading').classList.remove('hidden');
+
+    fetch(`attendance-analysis.php?class_id=${classId}`)
+        .then(res => res.json())
+        .then(data => {
+            document.getElementById('diagLoading').classList.add('hidden');
+            document.getElementById('diagContent').classList.remove('hidden');
+            document.getElementById('diagSummary').innerText = data.summary;
+            
+            document.getElementById('diagStudents').innerHTML = data.students.length 
+                ? data.students.map(s => `<li>• ${s.name} <span class="text-rose-500">(${s.absences})</span></li>`).join('')
+                : '<li class="italic text-slate-400">Asnjë rast kronik.</li>';
+
+            document.getElementById('diagSubjects').innerHTML = data.subjects.length 
+                ? data.subjects.map(s => `<li>• ${s.name} <span class="text-indigo-500">${s.rate}%</span></li>`).join('')
+                : '<li class="italic text-slate-400">Pa anomali lënde.</li>';
+
+            document.getElementById('proceedToActionButton').onclick = () => {
+                closeDiag();
+                openActionModal('notify_teacher', `Njofto mësimdhënësin — ${gradeName}`, `Sipas analizës: ${data.summary}`, { class_id: classId });
+            };
+        });
+}
+
+function closeDiag() { diagModal.classList.add('hidden'); }
 
 function openActionModal(type, title, description, context = {}) {
-    currentAction.type = type;
-    currentAction.title = title;
-    currentAction.context = context;
-
+    currentAction = { type, title, context };
     document.getElementById('modalTitle').innerText = title;
     document.getElementById('modalDescription').innerText = description;
     document.getElementById('actionMessage').value = '';
-
-    modal.classList.remove('hidden');
+    actionModal.classList.remove('hidden');
 }
 
-function closeModal() {
-    modal.classList.add('hidden');
-}
+function closeModal() { actionModal.classList.add('hidden'); }
 
-confirmBtn.onclick = () => {
+document.getElementById('confirmBtn').onclick = () => {
     fetch('/E-Shkolla/dashboard/schooladmin-dashboard/partials/dashboard/handle_action.php', {
         method: 'POST',
-        headers: {
-            'Content-Type': 'application/json'
-        },
+        headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
             type: currentAction.type,
             title: currentAction.title,
@@ -378,16 +371,8 @@ confirmBtn.onclick = () => {
     })
     .then(res => res.json())
     .then(data => {
-        if (data.status === 'ok') {
-            closeModal();
-            location.reload();
-        } else {
-            alert(data.error || 'Gabim gjatë ruajtjes');
-        }
-    })
-    .catch(err => {
-        console.error(err);
-        alert('Gabim rrjeti');
+        if (data.status === 'ok') { location.reload(); }
+        else { alert(data.error || 'Gabim gjatë ruajtjes'); }
     });
 };
 </script>
