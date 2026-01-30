@@ -17,14 +17,30 @@ function isActive($path) {
 $teacherName = 'Profesor';
 $userNotifications = [];
 $schoolId = $_SESSION['user']['school_id'] ?? null;
+$isClassHeader = false; 
 
 if (isset($_SESSION['user']) && $_SESSION['user']['role'] === 'teacher') {
-    // 1. Merr emrin real
-    $stmt = $pdo->prepare("SELECT name FROM teachers WHERE user_id = ?");
-    $stmt->execute([$_SESSION['user']['id']]);
-    $teacherName = $stmt->fetchColumn() ?: 'Profesor';
+    $userId = $_SESSION['user']['id'];
 
-    // 2. Merr njoftimet reale nga databaza
+    // 1. Merr të dhënat nga tabela 'teachers' duke përdorur user_id e sesionit
+    $stmt = $pdo->prepare("SELECT id, name FROM teachers WHERE user_id = ?");
+    $stmt->execute([$userId]);
+    $teacherData = $stmt->fetch(PDO::FETCH_ASSOC);
+
+    if ($teacherData) {
+        $teacherName = $teacherData['name'] ?: 'Profesor';
+        $teacherId = $teacherData['id']; // Ky është ID-ja nga tabela 'teachers'
+
+        // 2. Kontrollo nëse ky mësues është kujdestar klase duke përdorur teacherId
+        $headerStmt = $pdo->prepare("SELECT COUNT(*) FROM classes WHERE class_header = ? AND school_id = ?");
+        $headerStmt->execute([$teacherId, $schoolId]);
+        
+        if ($headerStmt->fetchColumn() > 0) {
+            $isClassHeader = true;
+        }
+    }
+
+    // 3. Merr njoftimet reale nga databaza
     $annStmt = $pdo->prepare("
         SELECT title, content, created_at 
         FROM announcements 
@@ -46,7 +62,6 @@ if (isset($_SESSION['user']) && $_SESSION['user']['role'] === 'teacher') {
     <script src="https://cdn.tailwindcss.com"></script>
     <script defer src="https://unpkg.com/alpinejs@3.x.x/dist/cdn.min.js"></script>
     <link rel="icon" href="/E-Shkolla/images/icon.png" type="image/png">
-    <style>
     <style>
         [x-cloak] { display: none !important; }
         .custom-transition { transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1); }
@@ -70,13 +85,11 @@ if (isset($_SESSION['user']) && $_SESSION['user']['role'] === 'teacher') {
 <body class="h-full font-sans antialiased text-slate-900"
       x-data="{ sidebarCollapsed: false, mobileOpen: false, helpOpen: false, toasts: [] }">
 
-<!-- Overlay -->
 <div x-show="mobileOpen || helpOpen" x-cloak x-transition.opacity
      @click="mobileOpen = false; helpOpen = false"
      class="fixed inset-0 z-40 bg-slate-900/40 backdrop-blur-sm">
 </div>
 
-<!-- HELP DRAWER -->
 <template x-teleport="body">
     <div x-show="helpOpen"
          x-transition:enter="transition ease-in-out duration-300 transform"
@@ -113,79 +126,26 @@ if (isset($_SESSION['user']) && $_SESSION['user']['role'] === 'teacher') {
         </div>
 
         <div class="flex-1 overflow-y-auto p-8 text-sm text-slate-600 space-y-8">
+            <section>
+                <h3 class="font-bold text-slate-800 mb-2">Dashboard</h3>
+                <p>Dashboard-i shfaq një përmbledhje të shpejtë të aktiviteteve tuaja si mësues.</p>
+            </section>
 
-        <!-- DASHBOARD -->
-        <section>
-            <h3 class="font-bold text-slate-800 mb-2">Dashboard</h3>
-            <p>
-                Dashboard-i shfaq një përmbledhje të shpejtë të aktiviteteve tuaja si mësues.
-                Prej këtu mund të navigoni drejt klasave, orarit dhe moduleve tjera.
-            </p>
-        </section>
+            <section>
+                <h3 class="font-bold text-slate-800 mb-2">Klasat e mia</h3>
+                <ul class="list-disc ml-5 space-y-1">
+                    <li>Shfaqen vetëm klasat ku jeni të caktuar si mësues</li>
+                    <li>Brenda klasës menaxhoni prezencën, notat dhe detyrat</li>
+                </ul>
+            </section>
 
-        <!-- KLASAT -->
-        <section>
-            <h3 class="font-bold text-slate-800 mb-2">Klasat e mia</h3>
-            <ul class="list-disc ml-5 space-y-1">
-                <li>Shfaqen vetëm klasat ku jeni të caktuar si mësues</li>
-                <li>Çdo klasë ka dashboard-in e vet</li>
-                <li>Brenda klasës menaxhoni prezencën, notat dhe detyrat</li>
-            </ul>
-        </section>
-
-        <!-- ORARI -->
-        <section>
-            <h3 class="font-bold text-slate-800 mb-2">Orari</h3>
-            <ul class="list-disc ml-5 space-y-1">
-                <li>Shfaqet vetëm orari juaj personal</li>
-                <li>Orari gjenerohet nga administrata e shkollës</li>
-                <li>Nuk mund të modifikohet nga mësuesi</li>
-            </ul>
-        </section>
-
-        <!-- PREZENCA -->
-        <section>
-            <h3 class="font-bold text-slate-800 mb-2">Prezenca</h3>
-            <ul class="list-disc ml-5 space-y-1">
-                <li>Prezenca regjistrohet për çdo orë mësimore</li>
-                <li>Mund të modifikohet vetëm për <strong>45 minuta</strong> pas regjistrimit</li>
-                <li>Pas këtij afati, regjistrimi bllokohet automatikisht</li>
-                <li>
-                    <strong>LIVE</strong> – regjistrim aktiv<br>
-                </li>
-            </ul>
-        </section>
-
-        <!-- PRINDËRIT -->
-        <section>
-            <h3 class="font-bold text-slate-800 mb-2">Prindërit</h3>
-            <ul class="list-disc ml-5 space-y-1">
-                <li>Shfaqen prindërit e nxënësve të klasës suaj kujdestare</li>
-                <li>Informacioni është vetëm për shikim</li>
-            </ul>
-        </section>
-
-        <!-- CILËSIMET -->
-        <section>
-            <h3 class="font-bold text-slate-800 mb-2">Cilësimet</h3>
-            <ul class="list-disc ml-5 space-y-1">
-                <li>Mund të përditësoni të dhënat personale</li>
-                <li>Nuk mund të ndryshoni strukturën akademike</li>
-            </ul>
-        </section>
-
-        <!-- RREGULLA TË PËRGJITHSHME -->
-        <section class="pt-4 border-t border-slate-100">
-            <h3 class="font-bold text-slate-800 mb-2">Rregulla të Përgjithshme</h3>
-            <ul class="list-disc ml-5 space-y-1">
-                <li>Çdo veprim lidhet me llogarinë tuaj personale</li>
-                <li>Disa veprime janë të kufizuara nga koha dhe roli</li>
-                <li>Të dhënat ruhen automatikisht në sistem</li>
-            </ul>
-        </section>
-
-    </div>
-
+            <?php if ($isClassHeader): ?>
+            <section>
+                <h3 class="font-bold text-slate-800 mb-2">Klasa Kujdestare</h3>
+                <p>Si mësues kujdestar, ju mund të shihni detajet e prindërve për nxënësit e klasës suaj.</p>
+            </section>
+            <?php endif; ?>
+        </div>
     </div>
 </template>
 
@@ -236,6 +196,7 @@ if (isset($_SESSION['user']) && $_SESSION['user']['role'] === 'teacher') {
                     </a>
                 </li>
 
+                <?php if ($isClassHeader): ?>
                 <div x-show="!sidebarCollapsed" class="px-3 mt-4 mb-2">
                     <h3 class="text-[10px] font-bold uppercase tracking-widest text-slate-400">Menaxhimi i klasës kujdestare</h3>
                 </div>
@@ -250,6 +211,7 @@ if (isset($_SESSION['user']) && $_SESSION['user']['role'] === 'teacher') {
                         <span x-show="!sidebarCollapsed" class="whitespace-nowrap">Prindërit</span>
                     </a>
                 </li>
+                <?php endif; ?>
 
                 <div x-show="!sidebarCollapsed" class="px-3 mt-4 mb-2">
                     <h3 class="text-[10px] font-bold uppercase tracking-widest text-slate-400">Njoftimet</h3>
@@ -281,22 +243,16 @@ if (isset($_SESSION['user']) && $_SESSION['user']['role'] === 'teacher') {
                     </a>
                 </li>
 
-                            <li class="mt-auto">
-                <button @click="helpOpen = true"
-                        class="w-full flex items-center gap-x-3 rounded-xl p-3 text-sm font-semibold
-                               text-slate-500 hover:bg-blue-50 hover:text-blue-600">
-                    <svg class="h-5 w-5" fill="none" viewBox="0 0 24 24"
-                         stroke="currentColor" stroke-width="2">
-                        <path stroke-linecap="round" stroke-linejoin="round"
-                              d="M8.228 9c.549-1.165 2.03-2 3.772-2
-                              2.21 0 4 1.343 4 3
-                              0 1.4-1.278 2.575-3.006 2.907
-                              -.542.104-.994.54-.994 1.093m0 3h.01
-                              M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/>
-                    </svg>
-                    <span x-show="!sidebarCollapsed">Ndihmë</span>
-                </button>
-            </li>
+                <li class="mt-auto">
+                    <button @click="helpOpen = true"
+                            class="w-full flex items-center gap-x-3 rounded-xl p-3 text-sm font-semibold
+                                   text-slate-500 hover:bg-blue-50 hover:text-blue-600">
+                        <svg class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+                            <path stroke-linecap="round" stroke-linejoin="round" d="M8.228 9c.549-1.165 2.03-2 3.772-2 2.21 0 4 1.343 4 3 0 1.4-1.278 2.575-3.006 2.907 -.542.104-.994.54-.994 1.093m0 3h.01 M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/>
+                        </svg>
+                        <span x-show="!sidebarCollapsed">Ndihmë</span>
+                    </button>
+                </li>
 
                 <div class="mt-auto space-y-1">
                     <li>
@@ -332,7 +288,7 @@ if (isset($_SESSION['user']) && $_SESSION['user']['role'] === 'teacher') {
             <div class="flex items-center gap-3">
                 <div class="relative" x-data="{ open: false }">
                     <button @click="open = !open" class="p-2 text-slate-400 hover:text-blue-600 relative transition-colors">
-                        <?php if (!empty($announcement)): ?>
+                        <?php if (!empty($userNotifications)): ?>
                         <span class="absolute top-2 right-2 flex h-2 w-2">
                             <span class="animate-ping absolute inline-flex h-full w-full rounded-full bg-red-400 opacity-75"></span>
                             <span class="relative inline-flex rounded-full h-2 w-2 bg-red-500"></span>
