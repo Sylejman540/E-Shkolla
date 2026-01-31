@@ -34,8 +34,7 @@ try {
         if ($value === "" || strtolower($value) === "i pacaktuar") {
             $finalValue = null;
         } else {
-            // 1. Find the teacher ID by name
-            $stmtTeacher = $pdo->prepare("SELECT id FROM users WHERE name = ? AND school_id = ? AND role = 'teacher' LIMIT 1");
+            $stmtTeacher = $pdo->prepare("SELECT t.id FROM teachers t WHERE t.name = ? AND t.school_id = ? LIMIT 1");
             $stmtTeacher->execute([$value, $schoolId]);
             $teacher = $stmtTeacher->fetch();
 
@@ -46,8 +45,6 @@ try {
 
             $teacherId = $teacher['id'];
 
-            // 2. CHECK: Is this teacher already assigned to another class?
-            // We exclude the current class ID so the user can re-save the same teacher.
             $stmtCheck = $pdo->prepare("SELECT id FROM classes WHERE class_header = ? AND school_id = ? AND id != ? LIMIT 1");
             $stmtCheck->execute([$teacherId, $schoolId, $classId]);
             

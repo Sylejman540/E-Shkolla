@@ -19,7 +19,7 @@ $autoYear = ($currentMonth >= 9) ? $currentYear . '/' . ($currentYear + 1) : ($c
 
 $teachers = [];
 if ($schoolId) {
-    $tStmt = $pdo->prepare("SELECT user_id, name FROM teachers WHERE school_id = ? AND status = 'active' ORDER BY name ASC");
+    $tStmt = $pdo->prepare("SELECT id AS teacher_id, name FROM teachers WHERE school_id = ? AND status = 'active' ORDER BY name ASC");
     $tStmt->execute([$schoolId]);
     $teachers = $tStmt->fetchAll(PDO::FETCH_ASSOC);
 }
@@ -35,13 +35,13 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         $parallel      = trim($_POST['parallel']);
         $max_students  = (int) $_POST['max_students'];
         $status        = $_POST['status'];
-        $classHeader   = !empty($_POST['class_header']) ? (int) $_POST['class_header'] : null;
+        $classHeaderTeacherId = !empty($_POST['class_header']) ? (int) $_POST['class_header'] : null;
 
         $full_grade = $base_grade . ($parallel !== '' ? '/' . $parallel : '');
 
         if ($classHeader) {
             $checkStmt = $pdo->prepare("SELECT COUNT(*) FROM classes WHERE school_id = ? AND class_header = ?");
-            $checkStmt->execute([$schoolId, $classHeader]);
+            $checkStmt->execute([$schoolId, $classHeaderTeacherId]);
 
             if ($checkStmt->fetchColumn() > 0) {
                 throw new Exception(
@@ -51,7 +51,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         }
 
         $stmt = $pdo->prepare("INSERT INTO classes(school_id, user_id, class_header, academic_year, grade, max_students, status)VALUES (?, ?, ?, ?, ?, ?, ?)");
-        $stmt->execute([$schoolId, $userId, $classHeader, $academic_year, $full_grade, $max_students, $status]);
+        $stmt->execute([$schoolId, $userId, $classHeaderTeacherId, $academic_year, $full_grade, $max_students, $status]);
 
         $_SESSION['success'] = "Klasa $full_grade u shtua me sukses!";
         header("Location: /E-Shkolla/classes?success=1");
@@ -111,7 +111,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                         <option value="">Pa kujdestar</option>
 
                         <?php foreach ($teachers as $t): ?>
-                            <option value="<?= (int) $t['user_id'] ?>">
+                            <option value="<?= (int) $t['teacher_id'] ?>">
                                 <?= htmlspecialchars($t['name'], ENT_QUOTES, 'UTF-8') ?>
                             </option>
                         <?php endforeach; ?>
