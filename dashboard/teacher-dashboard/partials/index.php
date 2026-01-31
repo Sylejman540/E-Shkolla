@@ -52,6 +52,8 @@ if (isset($_SESSION['user']) && $_SESSION['user']['role'] === 'teacher') {
     $annStmt->execute([$schoolId]);
     $userNotifications = $annStmt->fetchAll(PDO::FETCH_ASSOC);
 }
+
+$latestAnnouncementAt = $userNotifications[0]['created_at'] ?? null;
 ?>
 <!DOCTYPE html>
 <html lang="en" class="h-full bg-slate-50"> 
@@ -286,14 +288,35 @@ if (isset($_SESSION['user']) && $_SESSION['user']['role'] === 'teacher') {
             </div>
 
             <div class="flex items-center gap-3">
-                <div class="relative" x-data="{ open: false }">
-                    <button @click="open = !open" class="p-2 text-slate-400 hover:text-blue-600 relative transition-colors">
-                        <?php if (!empty($userNotifications)): ?>
+               <div class="relative"
+                    x-data="{
+                        open: false,
+                        latest: '<?= $latestAnnouncementAt ?>',
+                        lastSeen: localStorage.getItem('teacher_announcements_seen_at'),
+
+                        hasNew() {
+                            if (!this.latest) return false;
+                            if (!this.lastSeen) return true;
+                            return new Date(this.latest).getTime() > new Date(this.lastSeen).getTime();
+                        },
+
+                        markSeen() {
+                            if (this.latest) {
+                                localStorage.setItem('teacher_announcements_seen_at', this.latest);
+                                this.lastSeen = this.latest;
+                            }
+                        }
+                    }">
+                    <button
+                    @click="open = !open; if (open) markSeen()"
+                    class="p-2 text-slate-400 hover:text-blue-600 relative transition-colors">
+
+                    <template x-if="hasNew()">
                         <span class="absolute top-2 right-2 flex h-2 w-2">
                             <span class="animate-ping absolute inline-flex h-full w-full rounded-full bg-red-400 opacity-75"></span>
                             <span class="relative inline-flex rounded-full h-2 w-2 bg-red-500"></span>
                         </span>
-                        <?php endif; ?>
+                    </template>
                         <svg class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.5"><path d="M15 17h5l-1.405-1.405A2.032 2.032 0 0118 14.158V11a6.002 6.002 0 00-4-5.659V5a2 2 0 10-4 0v.341C7.67 6.165 6 8.388 6 11v3.159c0 .538-.214 1.055-.595 1.436L4 17h5m6 0v1a3 3 0 11-6 0v-1m6 0H9"/></svg>
                     </button>
                     
