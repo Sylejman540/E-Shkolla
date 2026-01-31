@@ -242,7 +242,7 @@ ob_start();
     function checkUrlMessages() {
         const params = new URLSearchParams(window.location.search);
         if (params.get('success') === '1') {
-            showToast('Orari u përditësua me sukses!', 'success');
+            showToast('Orari u fshi me sukses!', 'success');
             window.history.replaceState({}, document.title, window.location.pathname + window.location.search.replace(/[?&]success=1/, ''));
         } else if (params.get('error') === '1') {
             showToast('Ndodhi një gabim gjatë ruajtjes!', 'error');
@@ -250,9 +250,26 @@ ob_start();
         }
     }
 
+    function checkUrlMessages() {
+    const params = new URLSearchParams(window.location.search);
+    
+    // Për importin nga CSV
+    if (params.get('import_success') === '1') {
+        showToast('Importimi i orarit u kreu me sukses!', 'success');
+        // Pastron URL-në
+        const newUrl = window.location.pathname + window.location.search.replace(/[?&]import_success=1/, '').replace(/^&/, '?');
+        window.history.replaceState({}, document.title, newUrl);
+    } 
+    // Për ruajtjen manuale
+    else if (params.get('success') === '1') {
+        showToast('Veprimi u krye me sukses!', 'success');
+        const newUrl = window.location.pathname + window.location.search.replace(/[?&]success=1/, '').replace(/^&/, '?');
+        window.history.replaceState({}, document.title, newUrl);
+    }
+}
+
     // Run kur ngarkohet faqja
     document.addEventListener('DOMContentLoaded', checkUrlMessages);
-
     </script>
 
     <?php else: ?>

@@ -44,6 +44,7 @@ try {
     $pdo->commit();
     echo json_encode(['success' => true, 'imported' => $imported]);
 
+
 } catch (Exception $e) {
     if ($pdo->inTransaction()) $pdo->rollBack();
     echo json_encode(['success' => false, 'error' => $e->getMessage()]);

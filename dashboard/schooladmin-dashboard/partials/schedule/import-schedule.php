@@ -160,27 +160,7 @@ function showPreview(data) {
     document.getElementById('previewBody').innerHTML = data.map(row => `<tr>${headers.map(h => `<td class="px-6 py-4 text-sm text-slate-600 dark:text-slate-400">${row[h]}</td>`).join('')}</tr>`).join('');
 }
 
-document.getElementById('submitImportBtn').onclick = async function () {
-    this.disabled = true;
-    this.innerText = "Duke u procesuar...";
-    try {
-        const response = await fetch('/E-Shkolla/dashboard/schooladmin-dashboard/partials/schedule/process-import.php', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify(scheduleData)
-        });
-        const result = await response.json();
-        if(result.success) {
-            window.location.href = '/E-Shkolla/schedule?success=1';
-        } else {
-            alert(result.error);
-            this.disabled = false;
-        }
-    } catch (e) {
-        alert('Gabim teknik!');
-        this.disabled = false;
-    }
-};
+
 </script>
 
 <?php 
