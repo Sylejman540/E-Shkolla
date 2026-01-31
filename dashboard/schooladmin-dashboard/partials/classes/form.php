@@ -80,12 +80,6 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 </div>
             <?php endif; ?>
 
-            <?php if ($success): ?>
-                <div class="mb-4 p-3 rounded-lg bg-green-100 border border-green-200 text-green-700 text-sm">
-                    <?= htmlspecialchars($success) ?>
-                </div>
-            <?php endif; ?>
-
             <form action="/E-Shkolla/dashboard/schooladmin-dashboard/partials/classes/form.php" method="POST" class="grid grid-cols-1 gap-y-6 gap-x-4 sm:grid-cols-6">
                 
                 <div class="sm:col-span-3">
