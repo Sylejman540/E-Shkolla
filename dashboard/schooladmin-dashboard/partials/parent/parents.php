@@ -327,6 +327,20 @@ document.addEventListener('click', e => {
     }
 });
 
+function closeAddParentForm() {
+    const form = document.getElementById('addParentForm');
+    if (form) {
+        form.classList.add('hidden');
+    }
+
+    // Remove open_form & student_id from URL without reload
+    const url = new URL(window.location.href);
+    url.searchParams.delete('open_form');
+    url.searchParams.delete('student_id');
+
+    window.history.replaceState({}, document.title, url.pathname + url.search);
+}
+
 document.getElementById('confirmStatus').onclick = () => {
     if (window.pendingStatus) save(window.pendingStatus.btn, window.pendingStatus.newStatus);
     document.getElementById('statusModal').classList.add('hidden');
