@@ -17,10 +17,14 @@ $search = $_GET['search'] ?? '';
 
 $whereClause = "WHERE c.school_id = :school_id";
 if (!empty($search)) {
+    // Kërkojmë edhe te emri i mësuesit (u.name)
     $whereClause .= " AND (c.academic_year LIKE :search_year OR c.grade LIKE :search_grade OR u.name LIKE :search_teacher)";
 }
 
-// 1. Fetch Classes
+/* =====================================================
+    KORRIGJIMI KRYESOR: SQL JOIN
+    Lidhim classes (class_header) -> teachers (id) -> users (id)
+===================================================== */
 $stmt = $pdo->prepare("
     SELECT
         c.id,
@@ -30,12 +34,12 @@ $stmt = $pdo->prepare("
         c.status,
         u.name AS class_header_name
     FROM classes c
-    LEFT JOIN users u ON u.id = c.class_header
+    LEFT JOIN teachers t ON t.id = c.class_header
+    LEFT JOIN users u ON u.id = t.user_id
     $whereClause
     ORDER BY CAST(SUBSTRING_INDEX(c.grade, '/', 1) AS UNSIGNED) ASC
     LIMIT " . (int)$limit . " OFFSET " . (int)$offset
 );
-
 
 $stmt->bindValue(':school_id', $schoolId, PDO::PARAM_INT);
 if (!empty($search)) {
@@ -47,8 +51,14 @@ if (!empty($search)) {
 $stmt->execute();
 $classes = $stmt->fetchAll(PDO::FETCH_ASSOC);
 
-// 2. Count Total for Pagination
-$totalStmt = $pdo->prepare("SELECT COUNT(*) FROM classes c LEFT JOIN users u ON u.id = c.class_header $whereClause");
+// Count Total i rregulluar me JOIN që të punojë kërkimi për mësuesin
+$totalStmt = $pdo->prepare("
+    SELECT COUNT(*) 
+    FROM classes c 
+    LEFT JOIN teachers t ON t.id = c.class_header
+    LEFT JOIN users u ON u.id = t.user_id 
+    $whereClause
+");
 $totalStmt->bindValue(':school_id', $schoolId, PDO::PARAM_INT);
 if (!empty($search)) {
     $totalStmt->bindValue(':search_year', $searchVal, PDO::PARAM_STR);
@@ -58,6 +68,8 @@ if (!empty($search)) {
 $totalStmt->execute();
 $totalRecords = $totalStmt->fetchColumn();
 $totalPages = ceil($totalRecords / $limit);
+
+// ... pjesa tjetër e kodit (HTML/JS) mbetet e njëjtë ...
 
 $range = ($totalPages <= 7) ? ($totalPages > 0 ? range(1, $totalPages) : []) : (($page <= 4) ? [1, 2, 3, 4, 5, '...', $totalPages] : (($page > $totalPages - 4) ? [1, '...', $totalPages - 4, $totalPages - 3, $totalPages - 2, $totalPages - 1, $totalPages] : [1, '...', $page - 1, $page, $page + 1, '...', $totalPages]));
 
