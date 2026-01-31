@@ -25,17 +25,29 @@ if (!empty($search)) {
 
 // 1. Fetch Teachers + Ordered Classes
 $stmt = $pdo->prepare("
-    SELECT t.*, u.name, u.email, u.status, u.created_at,
-           (SELECT GROUP_CONCAT(c.grade ORDER BY CAST(c.grade AS UNSIGNED) ASC SEPARATOR ', ') 
-            FROM teacher_class tc 
-            JOIN classes c ON tc.class_id = c.id 
-            WHERE tc.teacher_id = t.user_id) as assigned_classes
+    SELECT 
+        t.*, 
+        u.name, 
+        u.email, 
+        u.status, 
+        u.created_at,
+        (
+            SELECT GROUP_CONCAT(
+                c.grade 
+                ORDER BY CAST(c.grade AS UNSIGNED) ASC 
+                SEPARATOR ', '
+            )
+            FROM teacher_class tc
+            JOIN classes c ON tc.class_id = c.id
+            WHERE tc.teacher_id = t.id
+        ) AS assigned_classes
     FROM teachers t
     JOIN users u ON u.id = t.user_id
     $whereClause
     ORDER BY u.name ASC
     LIMIT $sqlLimit OFFSET $sqlOffset
 ");
+
 
 $stmt->bindValue(':school_id', $schoolId, PDO::PARAM_INT);
 if (!empty($search)) {
@@ -330,6 +342,41 @@ document.addEventListener('keydown', e => {
         e.preventDefault(); 
         e.target.blur(); 
     } 
+});
+
+// Add this inside your <script> tag if it's not already there
+document.addEventListener('submit', async (e) => {
+    // Check if the submitted form is the 'Add Teacher' form
+    if (e.target.id === 'addTeacherFormElement') { // Ensure this ID matches your form ID in form.php
+        e.preventDefault();
+        
+        const formData = new FormData(e.target);
+        
+        try {
+            const response = await fetch('/E-Shkolla/dashboard/schooladmin-dashboard/partials/teacher/form.php', {
+                method: 'POST',
+                body: formData
+            });
+            
+            const result = await response.json();
+            
+            if (result.status === 'success') {
+                // Trigger the toast message you already have defined
+                showToast('Mësuesi u shtua me sukses');
+                
+                // Hide the form and reset it
+                document.getElementById('addTeacherForm').classList.add('hidden');
+                e.target.reset();
+                
+                // Refresh the table to show the new teacher
+                loadPage(window.location.href);
+            } else {
+                showToast(result.message || 'Gabim gjatë shtimit', 'error');
+            }
+        } catch (err) {
+            showToast('Ndodhi një gabim në server', 'error');
+        }
+    }
 });
 </script>
 <?php endif; ?>
