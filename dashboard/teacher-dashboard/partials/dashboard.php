@@ -27,15 +27,9 @@ $teacherName = $teacherData['name'] ?? ($user['name'] ?? 'Mësimdhënës');
 /* =====================================================
     PHASE B — CONTEXTUAL DATA & TRANSLATIONS
 ===================================================== */
-// Përkthimi i ditëve dhe muajve
 $ditet = [
-    'Monday'    => 'E Hënë',
-    'Tuesday'   => 'E Martë',
-    'Wednesday' => 'E Mërkurë',
-    'Thursday'  => 'E Enjte',
-    'Friday'    => 'E Premte',
-    'Saturday'  => 'E Shtunë',
-    'Sunday'    => 'E Diel'
+    'Monday'    => 'E Hënë', 'Tuesday'   => 'E Martë', 'Wednesday' => 'E Mërkurë',
+    'Thursday'  => 'E Enjte', 'Friday'    => 'E Premte', 'Saturday'  => 'E Shtunë', 'Sunday'    => 'E Diel'
 ];
 
 $muajt = [
@@ -54,18 +48,11 @@ $academicYear = $yearStmt->fetchColumn() ?: date('Y') . '/' . (date('y')+1);
 
 // Orari i ditës
 $todayStmt = $pdo->prepare("
-    SELECT 
-        cs.period_number,
-        c.grade,
-        s.subject_name,
-        cs.class_id,
-        cs.subject_id
+    SELECT cs.period_number, c.grade, s.subject_name, cs.class_id, cs.subject_id
     FROM class_schedule cs
     INNER JOIN classes c ON c.id = cs.class_id
     INNER JOIN subjects s ON s.id = cs.subject_id
-    WHERE cs.teacher_id = ?
-      AND cs.school_id  = ?
-      AND LOWER(cs.day) = ?
+    WHERE cs.teacher_id = ? AND cs.school_id = ? AND LOWER(cs.day) = ?
     ORDER BY cs.period_number ASC
 ");
 $todayStmt->execute([$teacherId, $schoolId, strtolower(date('l'))]);
@@ -76,16 +63,28 @@ $summaryStmt = $pdo->prepare("SELECT COUNT(*) AS total_lessons, COUNT(DISTINCT c
 $summaryStmt->execute([$teacherId]);
 $summary = $summaryStmt->fetch(PDO::FETCH_ASSOC);
 
-$headStmt = $pdo->prepare("
-    SELECT grade 
-    FROM classes 
-    WHERE class_header = ?
-      AND status = 'active'
-    LIMIT 1
-");
+// Kontrolli i Kujdestarisë (Lidhja me teachers.id)
+$headStmt = $pdo->prepare("SELECT grade FROM classes WHERE class_header = ? AND status = 'active' LIMIT 1");
 $headStmt->execute([$teacherId]);
 $headClass = $headStmt->fetch(PDO::FETCH_ASSOC);
 
+$isClassHeader = !empty($headClass);
+
+/* =====================================================
+    ADMIN LOGS — ONLY FOR CLASS HEADERS
+===================================================== */
+$adminInsights = [];
+if ($isClassHeader) {
+    $logStmt = $pdo->prepare("
+        SELECT action_title, note, created_at
+        FROM admin_logs
+        WHERE school_id = ? AND context = 'class'
+        ORDER BY created_at DESC
+        LIMIT 5
+    ");
+    $logStmt->execute([$schoolId]);
+    $adminInsights = $logStmt->fetchAll(PDO::FETCH_ASSOC);
+}
 
 $pendingAssignmentsStmt = $pdo->prepare("SELECT COUNT(*) FROM assignments WHERE teacher_id = ? AND status = 'submitted'");
 $pendingAssignmentsStmt->execute([$teacherId]);
@@ -99,13 +98,10 @@ ob_start();
 ?>
 
 <style>
-    .dashboard-container {
-        font-family: 'Inter', ui-sans-serif, system-ui, sans-serif;
-        -webkit-font-smoothing: antialiased;
-    }
+    .dashboard-container { font-family: 'Inter', sans-serif; -webkit-font-smoothing: antialiased; }
     @media print {
         .no-print, nav, .sidebar, button, .quick-links { display: none !important; }
-        .max-w-6xl { max-width: 100% !important; padding: 0 !important; margin: 0 !important; }
+        .max-w-6xl { max-width: 100% !important; padding: 0 !important; }
         body { background: white !important; }
         .shadow-sm { box-shadow: none !important; border: 1px solid #e2e8f0 !important; }
     }
@@ -113,15 +109,14 @@ ob_start();
 
 <div class="dashboard-container max-w-6xl mx-auto p-4 lg:p-6 space-y-6 animate-in fade-in duration-500 text-slate-800">
 
-    
     <div class="flex flex-col md:flex-row md:items-center justify-between gap-4">
         <div>
             <h1 class="text-2xl font-bold text-slate-900 tracking-tight">Mirësevini, Prof. <?= htmlspecialchars($teacherName) ?></h1>
             <p class="text-sm text-slate-500 font-normal">Sot është e <?= $dita_sot ?>, <?= $data_sot ?> • <span class="text-indigo-600 font-medium"><?= $academicYear ?></span></p>
         </div>
         <div class="flex gap-2 no-print">
-            <button onclick="window.print()" class="bg-white border border-slate-200 text-slate-700 px-3 py-1.5 rounded-lg text-xs font-semibold shadow-sm hover:bg-slate-50 transition-all tracking-tight">Download Raportin</button>
-            <a href="/E-Shkolla/teacher-relators" class="bg-white border border-slate-200 text-slate-700 px-3 py-1.5 rounded-lg text-xs font-semibold shadow-sm hover:bg-slate-50 transition-all tracking-tight">Relatoret</a>
+            <button onclick="window.print()" class="bg-white border border-slate-200 text-slate-700 px-3 py-1.5 rounded-lg text-xs font-semibold shadow-sm hover:bg-slate-50 transition-all">Download Raportin</button>
+            <a href="/E-Shkolla/teacher-relators" class="bg-white border border-slate-200 text-slate-700 px-3 py-1.5 rounded-lg text-xs font-semibold shadow-sm hover:bg-slate-50 transition-all">Relatoret</a>
         </div>
     </div>
 
@@ -130,17 +125,14 @@ ob_start();
             <p class="text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-1">Planifikimi</p>
             <h3 class="text-xl font-bold text-slate-800"><?= (int)$summary['total_lessons'] ?> Orë <span class="text-xs font-normal text-slate-400">/ javë</span></h3>
         </div>
-
         <div class="bg-white p-5 rounded-xl border border-slate-100 shadow-sm">
             <p class="text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-1">Angazhimi</p>
             <h3 class="text-xl font-bold text-slate-800"><?= (int)$summary['total_classes'] ?> Klasa</h3>
         </div>
-
         <div class="bg-white p-5 rounded-xl border border-slate-100 shadow-sm">
             <p class="text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-1">Detyrat</p>
             <h3 class="text-xl font-bold text-slate-800"><?= $pendingCount ?> <span class="text-xs font-normal text-slate-400">Pezull</span></h3>
         </div>
-
         <div class="bg-white p-5 rounded-xl border border-slate-100 shadow-sm">
             <p class="text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-1">Kujdestaria</p>
             <h3 class="text-xl font-bold text-slate-800"><?= $headClass ? htmlspecialchars($headClass['grade']) : 'Asnjë' ?></h3>
@@ -148,16 +140,14 @@ ob_start();
     </div>
 
     <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
-        <div class="lg:col-span-2">
+        <div class="lg:col-span-2 space-y-6">
             <div class="bg-white rounded-2xl border border-slate-100 overflow-hidden shadow-sm">
                 <div class="p-5 border-b border-slate-50 flex justify-between items-center">
                     <h2 class="font-bold text-slate-800 flex items-center gap-2 text-base">
-                        <span class="w-1.5 h-4 bg-indigo-600 rounded-full"></span>
-                        Orari i ditës
+                        <span class="w-1.5 h-4 bg-indigo-600 rounded-full"></span> Orari i ditës
                     </h2>
                     <span class="text-[10px] font-bold text-indigo-600 bg-indigo-50 px-2.5 py-1 rounded-md uppercase tracking-wide"><?= $dita_sot ?></span>
                 </div>
-                
                 <div class="p-5">
                     <?php if ($todayLessons): ?>
                         <div class="space-y-3">
@@ -185,15 +175,32 @@ ob_start();
                     <?php endif; ?>
                 </div>
             </div>
+
+            <?php if ($isClassHeader && !empty($adminInsights)): ?>
+                <div class="bg-white rounded-2xl border border-slate-100 p-5 shadow-sm">
+                    <h2 class="font-bold text-slate-800 mb-4 flex items-center gap-2 text-base">
+                        <span class="w-1.5 h-4 bg-indigo-500 rounded-full"></span> Njoftime nga Administrata
+                    </h2>
+                    <div class="space-y-3">
+                        <?php foreach ($adminInsights as $log): ?>
+                            <div class="p-3 rounded-xl bg-indigo-50 border border-indigo-100">
+                                <p class="text-xs font-bold text-indigo-700"><?= htmlspecialchars($log['action_title']) ?></p>
+                                <?php if (!empty($log['note'])): ?>
+                                    <p class="text-[11px] text-slate-600 mt-1"><?= htmlspecialchars($log['note']) ?></p>
+                                <?php endif; ?>
+                                <p class="text-[10px] text-slate-400 mt-1 italic"><?= date('d.m.Y H:i', strtotime($log['created_at'])) ?></p>
+                            </div>
+                        <?php endforeach; ?>
+                    </div>
+                </div>
+            <?php endif; ?>
         </div>
 
         <div class="space-y-6">
             <div class="bg-white rounded-2xl border border-slate-100 p-5 shadow-sm">
                 <h2 class="font-bold text-slate-800 mb-4 flex items-center gap-2 text-base">
-                    <span class="w-1.5 h-4 bg-rose-500 rounded-full"></span>
-                    Vëmendje Kritike
+                    <span class="w-1.5 h-4 bg-rose-500 rounded-full"></span> Vëmendje Kritike
                 </h2>
-
                 <div class="space-y-3">
                     <?php if ($atRiskCount > 0): ?>
                         <div class="flex gap-3 p-3 rounded-xl bg-rose-50 border border-rose-100 text-rose-700">
@@ -216,12 +223,11 @@ ob_start();
                     <?php endif; ?>
 
                     <?php if ($atRiskCount === 0 && $pendingCount === 0): ?>
-                        <div class="text-center py-4 text-emerald-600 font-semibold text-xs tracking-tight">✓ Çdo gjë është në rregull</div>
+                        <div class="text-center py-4 text-emerald-600 font-semibold text-xs">✓ Çdo gjë është në rregull</div>
                     <?php endif; ?>
                 </div>
                 
                 <hr class="my-5 border-slate-50">
-                
                 <div class="space-y-2 no-print">
                     <p class="text-[9px] font-bold text-slate-400 uppercase tracking-widest">Lidhje të shpejta</p>
                     <a href="#" class="block text-xs font-medium text-slate-600 hover:text-indigo-600 transition-colors">→ Shkarko planprogramin</a>
@@ -230,7 +236,8 @@ ob_start();
             </div>
         </div>
     </div>
-        <div class="hidden print:flex justify-between pt-16 text-[11px] font-bold uppercase text-slate-400">
+
+    <div class="hidden print:flex justify-between pt-16 text-[11px] font-bold uppercase text-slate-400">
         <div class="border-t border-slate-300 pt-2 w-40 text-center">Nënshkrimi</div>
     </div>
 </div>
