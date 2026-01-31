@@ -30,116 +30,156 @@ $isAjax = (!empty($_SERVER['HTTP_X_REQUESTED_WITH']) && strtolower($_SERVER['HTT
 if (!$isAjax) { ob_start(); }
 ?>
 
-<div class="px-4 py-8 max-w-7xl mx-auto">
-    <div class="flex flex-col sm:flex-row justify-between items-start sm:items-center mb-8 gap-4">
+<div class="px-4 py-8 max-w-7xl mx-auto animate-in fade-in duration-500 font-sans tracking-tight" style="font-family: 'Inter', ui-sans-serif, system-ui, -apple-system, sans-serif;">
+    
+    <div class="flex flex-col md:flex-row justify-between items-start md:items-end mb-10 gap-6">
         <div>
-            <h1 class="text-2xl font-bold text-slate-900 dark:text-white tracking-tight">Komunikimi</h1>
-            <p class="text-sm text-slate-500 font-medium">Njoftimet aktive që shfaqen në dashboard.</p>
+            <nav class="flex mb-2" aria-label="Breadcrumb">
+                <ol class="inline-flex items-center space-x-1 text-[10px] font-medium uppercase tracking-widest text-slate-400">
+                    <li class="inline-flex items-center">Admin</li>
+                    <li><div class="flex items-center"><span class="mx-2">/</span> Komunikimi</div></li>
+                </ol>
+            </nav>
+            <h1 class="text-3xl font-bold text-slate-900 dark:text-white">Qendra e Njoftimeve</h1>
+            <p class="text-sm text-slate-500 dark:text-slate-400 mt-1">Menaxhoni informatat dhe njoftimet për stafin dhe nxënësit.</p>
         </div>
-        <button onclick="document.getElementById('announcementModal').classList.remove('hidden')" 
-                class="inline-flex items-center gap-2 rounded-xl bg-indigo-600 px-5 py-2.5 text-sm font-semibold text-white shadow-sm hover:bg-indigo-500 transition-all active:scale-95">
-                <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"/>
-                </svg>
-            Njoftim i Ri
-        </button>
+        
+        <div class="flex items-center gap-3">
+            <button onclick="document.getElementById('announcementModal').classList.remove('hidden')" 
+                    class="inline-flex items-center gap-2 rounded-xl bg-indigo-600 px-5 py-2.5 text-sm font-semibold text-white shadow-md hover:bg-indigo-700 transition-all active:scale-95">
+                    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"/>
+                    </svg>
+                Njoftim i Ri
+            </button>
+        </div>
     </div>
 
     <div class="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
         <?php if(empty($announcements)): ?>
-            <div class="col-span-full py-20 text-center bg-white dark:bg-gray-900 rounded-3xl border-2 border-dashed border-slate-200 dark:border-white/10">
-                <p class="text-slate-400 font-medium">Nuk ka njoftime aktive për momentin.</p>
+            <div class="col-span-full py-20 text-center bg-slate-50 dark:bg-gray-800/30 rounded-3xl border border-dashed border-slate-200 dark:border-white/5">
+                <h3 class="text-slate-900 dark:text-white font-semibold text-base">Nuk ka njoftime</h3>
+                <p class="text-slate-500 dark:text-slate-400 text-xs mt-1">Shtoni një njoftim të ri për të komunikuar me shkollën tuaj.</p>
             </div>
         <?php endif; ?>
 
         <?php foreach ($announcements as $ann): ?>
-        <div class="bg-white dark:bg-gray-900 p-6 rounded-2xl border border-slate-200 dark:border-white/10 shadow-sm flex flex-col justify-between relative group hover:border-indigo-300 transition-colors">
-            <?php if($ann['expires_at']): ?>
-                <div class="absolute top-3 right-3 px-2 py-1 bg-amber-50 dark:bg-amber-900/20 rounded text-[9px] text-amber-600 dark:text-amber-400 font-bold uppercase tracking-wider">
-                    Skadon: <?= date('d/m', strtotime($ann['expires_at'])) ?>
+        <div class="bg-white dark:bg-gray-900 p-1 rounded-3xl border border-slate-200 dark:border-white/10 shadow-sm hover:shadow-md transition-all duration-300 flex flex-col group overflow-hidden">
+            <div class="p-5 flex-1">
+                <div class="flex justify-between items-start mb-4">
+                    <div class="flex flex-wrap gap-2">
+                        <?php 
+                            $roleColor = $ann['target_role'] === 'all' ? 'bg-slate-100 text-slate-600 dark:bg-white/5 dark:text-slate-400' : 
+                                        ($ann['target_role'] === 'teacher' ? 'bg-emerald-50 text-emerald-600 dark:bg-emerald-500/10 dark:text-emerald-400' : 
+                                        'bg-blue-50 text-blue-600 dark:bg-blue-500/10 dark:text-blue-400');
+                        ?>
+                        <span class="px-2.5 py-0.5 text-[10px] font-semibold uppercase rounded-lg <?= $roleColor ?> tracking-wider">
+                            <?= $ann['target_role'] === 'all' ? 'Gjithë' : ($ann['target_role'] === 'teacher' ? 'Mësues' : 'Nxënës') ?>
+                        </span>
+                        
+                        <?php if($ann['class_name']): ?>
+                        <span class="px-2.5 py-0.5 text-[10px] font-semibold uppercase rounded-lg bg-indigo-50 text-indigo-600 dark:bg-indigo-500/10 dark:text-indigo-400 tracking-wider">
+                            <?= htmlspecialchars($ann['class_name']) ?>
+                        </span>
+                        <?php endif; ?>
+                    </div>
+
+                    <?php if($ann['expires_at']): ?>
+                        <span class="text-[10px] font-medium text-amber-600 bg-amber-50 dark:bg-amber-500/10 px-2 py-0.5 rounded-lg">
+                            Skadon: <?= date('d.m.y', strtotime($ann['expires_at'])) ?>
+                        </span>
+                    <?php endif; ?>
                 </div>
-            <?php endif; ?>
-            
-            <div>
-                <div class="flex items-center gap-2 mb-4">
-                    <span class="px-2 py-1 text-[10px] font-bold uppercase rounded-md bg-indigo-100 text-indigo-700 dark:bg-indigo-900/40 dark:text-indigo-400">
-                        <?= $ann['target_role'] === 'all' ? 'Të gjithë' : ($ann['target_role'] === 'teacher' ? 'Mësuesit' : 'Nxënësit') ?> 
-                        <?= $ann['class_name'] ? "• Klasa {$ann['class_name']}" : "" ?>
-                    </span>
-                    <span class="text-[10px] text-slate-400 font-bold uppercase tracking-tighter">
-                        <?= date('d M, Y', strtotime($ann['created_at'])) ?>
-                    </span>
-                </div>
-                <h3 class="font-bold text-slate-900 dark:text-white mb-2 leading-tight text-lg"><?= htmlspecialchars($ann['title']) ?></h3>
-                <p class="text-sm text-slate-600 dark:text-slate-400 mb-6 line-clamp-4"><?= nl2br(htmlspecialchars($ann['content'])) ?></p>
+
+                <h3 class="font-semibold text-slate-900 dark:text-white mb-2 leading-snug text-base group-hover:text-indigo-600 transition-colors">
+                    <?= htmlspecialchars($ann['title']) ?>
+                </h3>
+                
+                <p class="text-xs text-slate-500 dark:text-slate-400 leading-relaxed line-clamp-3 font-normal">
+                    <?= nl2br(htmlspecialchars($ann['content'])) ?>
+                </p>
             </div>
             
-            <div class="border-t border-slate-50 dark:border-white/5 pt-4 flex justify-end">
-                <button onclick="deleteAnn(<?= $ann['id'] ?>)" class="text-rose-500 text-xs font-bold uppercase tracking-widest hover:text-rose-700 transition px-2 py-1 rounded-lg hover:bg-rose-50 dark:hover:bg-rose-900/10">Fshij</button>
+            <div class="px-5 py-3 bg-slate-50/50 dark:bg-white/5 flex items-center justify-between border-t border-slate-100 dark:border-white/5">
+                <div class="flex flex-col">
+                    <span class="text-[9px] font-medium text-slate-400 uppercase tracking-tight">Publikuar</span>
+                    <span class="text-[11px] font-medium text-slate-600 dark:text-slate-300"><?= date('d M, Y', strtotime($ann['created_at'])) ?></span>
+                </div>
+
+                <button onclick="deleteAnn(<?= $ann['id'] ?>)" 
+                    class="p-1.5 text-slate-400 hover:text-rose-500 transition-colors"
+                    title="Fshij">
+                    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"/>
+                    </svg>
+                </button>
             </div>
         </div>
         <?php endforeach; ?>
     </div>
 </div>
 
-<div id="announcementModal" class="hidden fixed inset-0 z-[100] flex items-start justify-center p-4 bg-slate-900/60 overflow-y-auto backdrop-blur-sm animate-in fade-in duration-200">
-
-    <div class="bg-white dark:bg-gray-900 w-full max-w-lg rounded-3xl p-6 md:p-8 border border-slate-200 dark:border-white/10 shadow-2xl max-h-[94vh] overflow-y-auto">
-
-        <h2 class="text-xl font-bold mb-6 text-slate-900 dark:text-white">Krijo Njoftim</h2>
+<div id="announcementModal" class="hidden fixed inset-0 z-[100] flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-sm animate-in fade-in duration-200">
+    <div class="bg-white dark:bg-gray-900 w-full max-w-lg rounded-2xl p-6 md:p-8 border border-slate-200 dark:border-white/10 shadow-xl overflow-y-auto font-sans">
+        <div class="flex justify-between items-center mb-6">
+            <h2 class="text-lg font-semibold text-slate-900 dark:text-white">Krijo Njoftim</h2>
+            <button onclick="document.getElementById('announcementModal').classList.add('hidden')" class="text-slate-400 hover:text-slate-600 transition-colors">
+                <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/></svg>
+            </button>
+        </div>
 
         <form action="/E-Shkolla/dashboard/schooladmin-dashboard/partials/announcement/save-announcement.php" method="POST">
-
-            <div class="grid grid-cols-1 gap-x-6 gap-y-6 sm:grid-cols-6">
-
-                <div class="sm:col-span-6">
-                    <label class="block text-sm font-medium text-gray-900 dark:text-white">Titulli i njoftimit</label>
+            <div class="space-y-5">
+                <div>
+                    <label class="block text-xs font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wider mb-1.5">Titulli i njoftimit</label>
                     <input type="text" name="title" required placeholder="p.sh. Pushim zyrtar"
-                        class="mt-2 border block w-full rounded-md bg-white px-3 py-1.5 text-gray-900 focus:outline-indigo-600 dark:bg-white/5 dark:text-white" />
+                        class="block w-full rounded-lg border border-slate-200 bg-slate-50 px-3.5 py-2 text-sm text-slate-900 focus:ring-2 focus:ring-indigo-600 focus:bg-white outline-none transition dark:bg-white/5 dark:border-white/10 dark:text-white" />
                 </div>
 
-                <div class="sm:col-span-3">
-                    <label class="block text-sm font-medium text-gray-900 dark:text-white">Kush e sheh?</label>
-                    <select name="target_role" id="roleSel" onchange="toggleCls()"
-                        class="mt-2 border block w-full rounded-md bg-white p-[7px] text-sm dark:bg-gray-800 dark:text-white">
-                        <option value="all">Të gjithë</option>
-                        <option value="teacher">Mësuesit</option>
-                        <option value="student">Nxënësit</option>
-                    </select>
+                <div class="grid grid-cols-2 gap-4">
+                    <div>
+                        <label class="block text-xs font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wider mb-1.5">Kush e sheh?</label>
+                        <select name="target_role" id="roleSel" onchange="toggleCls()"
+                            class="block w-full rounded-lg border border-slate-200 bg-slate-50 p-2 text-sm dark:bg-gray-800 dark:border-white/10 dark:text-white outline-none focus:ring-2 focus:ring-indigo-600">
+                            <option value="all">Të gjithë</option>
+                            <option value="teacher">Mësuesit</option>
+                            <option value="student">Nxënësit</option>
+                        </select>
+                    </div>
+
+                    <div>
+                        <label class="block text-xs font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wider mb-1.5">Skadimi</label>
+                        <input type="date" name="expires_at"
+                            class="block w-full rounded-lg border border-slate-200 bg-slate-50 px-3 py-2 text-sm text-slate-900 focus:ring-2 focus:ring-indigo-600 dark:bg-white/5 dark:border-white/10 dark:text-white outline-none" />
+                    </div>
                 </div>
 
-                <div class="sm:col-span-3">
-                    <label class="block text-sm font-medium text-gray-900 dark:text-white">Data e Skadimit</label>
-                    <input type="date" name="expires_at"
-                        class="mt-2 border block w-full rounded-md bg-white px-3 py-1.5 text-gray-900 focus:outline-indigo-600 dark:bg-white/5 dark:text-white" />
-                </div>
-
-                <div id="classSelectDiv" class="hidden sm:col-span-6 animate-in slide-in-from-top-2 duration-200">
-                    <label class="block text-sm font-medium text-gray-900 dark:text-white">Përzgjidh Klasën Specifike</label>
+                <div id="classSelectDiv" class="hidden animate-in slide-in-from-top-2 duration-200">
+                    <label class="block text-xs font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wider mb-1.5">Përzgjidh Klasën</label>
                     <select name="class_id"
-                        class="mt-2 border block w-full rounded-md bg-white p-[7px] text-sm dark:bg-gray-800 dark:text-white">
-                        <option value="">Të gjitha klasat (Gjithë nxënësit)</option>
+                        class="block w-full rounded-lg border border-slate-200 bg-slate-50 p-2 text-sm dark:bg-gray-800 dark:border-white/10 dark:text-white outline-none focus:ring-2 focus:ring-indigo-600">
+                        <option value="">Të gjitha klasat</option>
                         <?php foreach ($classes as $c): ?>
                             <option value="<?= $c['id'] ?>"><?= htmlspecialchars($c['grade']) ?></option>
                         <?php endforeach; ?>
                     </select>
                 </div>
 
-                <div class="sm:col-span-6">
-                    <label class="block text-sm font-medium text-gray-900 dark:text-white">Mesazhi</label>
-                    <textarea name="message" rows="4" required placeholder="Shkruani detajet e njoftimit këtu..."
-                        class="mt-2 border block w-full rounded-md bg-white px-3 py-1.5 text-gray-900 focus:outline-indigo-600 dark:bg-white/5 dark:text-white"></textarea>
+                <div>
+                    <label class="block text-xs font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wider mb-1.5">Mesazhi</label>
+                    <textarea name="message" rows="4" required placeholder="Shkruani detajet..."
+                        class="block w-full rounded-lg border border-slate-200 bg-slate-50 px-3.5 py-2 text-sm text-slate-900 focus:ring-2 focus:ring-indigo-600 dark:bg-white/5 dark:border-white/10 dark:text-white outline-none resize-none"></textarea>
                 </div>
             </div>
 
-            <div class="mt-6 flex justify-end gap-x-4">
+            <div class="mt-8 flex justify-end gap-3">
                 <button type="button"
                     onclick="document.getElementById('announcementModal').classList.add('hidden')"
-                    class="text-sm font-semibold text-gray-700 hover:text-gray-900 dark:text-gray-300">
+                    class="px-4 py-2 text-xs font-semibold text-slate-500 hover:text-slate-700 transition">
                     Anulo
                 </button>
                 <button type="submit"
-                    class="rounded-md bg-indigo-600 px-6 py-2 text-sm font-semibold text-white shadow hover:bg-indigo-500 focus-visible:outline-indigo-600 active:scale-95 transition">
+                    class="rounded-lg bg-indigo-600 px-6 py-2 text-xs font-semibold text-white shadow hover:bg-indigo-700 active:scale-95 transition">
                     Dërgo Njoftimin
                 </button>
             </div>
@@ -153,12 +193,12 @@ function toggleCls() {
     const div = document.getElementById('classSelectDiv');
     div.classList.toggle('hidden', !isStudent);
     if(!isStudent) {
-        div.querySelector('select').value = ""; // Reset class selection if not student
+        div.querySelector('select').value = ""; 
     }
 }
 
 function deleteAnn(id) {
-    if(confirm('A jeni të sigurt? Njoftimi do të fshihet përgjithmonë.')) {
+    if(confirm('Njoftimi do të fshihet përgjithmonë.')) {
         window.location.href = `/E-Shkolla/dashboard/schooladmin-dashboard/partials/announcement/delete-announcement.php?id=${id}`;
     }
 }
