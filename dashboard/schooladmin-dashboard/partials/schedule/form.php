@@ -39,7 +39,13 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     } catch (PDOException $e) {
         $_SESSION['msg'] = ['type' => 'error', 'text' => 'Gabim: ' . $e->getMessage()];
     }
-
-    header("Location: " . $_SERVER['HTTP_REFERER']);
-    exit;
+if ($stmt->execute()) {
+    // Ridrejtohu mbrapsht me sukses (si te prindërit)
+    header("Location: " . $_SERVER['HTTP_REFERER'] . "&success=1");
+    exit();
+} else {
+    // Ridrejtohu mbrapsht me error
+    header("Location: " . $_SERVER['HTTP_REFERER'] . "&error=1");
+    exit();
+}
 }

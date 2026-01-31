@@ -61,15 +61,6 @@ ob_start();
         </form>
     </div>
 
-    <?php if (isset($_SESSION['msg'])): ?>
-        <div id="alert-box" class="mb-6 flex items-center p-4 rounded-xl border animate-in fade-in slide-in-from-top-4 duration-300 
-            <?= $_SESSION['msg']['type'] === 'error' ? 'bg-red-50 border-red-200 text-red-800' : 'bg-emerald-50 border-emerald-200 text-emerald-800' ?>">
-            <div class="flex-1 text-xs md:text-sm font-bold"><?= $_SESSION['msg']['text'] ?></div>
-            <button onclick="document.getElementById('alert-box').remove()" class="ml-4 text-xl">&times;</button>
-        </div>
-        <?php unset($_SESSION['msg']); ?>
-    <?php endif; ?>
-
     <?php if ($classId): ?>
 
     <div class="bg-white p-4 md:p-6 rounded-2xl shadow-sm border border-slate-200 mb-8">
@@ -136,6 +127,8 @@ ob_start();
         </div>
     </div>
 
+    <div id="toast-container" class="fixed bottom-5 right-5 z-[110] flex flex-col gap-2"></div>
+
     <script>
     // 1. Load the Grid
     fetch(`/E-Shkolla/dashboard/schooladmin-dashboard/partials/schedule/get-schedule-grid.php?class_id=<?= $classId ?>`)
@@ -166,7 +159,7 @@ ob_start();
         teacherSelect.addEventListener('change', function() {
             const teacherId = this.value;
             if (!teacherId) return;
-
+                            
             subjectSelect.innerHTML = '<option value="">Duke ngarkuar...</option>';
             subjectSelect.classList.remove('border-emerald-400', 'bg-emerald-50', 'border-2');
 
@@ -201,15 +194,65 @@ ob_start();
 
     function deleteEntry(id) {
         if (!confirm('A jeni të sigurt?')) return;
+
         fetch('/E-Shkolla/dashboard/schooladmin-dashboard/partials/schedule/delete-entry.php', {
             method: 'POST',
-            headers: {'Content-Type':'application/x-www-form-urlencoded'},
+            headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
             body: `id=${id}`
-        }).then(r => r.json()).then(res => {
-            if (res.success) location.reload();
-            else alert(res.error || 'Gabim');
+        })
+        .then(r => r.json())
+        .then(res => {
+            if (res.success) {
+                // Shtohet ?success=1 në URL dhe rifreskohet faqja
+                const url = new URL(window.location.href);
+                url.searchParams.set('success', '1');
+                window.location.href = url.toString();
+            } else {
+                showToast(res.error, 'error');
+            }
         });
     }
+
+    // 1. Funksioni universal për Toast (si te prindërit)
+    function showToast(message, type = 'success') {
+        const container = document.getElementById('toast-container');
+        if (!container) return;
+
+        const toast = document.createElement('div');
+        const isSuccess = type === 'success';
+        
+        toast.className = `${isSuccess ? 'bg-emerald-600' : 'bg-rose-600'} text-white px-5 py-3 rounded-2xl shadow-xl flex items-center gap-3 text-sm font-medium transform transition-all duration-300 translate-y-10 opacity-0`;
+        
+        toast.innerHTML = `
+            <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                ${isSuccess ? '<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"/>' : '<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/>'}
+            </svg>
+            <span>${message}</span>
+        `;
+        
+        container.appendChild(toast);
+        setTimeout(() => toast.classList.remove('translate-y-10', 'opacity-0'), 10);
+        setTimeout(() => {
+            toast.classList.add('opacity-0', 'translate-y-2');
+            setTimeout(() => toast.remove(), 300);
+        }, 4000);
+    }
+
+    // 2. Kontrolli i URL-së për mesazhet pas redirect (si te prindërit)
+    function checkUrlMessages() {
+        const params = new URLSearchParams(window.location.search);
+        if (params.get('success') === '1') {
+            showToast('Orari u përditësua me sukses!', 'success');
+            window.history.replaceState({}, document.title, window.location.pathname + window.location.search.replace(/[?&]success=1/, ''));
+        } else if (params.get('error') === '1') {
+            showToast('Ndodhi një gabim gjatë ruajtjes!', 'error');
+            window.history.replaceState({}, document.title, window.location.pathname + window.location.search.replace(/[?&]error=1/, ''));
+        }
+    }
+
+    // Run kur ngarkohet faqja
+    document.addEventListener('DOMContentLoaded', checkUrlMessages);
+
     </script>
 
     <?php else: ?>
