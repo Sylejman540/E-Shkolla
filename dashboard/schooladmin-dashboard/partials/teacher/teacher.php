@@ -344,40 +344,21 @@ document.addEventListener('keydown', e => {
     } 
 });
 
-// Add this inside your <script> tag if it's not already there
-document.addEventListener('submit', async (e) => {
-    // Check if the submitted form is the 'Add Teacher' form
-    if (e.target.id === 'addTeacherFormElement') { // Ensure this ID matches your form ID in form.php
-        e.preventDefault();
-        
-        const formData = new FormData(e.target);
-        
-        try {
-            const response = await fetch('/E-Shkolla/dashboard/schooladmin-dashboard/partials/teacher/form.php', {
-                method: 'POST',
-                body: formData
-            });
-            
-            const result = await response.json();
-            
-            if (result.status === 'success') {
-                // Trigger the toast message you already have defined
-                showToast('Mësuesi u shtua me sukses');
-                
-                // Hide the form and reset it
-                document.getElementById('addTeacherForm').classList.add('hidden');
-                e.target.reset();
-                
-                // Refresh the table to show the new teacher
-                loadPage(window.location.href);
-            } else {
-                showToast(result.message || 'Gabim gjatë shtimit', 'error');
-            }
-        } catch (err) {
-            showToast('Ndodhi një gabim në server', 'error');
-        }
-    }
+// ... existing code (confirmStatus, save functions, etc.)
+
+document.addEventListener('keydown', e => { 
+    if (e.target.classList.contains('editable') && e.key === 'Enter') { 
+        e.preventDefault(); 
+        e.target.blur(); 
+    } 
 });
+
+// ADD THE SESSION CHECK HERE
+<?php if (isset($_SESSION['success'])): ?>
+    showToast("<?= htmlspecialchars($_SESSION['success']) ?>");
+    <?php unset($_SESSION['success']); ?>
+<?php endif; ?>
+
 </script>
 <?php endif; ?>
 
