@@ -187,6 +187,7 @@ ob_start();
 
             fetch(`/E-Shkolla/dashboard/schooladmin-dashboard/partials/schedule/get-teacher-subjects.php?teacher_id=${teacherId}&class_id=${classIdFromUrl}`)
                 .then(r => r.json())
+                // ... brenda fetch-it të subjects
                 .then(subjects => {
                     subjectSelect.innerHTML = '';
                     if (subjects.length === 0) {
@@ -195,17 +196,30 @@ ob_start();
                         if (subjects.length > 1) {
                             const placeholder = document.createElement('option');
                             placeholder.textContent = "Zgjidhni lëndën...";
-                            placeholder.value = ""; placeholder.disabled = true; placeholder.selected = true;
+                            placeholder.value = ""; 
+                            placeholder.disabled = true; 
+                            placeholder.selected = true;
                             subjectSelect.appendChild(placeholder);
                         }
-                        subjects.forEach(s => {
+
+                        subjects.forEach((s, index) => {
                             const opt = document.createElement('option');
-                            opt.value = s.id; opt.textContent = s.subject_name;
+                            opt.value = s.id; 
+                            opt.textContent = s.subject_name;
+                            
+                            // NËSE KA VETËM NJË LËNDË, BËJE SELECTED
+                            if (subjects.length === 1) {
+                                opt.selected = true;
+                            }
+                            
                             subjectSelect.appendChild(opt);
                         });
+
                         if (subjects.length === 1) {
-                            subjectSelect.value = subjects[0].id;
+                            // Shto vizualisht efektin që u zgjodh
                             subjectSelect.classList.add('border-emerald-500', 'bg-emerald-50', 'ring-1', 'ring-emerald-200');
+                            // Detyro browser-in të njohë vlerën
+                            subjectSelect.dispatchEvent(new Event('change'));
                         }
                     }
                 });
