@@ -54,8 +54,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         $stmt->execute([$schoolId, $userId, $classHeader, $academic_year, $full_grade, $max_students, $status]);
 
         $_SESSION['success'] = "Klasa $full_grade u shtua me sukses!";
-        header("Location: /E-Shkolla/classes");
-        exit;
+        header("Location: /E-Shkolla/classes?success=1");
+        exit();
 
     } catch (Exception $e) {
         $_SESSION['error'] = "Gabim: " . $e->getMessage();

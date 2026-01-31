@@ -15,9 +15,6 @@ $page  = isset($_GET['page']) && is_numeric($_GET['page']) ? (int)$_GET['page'] 
 $offset = ($page - 1) * $limit;
 $search = $_GET['search'] ?? '';
 
-$sqlLimit = (int)$limit;
-$sqlOffset = (int)$offset;
-
 $whereClause = "WHERE c.school_id = :school_id";
 if (!empty($search)) {
     $whereClause .= " AND (c.academic_year LIKE :search_year OR c.grade LIKE :search_grade OR u.name LIKE :search_teacher)";
@@ -36,8 +33,8 @@ $stmt = $pdo->prepare("
     LEFT JOIN users u ON u.id = c.class_header
     $whereClause
     ORDER BY c.created_at DESC
-    LIMIT $sqlLimit OFFSET $sqlOffset
-");
+    LIMIT " . (int)$limit . " OFFSET " . (int)$offset
+);
 
 $stmt->bindValue(':school_id', $schoolId, PDO::PARAM_INT);
 if (!empty($search)) {
@@ -66,7 +63,6 @@ $range = ($totalPages <= 7) ? ($totalPages > 0 ? range(1, $totalPages) : []) : (
 $isAjax = !empty($_SERVER['HTTP_X_REQUESTED_WITH']) && strtolower($_SERVER['HTTP_X_REQUESTED_WITH']) == 'xmlhttprequest';
 if (!$isAjax) { ob_start(); }
 
-// --- HIGHLIGHT FUNCTION ---
 function highlight($text, $search) {
     if (empty($search)) return htmlspecialchars($text ?? '');
     return preg_replace('/(' . preg_quote($search, '/') . ')/i', '<mark class="bg-yellow-200 dark:bg-yellow-500/40 text-current rounded-sm px-0.5">$1</mark>', htmlspecialchars($text ?? ''));
@@ -205,6 +201,7 @@ function highlight($text, $search) {
 const API_URL = '/E-Shkolla/dashboard/schooladmin-dashboard/partials/classes/update-inline.php';
 let searchTimeout;
 
+// --- DEBOUNCED SEARCH LOGIC ---
 function filterClasses() {
     clearTimeout(searchTimeout);
     searchTimeout = setTimeout(() => {
@@ -214,7 +211,7 @@ function filterClasses() {
         else url.searchParams.delete('search');
         url.searchParams.set('page', 1);
         loadTablePage(url.toString());
-    }, 400);
+    }, 400); // 400ms delay like other tables
 }
 
 function clearSearch() {
@@ -228,7 +225,7 @@ function clearSearch() {
 async function loadTablePage(url) {
     const container = document.getElementById('classesTableContainer');
     const wrapper = document.getElementById('tableWrapper');
-    wrapper.style.minHeight = `${wrapper.offsetHeight}px`;
+    if (wrapper) wrapper.style.minHeight = `${wrapper.offsetHeight}px`;
     container.style.opacity = '0.5';
     
     try {
@@ -236,13 +233,16 @@ async function loadTablePage(url) {
         const html = await response.text();
         const parser = new DOMParser();
         const doc = parser.parseFromString(html, 'text/html');
-        container.innerHTML = doc.getElementById('classesTableContainer').innerHTML;
-        window.history.pushState({}, '', url);
+        const newTable = doc.getElementById('classesTableContainer');
+        if (newTable) {
+            container.innerHTML = newTable.innerHTML;
+            window.history.pushState({}, '', url);
+        }
     } catch (err) {
         showToast('Gabim gjatë ngarkimit', 'error');
     } finally {
         container.style.opacity = '1';
-        wrapper.style.minHeight = '0px';
+        if (wrapper) wrapper.style.minHeight = '0px';
     }
 }
 
@@ -285,14 +285,28 @@ function showToast(message, type = 'success') {
     const toast = document.createElement('div');
     const isSuccess = type === 'success';
     toast.className = `${isSuccess ? 'bg-emerald-600' : 'bg-rose-600'} text-white px-5 py-3 rounded-2xl shadow-xl flex items-center gap-3 text-sm font-medium transform transition-all duration-300 translate-y-10 opacity-0`;
-    toast.innerHTML = `${isSuccess ? '✓' : '✕'} <span>${message}</span>`;
+    toast.innerHTML = `<span>${message}</span>`;
     container.appendChild(toast);
     setTimeout(() => toast.classList.remove('translate-y-10', 'opacity-0'), 10);
     setTimeout(() => {
         toast.classList.add('opacity-0', 'translate-y-2');
         setTimeout(() => toast.remove(), 300);
-    }, 3000);
+    }, 3500);
 }
+
+function checkUrlMessages() {
+    const params = new URLSearchParams(window.location.search);
+    if (params.get('success') === '1') {
+        showToast('Klasa u shtua me sukses!', 'success');
+        window.history.replaceState({}, document.title, window.location.pathname);
+    }
+    if (params.get('error') === '1') {
+        showToast('Gabim gjatë shtimit të klasës!', 'error');
+        window.history.replaceState({}, document.title, window.location.pathname);
+    }
+}
+
+document.addEventListener('DOMContentLoaded', checkUrlMessages);
 
 document.addEventListener('click', e => {
     const link = e.target.closest('.ajax-page-link');
