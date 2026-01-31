@@ -106,11 +106,18 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 
 $stmt = $pdo->prepare("
     SELECT s.student_id, s.name, a.present, a.missing, a.updated_at
-    FROM student_class sc
-    JOIN students s ON s.student_id = sc.student_id
-    LEFT JOIN attendance a ON a.student_id = s.student_id AND a.class_id = ? AND a.subject_id = ? AND a.lesson_date = ? AND a.lesson_start_time = ?
-    WHERE sc.class_id = ?
-    ORDER BY s.name ASC
+FROM student_class sc
+JOIN students s 
+    ON s.student_id = sc.student_id
+   AND s.status = 'active'
+LEFT JOIN attendance a 
+    ON a.student_id = s.student_id 
+   AND a.class_id = ? 
+   AND a.subject_id = ? 
+   AND a.lesson_date = ? 
+   AND a.lesson_start_time = ?
+WHERE sc.class_id = ?
+
 ");
 $stmt->execute([$classId, $subjectId, $lessonDate, $lessonTime, $classId]);
 $rows = $stmt->fetchAll(PDO::FETCH_ASSOC);
