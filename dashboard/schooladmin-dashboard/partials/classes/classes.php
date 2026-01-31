@@ -32,9 +32,10 @@ $stmt = $pdo->prepare("
     FROM classes c
     LEFT JOIN users u ON u.id = c.class_header
     $whereClause
-    ORDER BY c.created_at DESC
+    ORDER BY CAST(SUBSTRING_INDEX(c.grade, '/', 1) AS UNSIGNED) ASC
     LIMIT " . (int)$limit . " OFFSET " . (int)$offset
 );
+
 
 $stmt->bindValue(':school_id', $schoolId, PDO::PARAM_INT);
 if (!empty($search)) {

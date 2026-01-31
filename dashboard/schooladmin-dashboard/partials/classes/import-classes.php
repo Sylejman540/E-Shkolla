@@ -84,41 +84,41 @@ ob_start();
     </div>
     </div>
 
-    <div id="helpBox" class="hidden mb-6 p-6 bg-slate-900 text-white rounded-[2rem] shadow-2xl border border-slate-800">
-        <div class="flex items-center justify-between mb-6">
-            <h4 class="font-black text-emerald-400 text-xs uppercase tracking-widest">Lista e Mësuesve Aktivë</h4>
-            <span class="text-[10px] text-slate-400 italic font-medium">* ID duhet vendosur në kolonën teacher_id</span>
-        </div>
-
-        <div class="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-3 max-h-64 overflow-y-auto pr-2 custom-scrollbar">
-            <?php foreach ($availableTeachers as $t): 
-                $isUsed = isset($usedHeaders[$t['user_id']]);
-            ?>
-                <div class="p-3 rounded-2xl border transition-all
-                    <?= $isUsed
-                        ? 'bg-slate-800/50 border-red-500/20 opacity-50'
-                        : 'bg-slate-800 border-slate-700 hover:border-emerald-500/50' ?>
-                ">
-                    <div class="flex justify-between items-start mb-1">
-                        <span class="font-black text-sm <?= $isUsed ? 'text-red-400' : 'text-emerald-400' ?>">
-                            ID: <?= (int)$t['user_id'] ?>
-                        </span>
-                        <?php if ($isUsed): ?>
-                            <span class="text-[9px] bg-red-500/20 text-red-400 px-2 py-0.5 rounded-full font-bold uppercase">Kujdestar</span>
-                        <?php endif; ?>
-                    </div>
-                    <p class="text-[11px] text-slate-300 font-medium truncate">
-                        <?= htmlspecialchars($t['name']) ?>
-                    </p>
-                </div>
-            <?php endforeach; ?>
-        </div>
-
-        <div class="mt-6 pt-4 border-t border-slate-800 flex items-center justify-between text-[11px]">
-            <p class="text-slate-400">Viti akademik aktual: <b class="text-white"><?= $autoYear ?></b></p>
-            <p class="text-slate-400">Statuset e lejuara: <code class="bg-slate-800 px-2 py-1 rounded text-emerald-400">active</code>, <code class="bg-slate-800 px-2 py-1 rounded text-slate-400">inactive</code></p>
-        </div>
+ <div id="helpBox" class="hidden mb-6 p-4 bg-slate-900 text-white rounded-2xl shadow-xl border border-slate-800 font-sans" style="font-family: 'Inter', ui-sans-serif, system-ui, sans-serif;">
+    <div class="flex items-center justify-between mb-4">
+        <h4 class="font-semibold text-emerald-400 text-[10px] uppercase tracking-wider">Lista e Mësuesve Aktivë</h4>
+        <span class="text-[9px] text-slate-500 italic font-normal">* Përdorni ID për teacher_id</span>
     </div>
+
+    <div class="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-6 gap-2 max-h-56 overflow-y-auto pr-2 custom-scrollbar">
+        <?php foreach ($availableTeachers as $t): 
+            $isUsed = isset($usedHeaders[$t['user_id']]);
+        ?>
+            <div class="p-2 rounded-xl border transition-all duration-200
+                <?= $isUsed
+                    ? 'bg-slate-800/40 border-red-500/10 opacity-60'
+                    : 'bg-slate-800/80 border-slate-700/50 hover:border-emerald-500/30' ?>
+            ">
+                <div class="flex justify-between items-center mb-0.5">
+                    <span class="font-semibold text-[10px] <?= $isUsed ? 'text-red-400' : 'text-emerald-400' ?>">
+                        ID: <?= (int)$t['user_id'] ?>
+                    </span>
+                    <?php if ($isUsed): ?>
+                        <span class="text-[7px] bg-red-500/10 text-red-400/80 px-1.5 py-0.5 rounded-md font-medium uppercase tracking-tighter">Zënë</span>
+                    <?php endif; ?>
+                </div>
+                <p class="text-[10px] text-slate-400 font-normal truncate">
+                    <?= htmlspecialchars($t['name']) ?>
+                </p>
+            </div>
+        <?php endforeach; ?>
+    </div>
+
+    <div class="mt-4 pt-3 border-t border-slate-800/60 flex items-center justify-between text-[10px]">
+        <p class="text-slate-500">Viti: <span class="text-slate-300"><?= $autoYear ?></span></p>
+        <p class="text-slate-500">Statuset: <code class="text-[9px] bg-slate-800 px-1.5 py-0.5 rounded text-emerald-500/80">active</code></p>
+    </div>
+</div>
 
     <div id="uploadContainer" 
          class="bg-white dark:bg-gray-900 rounded-[2.5rem] border-2 border-dashed border-slate-200 dark:border-white/10 p-16 text-center shadow-sm hover:border-indigo-400 transition-all group">
