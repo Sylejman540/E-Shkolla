@@ -21,7 +21,6 @@ $classId = $input['classId'];
 $field   = $input['field'];
 $value   = trim($input['value']);
 
-// Lejojmë class_header
 $allowedFields = ['grade', 'max_students', 'status', 'class_header'];
 if (!in_array($field, $allowedFields)) {
     echo json_encode(['status' => 'error', 'message' => 'Fusha nuk lejohet']);
@@ -31,12 +30,11 @@ if (!in_array($field, $allowedFields)) {
 try {
     $finalValue = $value;
 
-    // LOGJIKA SPECIALE: Nëse po editojmë mësuesin me tekst
     if ($field === 'class_header') {
         if ($value === "" || strtolower($value) === "i pacaktuar") {
             $finalValue = null;
         } else {
-            // Gjejmë ID-në e mësuesit bazuar në emrin që shkruajti përdoruesi
+            // 1. Find the teacher ID by name
             $stmtTeacher = $pdo->prepare("SELECT id FROM users WHERE name = ? AND school_id = ? AND role = 'teacher' LIMIT 1");
             $stmtTeacher->execute([$value, $schoolId]);
             $teacher = $stmtTeacher->fetch();
@@ -45,11 +43,24 @@ try {
                 echo json_encode(['status' => 'error', 'message' => 'Mësuesi nuk u gjet! Shkruani emrin saktë.']);
                 exit;
             }
-            $finalValue = $teacher['id'];
+
+            $teacherId = $teacher['id'];
+
+            // 2. CHECK: Is this teacher already assigned to another class?
+            // We exclude the current class ID so the user can re-save the same teacher.
+            $stmtCheck = $pdo->prepare("SELECT id FROM classes WHERE class_header = ? AND school_id = ? AND id != ? LIMIT 1");
+            $stmtCheck->execute([$teacherId, $schoolId, $classId]);
+            
+            if ($stmtCheck->fetch()) {
+                echo json_encode(['status' => 'error', 'message' => 'Ky mësues është tashmë kujdestar i një klase tjetër!']);
+                exit;
+            }
+
+            $finalValue = $teacherId;
         }
     }
 
-    // Ekzekutojmë Update
+    // Execute Update
     $stmt = $pdo->prepare("UPDATE classes SET $field = :value WHERE id = :id AND school_id = :school_id");
     $stmt->execute([
         ':value' => $finalValue,
