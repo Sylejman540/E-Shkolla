@@ -39,7 +39,9 @@ $currentSubjectName = $stmt->fetchColumn();
 $stmt = $pdo->prepare("
     SELECT COUNT(sc.student_id)
     FROM student_class sc
-    JOIN students s ON s.student_id = sc.student_id
+    JOIN students s 
+        ON s.student_id = sc.student_id
+    AND s.status = 'active'
     WHERE sc.class_id = ? AND s.school_id = ?
 ");
 $stmt->execute([$classIdFromUrl, $schoolId]);
@@ -53,10 +55,13 @@ $stmt = $pdo->prepare("
     SELECT
         SUM(present) AS present,
         SUM(missing) AS missing
-    FROM attendance
-    WHERE class_id = ? 
-    AND subject_id = ?
-    AND DATE(created_at) = ?
+    FROM attendance a
+    JOIN students s 
+        ON s.student_id = a.student_id
+    AND s.status = 'active'
+    WHERE a.class_id = ? 
+    AND a.subject_id = ?
+    AND DATE(a.created_at) = ?
 ");
 $stmt->execute([$classIdFromUrl, $subjectIdFromUrl, $today]);
 $attendanceToday = $stmt->fetch(PDO::FETCH_ASSOC);

@@ -1,67 +1,117 @@
 <?php
-if (session_status() === PHP_SESSION_NONE) {
-    session_start();
-}
+declare(strict_types=1);
+
+/* =====================================================
+    SESSION & SECURITY
+===================================================== */
+if (session_status() === PHP_SESSION_NONE) session_start();
 
 require_once __DIR__ . '/../../../../../db.php';
 require_once __DIR__ . '/../../../../../helpers/GradeMailer.php';
 
-/* ===============================
-   CONTEXT
-================================ */
-$schoolId  = (int) ($_SESSION['user']['school_id'] ?? 0);
-$userId    = (int) ($_SESSION['user']['id'] ?? 0);
+$user = $_SESSION['user'] ?? null;
+if (!$user || $user['role'] !== 'teacher') {
+    http_response_code(403);
+    exit('Unauthorized');
+}
+
+/* =====================================================
+    CONTEXT
+===================================================== */
+$schoolId  = (int) ($user['school_id'] ?? 0);
+$userId    = (int) ($user['id'] ?? 0);
 $classId   = (int) ($_GET['class_id'] ?? 0);
 $subjectId = (int) ($_GET['subject_id'] ?? 0);
 
 if (!$schoolId || !$userId || !$classId || !$subjectId) {
     http_response_code(400);
-    exit;
+    exit('Missing parameters');
 }
 
-/* ===============================
-   AJAX SAVE
-================================ */
+/* =====================================================
+    GET TEACHER ID
+===================================================== */
+$stmt = $pdo->prepare("
+    SELECT id 
+    FROM teachers 
+    WHERE user_id = ? AND school_id = ?
+    LIMIT 1
+");
+$stmt->execute([$userId, $schoolId]);
+$teacherId = (int) $stmt->fetchColumn();
+
+if (!$teacherId) {
+    http_response_code(403);
+    exit('Invalid teacher');
+}
+
+/* =====================================================
+    VERIFY TEACHER OWNS CLASS
+===================================================== */
+$stmt = $pdo->prepare("
+    SELECT 1 
+    FROM teacher_class
+    WHERE teacher_id = ? AND class_id = ?
+    LIMIT 1
+");
+$stmt->execute([$teacherId, $classId]);
+
+if (!$stmt->fetchColumn()) {
+    http_response_code(403);
+    exit('No access to this class');
+}
+
+/* =====================================================
+    AJAX SAVE (INLINE GRADING)
+===================================================== */
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 
     $studentId = (int) ($_POST['student_id'] ?? 0);
     $column    = $_POST['column'] ?? '';
     $value     = $_POST['value'] ?? '';
 
-    $allowed = [
+    $allowedColumns = [
         'p1_homework','p1_activity','p1_oral','p1_project','p1_test','p1_final',
         'p2_homework','p2_activity','p2_oral','p2_project','p2_test','p2_final',
         'grade','comment'
     ];
 
-    if (!$studentId || !in_array($column, $allowed, true)) {
-        http_response_code(403);
+    if (!$studentId || !in_array($column, $allowedColumns, true)) {
+        http_response_code(422);
         exit;
     }
 
-    /* ===============================
-       TEACHER
-    ================================ */
+    // Validate student belongs to class + school + active
     $stmt = $pdo->prepare("
-        SELECT id 
-        FROM teachers 
-        WHERE user_id = ? AND school_id = ?
+        SELECT 1
+        FROM student_class sc
+        JOIN students s 
+            ON s.student_id = sc.student_id
+           AND s.status = 'active'
+        WHERE sc.student_id = ?
+          AND sc.class_id = ?
+          AND s.school_id = ?
         LIMIT 1
     ");
-    $stmt->execute([$userId, $schoolId]);
-    $teacherId = (int) $stmt->fetchColumn();
+    $stmt->execute([$studentId, $classId, $schoolId]);
 
-    if (!$teacherId) {
+    if (!$stmt->fetchColumn()) {
         http_response_code(403);
         exit;
     }
 
-    /* ===============================
-       SAVE GRADE CELL
-    ================================ */
+    // Grade range validation
+    if (is_numeric($value) && ($value < 1 || $value > 5)) {
+        http_response_code(422);
+        exit;
+    }
+
+    /* =====================================================
+        UPSERT GRADE CELL
+    ===================================================== */
     $stmt = $pdo->prepare("
         INSERT INTO grades
-        (school_id, teacher_id, student_id, class_id, subject_id, {$column})
+            (school_id, teacher_id, student_id, class_id, subject_id, {$column})
         VALUES (?, ?, ?, ?, ?, ?)
         ON DUPLICATE KEY UPDATE
             {$column} = VALUES({$column}),
@@ -78,9 +128,11 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         $value
     ]);
 
-    /* ===============================
-       AUTO FINAL GRADE LOGIC
-    ================================ */
+    /* =====================================================
+        AUTO FINAL + YEARLY LOGIC
+    ===================================================== */
+    $alreadySent = false;
+
     if (in_array($column, ['p1_final','p2_final'], true)) {
 
         $stmt = $pdo->prepare("
@@ -95,11 +147,9 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         $p1 = (int) ($row['p1_final'] ?? 0);
         $p2 = (int) ($row['p2_final'] ?? 0);
 
-        if ($p1 && $p2) {
-            $final = round(($p1 + $p2) / 2);
-        } else {
-            $final = $p1 ?: $p2 ?: null;
-        }
+        $final = ($p1 && $p2)
+            ? round(($p1 + $p2) / 2)
+            : ($p1 ?: $p2 ?: null);
 
         $upd = $pdo->prepare("
             UPDATE grades
@@ -117,13 +167,12 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 'grade',
                 $final
             );
+            $alreadySent = true;
         }
     }
 
-    /* ===============================
-       SEND NOTIFICATION (ALL TYPES)
-    ================================ */
-    if ($value !== '' && is_numeric($value)) {
+    // Generic notification (no duplicates)
+    if (!$alreadySent && $value !== '' && is_numeric($value)) {
         sendGradeNotification(
             $pdo,
             $studentId,
@@ -138,28 +187,33 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     exit;
 }
 
-/* ===============================
-   DATA FETCH (UI)
-================================ */
+/* =====================================================
+    FETCH ACTIVE STUDENTS + GRADES
+===================================================== */
 $stmt = $pdo->prepare("
-    SELECT s.student_id, s.name,
-           g.p1_homework, g.p1_activity, g.p1_oral, g.p1_project, g.p1_test, g.p1_final,
-           g.p2_homework, g.p2_activity, g.p2_oral, g.p2_project, g.p2_test, g.p2_final,
-           g.grade, g.comment
+    SELECT 
+        s.student_id, 
+        s.name,
+        g.p1_homework, g.p1_activity, g.p1_oral, g.p1_project, g.p1_test, g.p1_final,
+        g.p2_homework, g.p2_activity, g.p2_oral, g.p2_project, g.p2_test, g.p2_final,
+        g.grade, g.comment
     FROM student_class sc
-    JOIN students s ON s.student_id = sc.student_id
-    LEFT JOIN grades g 
+    JOIN students s 
+        ON s.student_id = sc.student_id
+       AND s.status = 'active'
+    LEFT JOIN grades g
         ON g.student_id = s.student_id
        AND g.class_id = ?
        AND g.subject_id = ?
     WHERE sc.class_id = ?
     ORDER BY s.name ASC
 ");
-
 $stmt->execute([$classId, $subjectId, $classId]);
 $students = $stmt->fetchAll(PDO::FETCH_ASSOC);
 
-
+/* =====================================================
+    RENDER
+===================================================== */
 ob_start();
 ?>
 

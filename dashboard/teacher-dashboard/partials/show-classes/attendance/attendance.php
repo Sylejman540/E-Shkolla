@@ -18,6 +18,19 @@ if (!isset($_SESSION['user']) || $_SESSION['user']['role'] !== 'teacher') {
     exit('Unauthorized');
 }
 
+function ensureActiveStudent(PDO $pdo, int $studentId, int $schoolId): bool {
+    $stmt = $pdo->prepare("
+        SELECT 1 FROM students 
+        WHERE student_id = ? 
+          AND school_id = ? 
+          AND status = 'active'
+        LIMIT 1
+    ");
+    $stmt->execute([$studentId, $schoolId]);
+    return (bool) $stmt->fetchColumn();
+}
+
+
 /* ===============================
     CONTEXT
 ================================ */
@@ -62,6 +75,11 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     }
 
     if ($action === 'save' && $studentId) {
+        if (!ensureActiveStudent($pdo, $studentId, $schoolId)) {
+            echo json_encode(['status' => 'inactive_student']);
+            exit;
+        }
+
         $status  = $_POST['status'] ?? '';
         $present = ($status === 'present') ? 1 : 0;
         $missing = ($status === 'missing') ? 1 : 0;
@@ -82,6 +100,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         ");
         $stmt->execute([$schoolId, $studentId, $classId, $subjectId, $teacherId, $lessonDate, $lessonTime, $present, $missing]);
 
+        
         if ($missing) {
             $nameStmt = $pdo->prepare("SELECT name FROM students WHERE student_id = ?");
             $nameStmt->execute([$studentId]);
@@ -105,21 +124,26 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 }
 
 $stmt = $pdo->prepare("
-    SELECT s.student_id, s.name, a.present, a.missing, a.updated_at
-FROM student_class sc
-JOIN students s 
-    ON s.student_id = sc.student_id
-   AND s.status = 'active'
-LEFT JOIN attendance a 
-    ON a.student_id = s.student_id 
-   AND a.class_id = ? 
-   AND a.subject_id = ? 
-   AND a.lesson_date = ? 
-   AND a.lesson_start_time = ?
-WHERE sc.class_id = ?
-
+    SELECT 
+        s.student_id, 
+        s.name, 
+        a.present, 
+        a.missing, 
+        a.updated_at
+    FROM student_class sc
+    JOIN students s 
+        ON s.student_id = sc.student_id
+        AND s.status = 'active'
+    LEFT JOIN attendance a 
+        ON a.student_id = sc.student_id
+        AND a.lesson_date = ?        -- 1. $lessonDate
+        AND a.lesson_start_time = ?  -- 2. $lessonTime
+        AND a.subject_id = ?         -- 3. $subjectId
+    WHERE sc.class_id = ?            -- 4. $classId
 ");
-$stmt->execute([$classId, $subjectId, $lessonDate, $lessonTime, $classId]);
+
+// Execute with exactly 4 parameters in the correct order
+$stmt->execute([$lessonDate, $lessonTime, $subjectId, $classId]);
 $rows = $stmt->fetchAll(PDO::FETCH_ASSOC);
 
 $counts = ['total' => count($rows), 'present' => 0, 'missing' => 0];
