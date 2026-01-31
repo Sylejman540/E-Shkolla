@@ -9,9 +9,17 @@ if (!isset($_SESSION['user']) || $_SESSION['user']['role'] !== 'school_admin') {
 
 // Marrim klasat për t'i treguar te "Ndihmë"
 $school_id = $_SESSION['user']['school_id'] ?? 0;
-$stmtClasses = $pdo->prepare("SELECT id, grade FROM classes WHERE school_id = ?");
+
+$stmtClasses = $pdo->prepare("
+    SELECT id, grade 
+    FROM classes 
+    WHERE school_id = ?
+    ORDER BY grade ASC
+");
+
 $stmtClasses->execute([$school_id]);
 $availableClasses = $stmtClasses->fetchAll(PDO::FETCH_ASSOC);
+
 
 ob_start(); 
 ?>
