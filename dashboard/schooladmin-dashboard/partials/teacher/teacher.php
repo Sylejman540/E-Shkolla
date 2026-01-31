@@ -48,7 +48,6 @@ $stmt = $pdo->prepare("
     LIMIT $sqlLimit OFFSET $sqlOffset
 ");
 
-
 $stmt->bindValue(':school_id', $schoolId, PDO::PARAM_INT);
 if (!empty($search)) {
     $searchVal = "%$search%";
@@ -59,7 +58,7 @@ if (!empty($search)) {
 $stmt->execute();
 $teachers = $stmt->fetchAll(PDO::FETCH_ASSOC);
 
-// 2. Count Total
+// 2. Count Total for Pagination
 $totalStmt = $pdo->prepare("SELECT COUNT(*) FROM teachers t JOIN users u ON u.id = t.user_id $whereClause");
 $totalStmt->bindValue(':school_id', $schoolId, PDO::PARAM_INT);
 if (!empty($search)) {
@@ -75,6 +74,12 @@ $range = ($totalPages <= 7) ? ($totalPages > 0 ? range(1, $totalPages) : []) : (
 
 $isAjax = !empty($_SERVER['HTTP_X_REQUESTED_WITH']) && strtolower($_SERVER['HTTP_X_REQUESTED_WITH']) == 'xmlhttprequest';
 if (!$isAjax) { ob_start(); }
+
+// --- HIGHLIGHT FUNCTION ---
+function highlight($text, $search) {
+    if (empty($search)) return htmlspecialchars($text);
+    return preg_replace('/(' . preg_quote($search, '/') . ')/i', '<mark class="bg-yellow-200 dark:bg-yellow-500/40 text-current rounded-sm px-0.5">$1</mark>', htmlspecialchars($text));
+}
 ?>
 
 <div id="teacherTableContainer" class="px-4 sm:px-6 lg:px-8 py-8 transition-opacity duration-200">
@@ -95,7 +100,7 @@ if (!$isAjax) { ob_start(); }
         </div>
     </div>
 
-    <div class="mb-6 bg-white dark:bg-gray-900 p-4 rounded-2xl border border-slate-200 dark:border-white/10 shadow-sm">
+    <div class="mb-6 bg-white dark:bg-gray-900 p-4 rounded-2xl border border-slate-200 dark:border-white/10 shadow-sm flex items-center justify-between">
         <div class="relative w-full max-w-xs flex items-center gap-2">
             <div class="relative flex-1">
                 <input id="liveSearch" type="text" placeholder="Kërko me emër, email ose lëndë..." 
@@ -118,20 +123,20 @@ if (!$isAjax) { ob_start(); }
             <table class="w-full text-left border-collapse table-fixed min-w-[1000px]">
                 <thead>
                     <tr class="bg-slate-50 dark:bg-white/5 border-b border-slate-200 dark:border-white/10">
-                        <th class="w-[220px] px-6 py-4 text-xs font-bold uppercase tracking-wider text-slate-500 dark:text-slate-400">Mësuesi</th>
-                        <th class="w-[220px] px-6 py-4 text-xs font-bold uppercase tracking-wider text-slate-500 dark:text-slate-400">Kontakt</th>
-                        <th class="w-[100px] px-6 py-4 text-xs font-bold uppercase tracking-wider text-slate-500 dark:text-slate-400 text-center">Gjinia</th>
-                        <th class="w-[150px] px-6 py-4 text-xs font-bold uppercase tracking-wider text-slate-500 dark:text-slate-400">Lënda</th>
-                        <th class="w-[250px] px-6 py-4 text-xs font-bold uppercase tracking-wider text-slate-500 dark:text-slate-400">Klasat</th>
-                        <th class="w-[120px] px-6 py-4 text-xs font-bold uppercase tracking-wider text-slate-500 dark:text-slate-400 text-right pr-10">Statusi</th>
+                        <th class="w-[220px] px-6 py-2.5 text-xs font-bold uppercase tracking-wider text-slate-500 dark:text-slate-400">Mësuesi</th>
+                        <th class="w-[220px] px-6 py-2.5 text-xs font-bold uppercase tracking-wider text-slate-500 dark:text-slate-400">Kontakt</th>
+                        <th class="w-[100px] px-6 py-2.5 text-xs font-bold uppercase tracking-wider text-slate-500 dark:text-slate-400 text-center">Gjinia</th>
+                        <th class="w-[150px] px-6 py-2.5 text-xs font-bold uppercase tracking-wider text-slate-500 dark:text-slate-400">Lënda</th>
+                        <th class="w-[250px] px-6 py-2.5 text-xs font-bold uppercase tracking-wider text-slate-500 dark:text-slate-400">Klasat</th>
+                        <th class="w-[120px] px-6 py-2.5 text-xs font-bold uppercase tracking-wider text-slate-500 dark:text-slate-400 text-right pr-10">Statusi</th>
                     </tr>
                 </thead>
                 <tbody class="divide-y divide-slate-200 dark:divide-white/5">
                     <?php if (empty($teachers)): ?>
                     <tr><td colspan="6" class="px-6 py-20 text-center text-slate-500">Asnjë mësues nuk u gjet.</td></tr>
                     <?php else: foreach ($teachers as $row): ?>
-                    <tr class="h-[80px] hover:bg-slate-50 dark:hover:bg-white/5 transition-colors group">
-                        <td class="px-6 py-4 whitespace-nowrap overflow-hidden">
+                    <tr class="h-[52px] hover:bg-slate-50 dark:hover:bg-white/5 transition-colors group">
+                        <td class="px-6 py-2 whitespace-nowrap overflow-hidden">
                             <div class="flex items-center gap-3">
                                 <?php
                                 $photo = $row['profile_photo'];
@@ -139,37 +144,45 @@ if (!$isAjax) { ob_start(); }
                                     $photo = 'uploads/teachers/default-avatar.png';
                                 }
                                 ?>
-                                <img src="/E-Shkolla/<?= htmlspecialchars($photo) ?>" class="w-10 h-10 flex-shrink-0 rounded-full object-cover ring-2 ring-white dark:ring-gray-800 shadow-sm"/>
-                                <span contenteditable class="editable block text-sm font-semibold text-slate-900 dark:text-white outline-none truncate" data-id="<?= $row['user_id'] ?>" data-field="name" data-original="<?= htmlspecialchars($row['name']) ?>"><?= htmlspecialchars($row['name']) ?></span>
+                                <img src="/E-Shkolla/<?= htmlspecialchars($photo) ?>" class="w-8 h-8 flex-shrink-0 rounded-full object-cover ring-1 ring-slate-200 dark:ring-gray-800 shadow-sm"/>
+                                <span contenteditable class="editable block text-sm font-semibold text-slate-900 dark:text-white outline-none truncate" data-id="<?= $row['user_id'] ?>" data-field="name" data-original="<?= htmlspecialchars($row['name']) ?>">
+                                    <?= highlight($row['name'], $search) ?>
+                                </span>
                             </div>
                         </td>
-                        <td class="px-6 py-4 whitespace-nowrap overflow-hidden">
-                            <div class="text-sm flex flex-col">
-                                <span contenteditable class="editable text-slate-600 dark:text-slate-300 outline-none truncate" data-id="<?= $row['user_id'] ?>" data-field="email" data-original="<?= htmlspecialchars($row['email']) ?>"><?= htmlspecialchars($row['email']) ?></span>
-                                <span contenteditable class="editable text-xs text-slate-400 outline-none truncate" data-id="<?= $row['user_id'] ?>" data-field="phone" data-original="<?= htmlspecialchars($row['phone'] ?? 'Pa telefon') ?>"><?= htmlspecialchars($row['phone'] ?? 'Pa telefon') ?></span>
+                        <td class="px-6 py-2 whitespace-nowrap overflow-hidden">
+                            <div class="text-sm flex flex-col leading-tight">
+                                <span contenteditable class="editable text-slate-600 dark:text-slate-300 outline-none truncate" data-id="<?= $row['user_id'] ?>" data-field="email" data-original="<?= htmlspecialchars($row['email']) ?>">
+                                    <?= highlight($row['email'], $search) ?>
+                                </span>
+                                <span contenteditable class="editable text-[10px] text-slate-400 outline-none truncate" data-id="<?= $row['user_id'] ?>" data-field="phone" data-original="<?= htmlspecialchars($row['phone'] ?? 'Pa telefon') ?>">
+                                    <?= htmlspecialchars($row['phone'] ?? 'Pa telefon') ?>
+                                </span>
                             </div>
                         </td>
-                        <td class="px-6 py-4 text-center">
-                            <select class="editable-select rounded-lg px-2 py-1 text-xs border-none bg-slate-100 dark:bg-gray-800 dark:text-white focus:ring-1 focus:ring-indigo-500 outline-none" data-id="<?= $row['user_id'] ?>" data-field="gender" data-original="<?= $row['gender'] ?>">
+                        <td class="px-6 py-2 text-center">
+                            <select class="editable-select rounded-lg px-2 py-0.5 text-xs border-none bg-slate-100 dark:bg-gray-800 dark:text-white focus:ring-1 focus:ring-indigo-500 outline-none" data-id="<?= $row['user_id'] ?>" data-field="gender" data-original="<?= $row['gender'] ?>">
                                 <option value="male" <?= $row['gender'] === 'male' ? 'selected' : '' ?>>M</option>
                                 <option value="female" <?= $row['gender'] === 'female' ? 'selected' : '' ?>>F</option>
                             </select>
                         </td>
-                        <td class="px-6 py-4 whitespace-nowrap overflow-hidden">
-                            <span contenteditable class="editable text-sm text-indigo-600 dark:text-indigo-400 font-medium outline-none truncate" data-id="<?= $row['user_id'] ?>" data-field="subject_name" data-original="<?= htmlspecialchars($row['subject_name']) ?>"><?= htmlspecialchars($row['subject_name']) ?></span>
+                        <td class="px-6 py-2 whitespace-nowrap overflow-hidden">
+                            <span contenteditable class="editable text-sm text-indigo-600 dark:text-indigo-400 font-medium outline-none truncate" data-id="<?= $row['user_id'] ?>" data-field="subject_name" data-original="<?= htmlspecialchars($row['subject_name']) ?>">
+                                <?= highlight($row['subject_name'], $search) ?>
+                            </span>
                         </td>
-                        <td class="px-6 py-4">
-                            <div class="flex flex-nowrap gap-1 overflow-x-auto no-scrollbar pb-1">
+                        <td class="px-6 py-2">
+                            <div class="flex flex-nowrap gap-1 overflow-x-auto no-scrollbar">
                                 <?php if($row['assigned_classes']): 
                                     foreach(explode(', ', $row['assigned_classes']) as $cls): ?>
-                                    <span class="flex-shrink-0 px-2 py-0.5 bg-slate-100 dark:bg-gray-800 text-[10px] rounded-md border border-slate-200 dark:border-white/10 text-slate-600 dark:text-slate-300"><?= htmlspecialchars($cls) ?></span>
+                                    <span class="flex-shrink-0 px-1.5 py-0.5 bg-slate-100 dark:bg-gray-800 text-[9px] font-bold rounded-md border border-slate-200 dark:border-white/10 text-slate-600 dark:text-slate-300"><?= htmlspecialchars($cls) ?></span>
                                 <?php endforeach; else: ?>
                                     <span class="text-xs text-slate-400">Pa klasa</span>
                                 <?php endif; ?>
                             </div>
                         </td>
-                        <td class="px-6 py-4 text-right pr-10">
-                            <button class="status-toggle px-3 py-1 rounded-full text-[10px] font-bold uppercase tracking-wider transition-all <?= $row['status'] === 'active' ? 'bg-green-100 text-green-700 dark:bg-green-500/20 dark:text-green-400' : 'bg-red-100 text-red-600 dark:bg-red-500/20 dark:text-red-400' ?>" 
+                        <td class="px-6 py-2 text-right pr-10">
+                            <button class="status-toggle px-2.5 py-0.5 rounded-full text-[10px] font-bold uppercase tracking-wider transition-all <?= $row['status'] === 'active' ? 'bg-green-100 text-green-700 dark:bg-green-500/20 dark:text-green-400' : 'bg-red-100 text-red-600 dark:bg-red-500/20 dark:text-red-400' ?>" 
                                 data-id="<?= $row['user_id'] ?>" data-field="status" data-value="<?= $row['status'] ?>" data-original="<?= $row['status'] ?>">
                                 <?= htmlspecialchars($row['status']) ?>
                             </button>
@@ -181,7 +194,7 @@ if (!$isAjax) { ob_start(); }
         </div>
 
         <?php if ($totalPages > 1): ?>
-        <div class="px-6 py-4 bg-slate-50 dark:bg-white/5 border-t border-slate-200 dark:border-white/10 flex items-center justify-center">
+        <div class="px-6 py-3 bg-slate-50 dark:bg-white/5 border-t border-slate-200 dark:border-white/10 flex items-center justify-center">
             <nav class="flex items-center gap-1">
                 <?php foreach ($range as $p): ?>
                     <?php if ($p === '...'): ?>
@@ -217,7 +230,6 @@ if (!$isAjax) { ob_start(); }
 const API_URL = '/E-Shkolla/dashboard/schooladmin-dashboard/partials/teacher/update-inline.php';
 let searchTimeout;
 
-// --- Search & AJAX Logic ---
 function filterTeachers() {
     clearTimeout(searchTimeout);
     searchTimeout = setTimeout(() => {
@@ -241,10 +253,7 @@ function clearSearch() {
 async function loadPage(url) {
     const container = document.getElementById('teacherTableContainer');
     const wrapper = document.getElementById('tableWrapper');
-    
-    // Lock height during load
-    const currentHeight = wrapper.offsetHeight;
-    wrapper.style.minHeight = `${currentHeight}px`;
+    wrapper.style.minHeight = `${wrapper.offsetHeight}px`;
     container.style.opacity = '0.5';
     
     try {
@@ -258,11 +267,10 @@ async function loadPage(url) {
         showToast('Gabim gjatë ngarkimit', 'error');
     } finally {
         container.style.opacity = '1';
-        wrapper.style.minHeight = '0px'; // Release height
+        wrapper.style.minHeight = '0px';
     }
 }
 
-// --- Inline Editing Logic ---
 async function save(el, forcedValue = null) {
     const userId = el.dataset.id;
     const field  = el.dataset.field;
@@ -294,7 +302,7 @@ function updateStatusUI(btn, value) {
     btn.dataset.value = value;
     btn.innerText = value.charAt(0).toUpperCase() + value.slice(1);
     const active = value === 'active';
-    btn.className = `status-toggle px-3 py-1 rounded-full text-[10px] font-bold uppercase tracking-wider transition-all ${active ? 'bg-green-100 text-green-700 dark:bg-green-500/20 dark:text-green-400' : 'bg-red-100 text-red-600 dark:bg-red-500/20 dark:text-red-400'}`;
+    btn.className = `status-toggle px-2.5 py-0.5 rounded-full text-[10px] font-bold uppercase tracking-wider transition-all ${active ? 'bg-green-100 text-green-700 dark:bg-green-500/20 dark:text-green-400' : 'bg-red-100 text-red-600 dark:bg-red-500/20 dark:text-red-400'}`;
 }
 
 function showToast(message, type = 'success') {
@@ -311,7 +319,6 @@ function showToast(message, type = 'success') {
     }, 3000);
 }
 
-// --- Event Listeners ---
 document.addEventListener('click', e => {
     const link = e.target.closest('.pagination-link');
     if (link) { e.preventDefault(); loadPage(link.getAttribute('href')); }
@@ -344,21 +351,10 @@ document.addEventListener('keydown', e => {
     } 
 });
 
-// ... existing code (confirmStatus, save functions, etc.)
-
-document.addEventListener('keydown', e => { 
-    if (e.target.classList.contains('editable') && e.key === 'Enter') { 
-        e.preventDefault(); 
-        e.target.blur(); 
-    } 
-});
-
-// ADD THE SESSION CHECK HERE
 <?php if (isset($_SESSION['success'])): ?>
     showToast("<?= htmlspecialchars($_SESSION['success']) ?>");
     <?php unset($_SESSION['success']); ?>
 <?php endif; ?>
-
 </script>
 <?php endif; ?>
 
