@@ -11,16 +11,17 @@ if (!isset($_SESSION['user']) || $_SESSION['user']['role'] !== 'school_admin') {
 $schoolId = (int)$_SESSION['user']['school_id'];
 $classId  = (int)($_GET['class_id'] ?? 0);
 
-/* FETCH DATA */
-$classesStmt  = $pdo->prepare("SELECT id, grade FROM classes WHERE school_id=? ORDER BY grade ASC");
-
-// Updated to match your 'users' table structure
+/* FETCH DATA - KORRIGJIMI KËTU */
+// Duhet të bëjmë JOIN me tabelën teachers për të marrë ID-në e saktë të mësuesit
 $teachersStmt = $pdo->prepare("
-    SELECT id, name 
-    FROM users 
-    WHERE school_id = ? AND role = 'teacher' 
-    ORDER BY name ASC
+    SELECT t.id AS teacher_actual_id, u.name 
+    FROM teachers t
+    JOIN users u ON t.user_id = u.id
+    WHERE u.school_id = ? AND u.role = 'teacher'
+    ORDER BY u.name ASC
 ");
+
+$classesStmt  = $pdo->prepare("SELECT id, grade FROM classes WHERE school_id=? ORDER BY grade ASC");
 
 $classesStmt->execute([$schoolId]);
 $teachersStmt->execute([$schoolId]);
@@ -42,10 +43,6 @@ ob_start();
                 📅 <span class="truncate">Menaxhimi i Orarit</span>
             </h1>
             <p class="text-xs md:text-sm text-slate-500 font-medium">Organizoni planin mësimor javor</p>
-            <a href="/E-Shkolla/schedule-csv" class="mt-4 inline-flex items-center gap-2 rounded-xl bg-slate-900 px-5 py-2.5 text-sm font-semibold text-white shadow-sm hover:bg-slate-700 transition-all active:scale-95">
-                <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a2 2 0 002 2h12a2 2 0 002-2v-1M12 12v7m0 0l-3-3m3 3l3-3M12 3v9"/></svg>
-                Import CSV
-            </a>
         </div>
 
         <form method="GET" class="w-full lg:w-auto">
@@ -64,10 +61,7 @@ ob_start();
     <?php if ($classId): ?>
 
     <div class="bg-white p-4 md:p-6 rounded-2xl shadow-sm border border-slate-200 mb-8">
-        <div class="flex justify-between items-center mb-4">
-            <h3 class="text-[10px] font-bold text-slate-400 uppercase tracking-widest">Shto në orar</h3>
-        </div>
-        <form method="POST" action="/E-Shkolla/dashboard/schooladmin-dashboard/partials/schedule/form.php"
+        <form id="scheduleForm" method="POST" action="/E-Shkolla/dashboard/schooladmin-dashboard/partials/schedule/form.php"
               class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-3">
             
             <input type="hidden" name="school_id" value="<?= $schoolId ?>">
@@ -87,7 +81,7 @@ ob_start();
                 class="p-3 bg-slate-50 border border-slate-200 rounded-xl text-sm outline-none focus:ring-2 focus:ring-indigo-500 font-bold text-indigo-600">
                 <option value="" disabled selected>Zgjidh Mësimdhënësin</option>
                 <?php foreach ($teachers as $t): ?>
-                    <option value="<?= $t['id'] ?>"><?= htmlspecialchars($t['name']) ?></option>
+                    <option value="<?= $t['teacher_actual_id'] ?>"><?= htmlspecialchars($t['name']) ?></option>
                 <?php endforeach; ?>
             </select>
 
@@ -96,29 +90,29 @@ ob_start();
                 <option value="" disabled selected>Lënda</option>
             </select>
 
-            <button type="submit" class="bg-indigo-600 hover:bg-indigo-700 text-white rounded-xl font-bold py-3 text-sm transition-all active:scale-95 shadow-lg sm:col-span-2 lg:col-span-1">
+            <button type="submit" class="bg-indigo-600 hover:bg-indigo-700 text-white rounded-xl font-bold py-3 text-sm transition-all shadow-lg">
                 Ruaj Orarin
             </button>
         </form>
     </div>
 
     <div class="bg-white rounded-2xl shadow-sm border border-slate-200 overflow-hidden">
-        <div class="overflow-x-auto scroll-smooth">
+        <div class="overflow-x-auto">
             <table class="w-full border-collapse table-fixed min-w-[700px]">
                 <thead>
                     <tr class="bg-slate-50 border-b border-slate-200">
                         <th class="p-4 text-[10px] font-black text-slate-400 uppercase w-20 text-center sticky left-0 bg-slate-50 z-20 border-r shadow-sm">Ora</th>
                         <?php foreach ($days as $d): ?>
-                            <th class="p-4 text-[11px] md:text-xs font-bold text-slate-600 uppercase tracking-wider border-l border-slate-100"><?= $d ?></th>
+                            <th class="p-4 text-[11px] md:text-xs font-bold text-slate-600 uppercase border-l border-slate-100"><?= $d ?></th>
                         <?php endforeach; ?>
                     </tr>
                 </thead>
-                <tbody class="divide-y divide-slate-100">
+                <tbody id="scheduleGridBody" class="divide-y divide-slate-100">
                 <?php foreach ($periods as $pKey=>$pLabel): ?>
                     <tr>
                         <td class="p-4 text-center font-bold text-slate-400 text-xs sticky left-0 bg-white z-10 border-r shadow-sm"><?= $pKey ?></td>
                         <?php foreach ($days as $dayKey=>$dayLabel): ?>
-                            <td class="p-2 border-l border-slate-100 min-h-[100px] h-28 align-top" data-day="<?= $dayKey ?>" data-period="<?= $pKey ?>"></td>
+                            <td class="p-2 border-l border-slate-100 h-28 align-top" data-day="<?= $dayKey ?>" data-period="<?= $pKey ?>"></td>
                         <?php endforeach; ?>
                     </tr>
                 <?php endforeach; ?>
@@ -130,154 +124,91 @@ ob_start();
     <div id="toast-container" class="fixed bottom-5 right-5 z-[110] flex flex-col gap-2"></div>
 
     <script>
-    // 1. Load the Grid
-    fetch(`/E-Shkolla/dashboard/schooladmin-dashboard/partials/schedule/get-schedule-grid.php?class_id=<?= $classId ?>`)
-        .then(r => r.json())
-        .then(data => {
-            if (!data.grid) return;
-            Object.values(data.grid).forEach(day => {
-                Object.values(day).forEach(e => {
-                    const cell = document.querySelector(`[data-day="${e.day}"][data-period="${e.period_number}"]`);
-                    if (cell) {
-                        cell.innerHTML = `
-                            <div class="group relative bg-indigo-50 border border-indigo-100 p-2 rounded-xl h-full flex flex-col justify-center transition-all hover:bg-indigo-100 shadow-sm">
-                                <strong class="text-indigo-900 text-[10px] md:text-xs block leading-tight mb-1 truncate">${e.subject_name}</strong>
-                                <span class="text-[9px] font-medium text-indigo-500 truncate opacity-80 leading-none">👤 ${e.teacher_name}</span>
-                                <button onclick="deleteEntry(${e.id})" class="absolute -top-1 -right-1 bg-white border border-red-100 text-red-500 rounded-full w-5 h-5 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity shadow-sm">
-                                    <svg xmlns="http://www.w3.org/2000/svg" class="h-2.5 w-2.5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="3" d="M6 18L18 6M6 6l12 12" /></svg>
-                                </button>
-                            </div>`;
+    const urlParams = new URLSearchParams(window.location.search);
+    const classIdFromUrl = urlParams.get('class_id');
+
+    // Load Grid
+    if (classIdFromUrl) {
+        fetch(`/E-Shkolla/dashboard/schooladmin-dashboard/partials/schedule/get-schedule-grid.php?class_id=${classIdFromUrl}`)
+            .then(r => r.json())
+            .then(data => {
+                if (!data.grid) return;
+                Object.values(data.grid).forEach(day => {
+                    Object.values(day).forEach(e => {
+                        const cell = document.querySelector(`[data-day="${e.day}"][data-period="${e.period_number}"]`);
+                        if (cell) {
+                            cell.innerHTML = `
+                                <div class="group relative bg-indigo-50 border border-indigo-100 p-2 rounded-xl h-full flex flex-col justify-center transition-all hover:bg-indigo-100 shadow-sm">
+                                    <strong class="text-indigo-900 text-[10px] md:text-xs block leading-tight mb-1 truncate">${e.subject_name}</strong>
+                                    <span class="text-[9px] font-medium text-indigo-500 truncate opacity-80 leading-none">👤 ${e.teacher_name}</span>
+                                    <button onclick="deleteEntry(${e.id})" class="absolute -top-1 -right-1 bg-white border border-red-100 text-red-500 rounded-full w-5 h-5 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity shadow-sm">
+                                        <svg xmlns="http://www.w3.org/2000/svg" class="h-2.5 w-2.5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="3" d="M6 18L18 6M6 6l12 12" /></svg>
+                                    </button>
+                                </div>`;
+                        }
+                    });
+                });
+            });
+    }
+
+    // Auto-Selection Logic
+    const teacherSelect = document.getElementById('teacherSelect');
+    const subjectSelect = document.getElementById('subjectSelect');
+
+    if (teacherSelect && subjectSelect) {
+        teacherSelect.addEventListener('change', function() {
+            const teacherId = this.value; // TANI DO TË JETË 70
+            
+            console.log("Teacher ID dërguar:", teacherId, "Class ID:", classIdFromUrl);
+
+            subjectSelect.innerHTML = '<option value="">Duke ngarkuar...</option>';
+            subjectSelect.classList.remove('border-emerald-500', 'bg-emerald-50', 'ring-2', 'ring-emerald-200');
+
+            if (!teacherId || !classIdFromUrl) return;
+
+            fetch(`/E-Shkolla/dashboard/schooladmin-dashboard/partials/schedule/get-teacher-subjects.php?teacher_id=${teacherId}&class_id=${classIdFromUrl}`)
+                .then(r => r.json())
+                .then(subjects => {
+                    subjectSelect.innerHTML = '';
+                    if (subjects.length === 0) {
+                        subjectSelect.innerHTML = '<option value="" disabled selected>Asnjë lëndë e caktuar</option>';
+                    } else {
+                        if (subjects.length > 1) {
+                            const placeholder = document.createElement('option');
+                            placeholder.textContent = "Zgjidhni lëndën...";
+                            placeholder.value = "";
+                            placeholder.disabled = true;
+                            placeholder.selected = true;
+                            subjectSelect.appendChild(placeholder);
+                        }
+                        subjects.forEach(s => {
+                            const opt = document.createElement('option');
+                            opt.value = s.id;
+                            opt.textContent = s.subject_name;
+                            subjectSelect.appendChild(opt);
+                        });
+                        if (subjects.length === 1) {
+                            subjectSelect.value = subjects[0].id;
+                            subjectSelect.classList.add('border-emerald-500', 'bg-emerald-50', 'ring-2', 'ring-emerald-200');
+                        }
                     }
                 });
-            });
         });
-
-    const teacherSelect = document.getElementById('teacherSelect');
-const subjectSelect = document.getElementById('subjectSelect');
-const classId = <?= (int)$classId ?>;
-
-if (teacherSelect && subjectSelect) {
-    teacherSelect.addEventListener('change', function () {
-        const teacherId = this.value;
-        if (!teacherId || !classId) return;
-
-        subjectSelect.innerHTML = '<option value="">Duke ngarkuar...</option>';
-        subjectSelect.classList.remove('border-emerald-400', 'bg-emerald-50', 'border-2');
-
-        fetch(`/E-Shkolla/dashboard/schooladmin-dashboard/partials/schedule/get-teacher-subjects.php?teacher_id=${teacherId}&class_id=${classId}`)
-            .then(r => r.json())
-            .then(subjects => {
-                subjectSelect.innerHTML = '<option value="" disabled selected>Lënda</option>';
-
-                if (!Array.isArray(subjects) || subjects.length === 0) {
-                    subjectSelect.innerHTML = '<option value="" disabled>Asnjë lëndë e caktuar</option>';
-                    return;
-                }
-
-                subjects.forEach(s => {
-                    const opt = document.createElement('option');
-                    opt.value = s.id;
-                    opt.textContent = s.subject_name;
-                    subjectSelect.appendChild(opt);
-                });
-
-                // ✅ AUTO-SELECT if only one subject
-                if (subjects.length === 1) {
-                    subjectSelect.value = subjects[0].id;
-                    subjectSelect.classList.add('border-emerald-400', 'bg-emerald-50', 'border-2');
-                }
-            })
-            .catch(err => {
-                console.error('Fetch Error:', err);
-                subjectSelect.innerHTML = '<option value="" disabled>Gabim gjatë ngarkimit</option>';
-            });
-    });
-}
+    }
 
     function deleteEntry(id) {
         if (!confirm('A jeni të sigurt?')) return;
-
         fetch('/E-Shkolla/dashboard/schooladmin-dashboard/partials/schedule/delete-entry.php', {
             method: 'POST',
             headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
             body: `id=${id}`
-        })
-        .then(r => r.json())
-        .then(res => {
-            if (res.success) {
-                // Shtohet ?success=1 në URL dhe rifreskohet faqja
-                const url = new URL(window.location.href);
-                url.searchParams.set('success', '1');
-                window.location.href = url.toString();
-            } else {
-                showToast(res.error, 'error');
-            }
-        });
+        }).then(() => window.location.reload());
     }
-
-    // 1. Funksioni universal për Toast (si te prindërit)
-    function showToast(message, type = 'success') {
-        const container = document.getElementById('toast-container');
-        if (!container) return;
-
-        const toast = document.createElement('div');
-        const isSuccess = type === 'success';
-        
-        toast.className = `${isSuccess ? 'bg-emerald-600' : 'bg-rose-600'} text-white px-5 py-3 rounded-2xl shadow-xl flex items-center gap-3 text-sm font-medium transform transition-all duration-300 translate-y-10 opacity-0`;
-        
-        toast.innerHTML = `
-            <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                ${isSuccess ? '<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"/>' : '<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/>'}
-            </svg>
-            <span>${message}</span>
-        `;
-        
-        container.appendChild(toast);
-        setTimeout(() => toast.classList.remove('translate-y-10', 'opacity-0'), 10);
-        setTimeout(() => {
-            toast.classList.add('opacity-0', 'translate-y-2');
-            setTimeout(() => toast.remove(), 300);
-        }, 4000);
-    }
-
-    // 2. Kontrolli i URL-së për mesazhet pas redirect (si te prindërit)
-    function checkUrlMessages() {
-        const params = new URLSearchParams(window.location.search);
-        if (params.get('success') === '1') {
-            showToast('Orari u fshi me sukses!', 'success');
-            window.history.replaceState({}, document.title, window.location.pathname + window.location.search.replace(/[?&]success=1/, ''));
-        } else if (params.get('error') === '1') {
-            showToast('Ndodhi një gabim gjatë ruajtjes!', 'error');
-            window.history.replaceState({}, document.title, window.location.pathname + window.location.search.replace(/[?&]error=1/, ''));
-        }
-    }
-
-    function checkUrlMessages() {
-    const params = new URLSearchParams(window.location.search);
-    
-    // Për importin nga CSV
-    if (params.get('import_success') === '1') {
-        showToast('Importimi i orarit u kreu me sukses!', 'success');
-        // Pastron URL-në
-        const newUrl = window.location.pathname + window.location.search.replace(/[?&]import_success=1/, '').replace(/^&/, '?');
-        window.history.replaceState({}, document.title, newUrl);
-    } 
-    // Për ruajtjen manuale
-    else if (params.get('success') === '1') {
-        showToast('Veprimi u krye me sukses!', 'success');
-        const newUrl = window.location.pathname + window.location.search.replace(/[?&]success=1/, '').replace(/^&/, '?');
-        window.history.replaceState({}, document.title, newUrl);
-    }
-}
-
-    // Run kur ngarkohet faqja
-    document.addEventListener('DOMContentLoaded', checkUrlMessages);
     </script>
 
     <?php else: ?>
         <div class="flex flex-col items-center justify-center bg-white p-20 rounded-3xl border-2 border-dashed border-slate-200">
             <h2 class="text-lg font-bold text-slate-700">Asnjë klasë e zgjedhur</h2>
-            <p class="text-xs text-slate-400 text-center max-w-xs">Zgjidhni një klasë për të parë orarin.</p>
         </div>
     <?php endif; ?>
 </div>
