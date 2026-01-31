@@ -100,13 +100,27 @@ ob_start();
 let scheduleData = [];
 
 function downloadParentTemplate() {
-    const csvContent = "class_id,day,period_number,teacher_id\n1,monday,1,10\n1,monday,2,11";
+    // Përcaktojmë kolonat dhe rreshtat me vlerat: Klasa 26, Dita Friday, Mësuesi 70
+    const headers = "class_id,day,period_number,teacher_id";
+    const row1 = "26,friday,1,70";
+    const row2 = "26,friday,2,70";
+    const row3 = "26,friday,3,70";
+    
+    const csvContent = headers + "\n" + row1 + "\n" + row2 + "\n" + row3;
+    
+    // Krijimi i Blob-it
     const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
     const url = URL.createObjectURL(blob);
+    
+    // Krijimi i linkut për shkarkim automatik
     const link = document.createElement("a");
-    link.href = url;
-    link.download = "modeli_orarit.csv";
+    link.setAttribute("href", url);
+    link.setAttribute("download", "modeli_orarit_e_premte.csv");
+    link.style.visibility = 'hidden';
+    
+    document.body.appendChild(link);
     link.click();
+    document.body.removeChild(link);
 }
 
 function switchTab(tabName) {
