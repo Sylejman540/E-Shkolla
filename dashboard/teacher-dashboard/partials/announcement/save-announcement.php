@@ -12,10 +12,12 @@ error_reporting(E_ALL);
    LOAD ENV (SMTP)
 ========================= */
 $envPath = dirname(__DIR__, 4) . '/security.env';
-foreach (file($envPath, FILE_IGNORE_NEW_LINES) as $line) {
-    if (str_starts_with(trim($line), '#') || !str_contains($line, '=')) continue;
-    [$k, $v] = explode('=', $line, 2);
-    $_ENV[$k] = trim($v);
+if (file_exists($envPath)) {
+    foreach (file($envPath, FILE_IGNORE_NEW_LINES) as $line) {
+        if (str_starts_with(trim($line), '#') || !str_contains($line, '=')) continue;
+        [$k, $v] = explode('=', $line, 2);
+        $_ENV[$k] = trim($v);
+    }
 }
 
 require __DIR__ . '/../../../../vendor/autoload.php';
@@ -33,17 +35,30 @@ if ($_SERVER['REQUEST_METHOD'] !== 'POST') {
     exit;
 }
 
-if (
-    empty($_SESSION['user']) ||
-    ($_SESSION['user']['role'] ?? '') !== 'teacher'
-) {
+if (empty($_SESSION['user']) || ($_SESSION['user']['role'] ?? '') !== 'teacher') {
     http_response_code(403);
     exit('Akses i ndaluar');
 }
 
-$teacherId = (int) $_SESSION['user']['id'];
-$schoolId  = (int) $_SESSION['user']['school_id'];
+// Kjo është ID-ja nga tabela 'users'
+$userId   = (int) $_SESSION['user']['id']; 
+$schoolId = (int) $_SESSION['user']['school_id'];
 
+/* ==========================================================
+   KORRIGJIMI: Gjejmë ID-në reale nga tabela 'teachers'
+========================================================== */
+$tStmt = $pdo->prepare("SELECT id FROM teachers WHERE user_id = ? AND school_id = ? LIMIT 1");
+$tStmt->execute([$userId, $schoolId]);
+$realTeacherId = (int)$tStmt->fetchColumn();
+
+if (!$realTeacherId) {
+    http_response_code(404);
+    exit('Gabim: Profili i mësuesit nuk u gjet.');
+}
+
+/* =========================
+   Mbledhja e të dhënave
+========================= */
 $title     = trim($_POST['title'] ?? '');
 $content   = trim($_POST['message'] ?? '');
 $target    = $_POST['target_role'] ?? 'all';
@@ -73,10 +88,11 @@ $stmt = $pdo->prepare("
     ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, NOW())
 ");
 
+// Tani përdorim $realTeacherId i cili është ID-ja e tabelës 'teachers'
 $stmt->execute([
     $schoolId,
-    $teacherId,
-    $teacherId,
+    $realTeacherId, // Korrigjuar
+    $userId,        // author_id mund të mbetet userId nëse dëshiron të dish kush e krijoi llogarinë
     $title,
     $content,
     $target,
