@@ -9,7 +9,7 @@ if (!isset($_SESSION['user']) || $_SESSION['user']['role'] !== 'school_admin') {
 
 // Fetch classes for the "Help" box
 $school_id = $_SESSION['user']['school_id'] ?? 0;
-$stmtClasses = $pdo->prepare("SELECT id, grade FROM classes WHERE school_id = ?  ORDER BY grade ASC");
+$stmtClasses = $pdo->prepare("SELECT id, grade FROM classes WHERE school_id = ? ORDER BY grade ASC");
 $stmtClasses->execute([$school_id]);
 $availableClasses = $stmtClasses->fetchAll(PDO::FETCH_ASSOC);
 
