@@ -170,7 +170,7 @@ ob_start();
             subjectSelect.innerHTML = '<option value="">Duke ngarkuar...</option>';
             subjectSelect.classList.remove('border-emerald-400', 'bg-emerald-50', 'border-2');
 
-            fetch(`/E-Shkolla/dashboard/schooladmin-dashboard/partials/schedule/get-teacher-subjects.php?teacher_id=${teacherId}`)
+            fetch(`/E-Shkolla/dashboard/schooladmin-dashboard/partials/schedule/get-teacher-subjects.php?teacher_id=70&class_id=26`)
                 .then(response => response.json())
                 .then(subjects => {
                     subjectSelect.innerHTML = '<option value="" disabled selected>Lënda</option>';
