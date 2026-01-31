@@ -15,9 +15,6 @@ $page  = isset($_GET['page']) && is_numeric($_GET['page']) ? (int)$_GET['page'] 
 $offset = ($page - 1) * $limit;
 $search = $_GET['search'] ?? '';
 
-$sqlLimit = (int)$limit;
-$sqlOffset = (int)$offset;
-
 $whereClause = "WHERE school_id = :school_id";
 if (!empty($search)) {
     $whereClause .= " AND (name LIKE :search_name OR email LIKE :search_email OR phone LIKE :search_phone)";
@@ -28,8 +25,8 @@ $stmt = $pdo->prepare("
     SELECT * FROM parents 
     $whereClause 
     ORDER BY created_at DESC 
-    LIMIT $sqlLimit OFFSET $sqlOffset
-");
+    LIMIT " . (int)$limit . " OFFSET " . (int)$offset
+);
 
 $stmt->bindValue(':school_id', $schoolId, PDO::PARAM_INT);
 if (!empty($search)) {
@@ -58,7 +55,6 @@ $range = ($totalPages <= 7) ? ($totalPages > 0 ? range(1, $totalPages) : []) : (
 $isAjax = !empty($_SERVER['HTTP_X_REQUESTED_WITH']) && strtolower($_SERVER['HTTP_X_REQUESTED_WITH']) == 'xmlhttprequest';
 if (!$isAjax) { ob_start(); }
 
-// --- HIGHLIGHT FUNCTION ---
 function highlight($text, $search) {
     if (empty($search)) return htmlspecialchars($text);
     return preg_replace('/(' . preg_quote($search, '/') . ')/i', '<mark class="bg-yellow-200 dark:bg-yellow-500/40 text-current rounded-sm px-0.5">$1</mark>', htmlspecialchars($text));
@@ -188,10 +184,48 @@ function highlight($text, $search) {
 
 <div id="toast-container" class="fixed bottom-5 right-5 z-[110] flex flex-col gap-2"></div>
 
+<?php require_once 'form.php'; ?>
+
 <script>
 const API_URL = '/E-Shkolla/dashboard/schooladmin-dashboard/partials/parent/update-inline.php';
 let searchTimeout;
 
+// Toast Logic
+function showToast(message, type = 'success') {
+    const container = document.getElementById('toast-container');
+    const toast = document.createElement('div');
+    const isSuccess = type === 'success';
+    
+    toast.className = `${isSuccess ? 'bg-emerald-600' : 'bg-rose-600'} text-white px-5 py-3 rounded-2xl shadow-xl flex items-center gap-3 text-sm font-medium transform transition-all duration-300 translate-y-10 opacity-0`;
+    toast.innerHTML = `
+        <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            ${isSuccess ? '<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"/>' : '<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/>'}
+        </svg>
+        <span>${message}</span>
+    `;
+    
+    container.appendChild(toast);
+    setTimeout(() => toast.classList.remove('translate-y-10', 'opacity-0'), 10);
+    setTimeout(() => {
+        toast.classList.add('opacity-0', 'translate-y-2');
+        setTimeout(() => toast.remove(), 300);
+    }, 4000);
+}
+
+// Check URL for success/error flags from PHP redirect
+function checkUrlMessages() {
+    const params = new URLSearchParams(window.location.search);
+    if (params.get('success') === '1') {
+        showToast('Prindi u shtua me sukses!', 'success');
+        // Clean the URL without refreshing
+        window.history.replaceState({}, document.title, window.location.pathname);
+    } else if (params.get('error') === '1') {
+        showToast('Ndodhi një gabim gjatë shtimit!', 'error');
+        window.history.replaceState({}, document.title, window.location.pathname);
+    }
+}
+
+// Live Search
 function filterParents() {
     clearTimeout(searchTimeout);
     searchTimeout = setTimeout(() => {
@@ -215,7 +249,7 @@ function clearSearch() {
 async function loadPage(url) {
     const container = document.getElementById('parentTableContainer');
     const wrapper = document.getElementById('tableWrapper');
-    wrapper.style.minHeight = `${wrapper.offsetHeight}px`;
+    if(wrapper) wrapper.style.minHeight = `${wrapper.offsetHeight}px`;
     container.style.opacity = '0.5';
     
     try {
@@ -223,13 +257,14 @@ async function loadPage(url) {
         const html = await response.text();
         const parser = new DOMParser();
         const doc = parser.parseFromString(html, 'text/html');
-        container.innerHTML = doc.getElementById('parentTableContainer').innerHTML;
+        const newContent = doc.getElementById('parentTableContainer').innerHTML;
+        container.innerHTML = newContent;
         window.history.pushState({}, '', url);
     } catch (err) {
         showToast('Gabim gjatë ngarkimit', 'error');
     } finally {
         container.style.opacity = '1';
-        wrapper.style.minHeight = '0px';
+        if(wrapper) wrapper.style.minHeight = '0px';
     }
 }
 
@@ -252,11 +287,11 @@ async function save(el, forcedValue = null) {
         if (result.status === 'success') {
             el.setAttribute('data-original', newValue);
             if (el.classList.contains('status-toggle')) updateStatusUI(el, newValue);
-            showToast('Të dhënat u përditësuan');
+            showToast('Të dhënat u përditësuan me sukses!');
         } else { throw new Error(result.message); }
     } catch (err) {
         if (el.tagName === 'SELECT') el.value = oldValue; else el.innerText = oldValue;
-        showToast(err.message || 'Gabim!', 'error');
+        showToast(err.message || 'Gabim gjatë përditësimit!', 'error');
     } finally { el.classList.remove('opacity-40', 'pointer-events-none'); }
 }
 
@@ -267,27 +302,28 @@ function updateStatusUI(btn, value) {
     btn.className = `status-toggle px-2.5 py-0.5 rounded-full text-[10px] font-bold uppercase tracking-wider transition-all ${active ? 'bg-green-100 text-green-700 dark:bg-green-500/20 dark:text-green-400' : 'bg-red-100 text-red-600 dark:bg-red-500/20 dark:text-red-400'}`;
 }
 
-function showToast(message, type = 'success') {
-    const container = document.getElementById('toast-container');
-    const toast = document.createElement('div');
-    const isSuccess = type === 'success';
-    toast.className = `${isSuccess ? 'bg-emerald-600' : 'bg-rose-600'} text-white px-5 py-3 rounded-2xl shadow-xl flex items-center gap-3 text-sm font-medium transform transition-all duration-300 translate-y-10 opacity-0`;
-    toast.innerHTML = `${isSuccess ? '✓' : '✕'} <span>${message}</span>`;
-    container.appendChild(toast);
-    setTimeout(() => toast.classList.remove('translate-y-10', 'opacity-0'), 10);
-    setTimeout(() => {
-        toast.classList.add('opacity-0', 'translate-y-2');
-        setTimeout(() => toast.remove(), 300);
-    }, 3000);
-}
+// Global Event Listeners
+document.addEventListener('DOMContentLoaded', checkUrlMessages);
 
 document.addEventListener('click', e => {
+    // Pagination clicks
     const link = e.target.closest('.pagination-link');
     if (link) { e.preventDefault(); loadPage(link.getAttribute('href')); }
 
+    // Status toggle clicks
     if (e.target.classList.contains('status-toggle')) {
         window.pendingStatus = { btn: e.target, newStatus: e.target.dataset.value === 'active' ? 'inactive' : 'active' };
         document.getElementById('statusModal').classList.remove('hidden');
+    }
+
+    // Open Form modal
+    const addBtn = e.target.closest('#addParentBtn');
+    if (addBtn) {
+        const form = document.getElementById('addParentForm');
+        if(form) {
+            form.classList.remove('hidden');
+            form.scrollIntoView({ behavior: 'smooth', block: 'start' });
+        }
     }
 });
 
@@ -295,11 +331,19 @@ document.getElementById('confirmStatus').onclick = () => {
     if (window.pendingStatus) save(window.pendingStatus.btn, window.pendingStatus.newStatus);
     document.getElementById('statusModal').classList.add('hidden');
 };
-document.getElementById('cancelStatus').onclick = () => document.getElementById('statusModal').classList.add('hidden');
+
+document.getElementById('cancelStatus').onclick = () => {
+    document.getElementById('statusModal').classList.add('hidden');
+};
 
 document.addEventListener('focusout', e => { if (e.target.classList.contains('editable')) save(e.target); });
 document.addEventListener('change', e => { if (e.target.classList.contains('editable-select')) save(e.target); });
-document.addEventListener('keydown', e => { if (e.target.classList.contains('editable') && e.key === 'Enter') { e.preventDefault(); e.target.blur(); } });
+document.addEventListener('keydown', e => { 
+    if (e.target.classList.contains('editable') && e.key === 'Enter') { 
+        e.preventDefault(); 
+        e.target.blur(); 
+    } 
+});
 </script>
 <?php endif; ?>
 

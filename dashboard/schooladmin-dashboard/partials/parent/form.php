@@ -104,7 +104,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         $pdo->commit();
         unset($_SESSION['old_parent']); // Clear old data on success
         $_SESSION['success'] = "Veprimi u krye me sukses.";
-        header("Location: /E-Shkolla/parents");
+        header("Location: /E-Shkolla/parents?success=1");
         exit;
 
     } catch (Exception $e) {
