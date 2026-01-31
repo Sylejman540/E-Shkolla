@@ -16,7 +16,6 @@ if (!$user || ($user['role'] ?? '') !== 'teacher' || empty($user['id'])) {
 $userId   = (int)$user['id'];
 $schoolId = (int)$user['school_id'];
 
-// Merr emrin e mësuesit nga tabela 'teachers'
 $tStmt = $pdo->prepare("SELECT id, name FROM teachers WHERE user_id = ? AND school_id = ? LIMIT 1");
 $tStmt->execute([$userId, $schoolId]);
 $teacherData = $tStmt->fetch(PDO::FETCH_ASSOC);
@@ -41,12 +40,10 @@ $muajt = [
 $dita_sot = $ditet[date('l')];
 $data_sot = date('d') . ' ' . $muajt[date('M')] . ' ' . date('Y');
 
-// Viti Akademik
 $yearStmt = $pdo->prepare("SELECT academic_year FROM classes WHERE school_id = ? AND status = 'active' ORDER BY academic_year DESC LIMIT 1");
 $yearStmt->execute([$schoolId]);
 $academicYear = $yearStmt->fetchColumn() ?: date('Y') . '/' . (date('y')+1);
 
-// Orari i ditës
 $todayStmt = $pdo->prepare("
     SELECT cs.period_number, c.grade, s.subject_name, cs.class_id, cs.subject_id
     FROM class_schedule cs
@@ -58,16 +55,13 @@ $todayStmt = $pdo->prepare("
 $todayStmt->execute([$teacherId, $schoolId, strtolower(date('l'))]);
 $todayLessons = $todayStmt->fetchAll(PDO::FETCH_ASSOC);
 
-// Statistikat
-$summaryStmt = $pdo->prepare("SELECT COUNT(*) AS total_lessons, COUNT(DISTINCT class_id) AS total_classes FROM teacher_class WHERE teacher_id = ?");
-$summaryStmt->execute([$teacherId]);
+$summaryStmt = $pdo->prepare("SELECT COUNT(*) AS total_lessons, (SELECT COUNT(DISTINCT class_id) FROM teacher_class WHERE teacher_id = ?) AS total_classes FROM class_schedule WHERE teacher_id = ?");
+$summaryStmt->execute([$teacherId, $teacherId]);
 $summary = $summaryStmt->fetch(PDO::FETCH_ASSOC);
 
-// Kontrolli i Kujdestarisë (Lidhja me teachers.id)
-$headStmt = $pdo->prepare("SELECT grade FROM classes WHERE class_header = ? AND status = 'active' LIMIT 1");
+$headStmt = $pdo->prepare("SELECT id, grade FROM classes WHERE class_header = ? AND status = 'active' LIMIT 1");
 $headStmt->execute([$teacherId]);
 $headClass = $headStmt->fetch(PDO::FETCH_ASSOC);
-
 $isClassHeader = !empty($headClass);
 
 /* =====================================================
@@ -75,14 +69,17 @@ $isClassHeader = !empty($headClass);
 ===================================================== */
 $adminInsights = [];
 if ($isClassHeader) {
+    // Filtrojmë log-et që kanë lidhje me klasën e mësuesit
+    $classRef = "%Klasa ID: " . $headClass['id'] . "%";
     $logStmt = $pdo->prepare("
         SELECT action_title, note, created_at
         FROM admin_logs
-        WHERE school_id = ? AND context = 'class'
+        WHERE school_id = ? 
+          AND (note LIKE ? OR action_title LIKE '%Klasa%')
         ORDER BY created_at DESC
         LIMIT 5
     ");
-    $logStmt->execute([$schoolId]);
+    $logStmt->execute([$schoolId, $classRef]);
     $adminInsights = $logStmt->fetchAll(PDO::FETCH_ASSOC);
 }
 
@@ -176,21 +173,25 @@ ob_start();
                 </div>
             </div>
 
-            <?php if ($isClassHeader && !empty($adminInsights)): ?>
+            <?php if ($isClassHeader): ?>
                 <div class="bg-white rounded-2xl border border-slate-100 p-5 shadow-sm">
                     <h2 class="font-bold text-slate-800 mb-4 flex items-center gap-2 text-base">
                         <span class="w-1.5 h-4 bg-indigo-500 rounded-full"></span> Njoftime nga Administrata
                     </h2>
                     <div class="space-y-3">
-                        <?php foreach ($adminInsights as $log): ?>
-                            <div class="p-3 rounded-xl bg-indigo-50 border border-indigo-100">
-                                <p class="text-xs font-bold text-indigo-700"><?= htmlspecialchars($log['action_title']) ?></p>
-                                <?php if (!empty($log['note'])): ?>
-                                    <p class="text-[11px] text-slate-600 mt-1"><?= htmlspecialchars($log['note']) ?></p>
-                                <?php endif; ?>
-                                <p class="text-[10px] text-slate-400 mt-1 italic"><?= date('d.m.Y H:i', strtotime($log['created_at'])) ?></p>
-                            </div>
-                        <?php endforeach; ?>
+                        <?php if (!empty($adminInsights)): ?>
+                            <?php foreach ($adminInsights as $log): ?>
+                                <div class="p-3 rounded-xl bg-indigo-50/50 border border-indigo-100/50">
+                                    <p class="text-xs font-bold text-indigo-700 uppercase tracking-tight"><?= htmlspecialchars($log['action_title']) ?></p>
+                                    <?php if (!empty($log['note'])): ?>
+                                        <p class="text-[11px] text-slate-600 mt-1"><?= htmlspecialchars($log['note']) ?></p>
+                                    <?php endif; ?>
+                                    <p class="text-[10px] text-slate-400 mt-1 italic"><?= date('d.m.Y H:i', strtotime($log['created_at'])) ?></p>
+                                </div>
+                            <?php endforeach; ?>
+                        <?php else: ?>
+                            <p class="text-xs text-slate-400 italic">Nuk ka njoftime të fundit për klasën tuaj.</p>
+                        <?php endif; ?>
                     </div>
                 </div>
             <?php endif; ?>

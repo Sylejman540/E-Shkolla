@@ -1,21 +1,27 @@
 <?php
 /* =========================
-   delete-announcement.php (FINAL)
+   delete-announcement.php (FIXED & FINAL)
 ========================= */
-session_start();
+
+if (session_status() === PHP_SESSION_NONE) {
+    session_start();
+}
+
 require_once __DIR__ . '/../../../../db.php';
 
-if (
-    empty($_SESSION['user']) ||
-    ($_SESSION['user']['role'] ?? '') !== 'teacher'
-) {
+/* =========================
+   AUTH
+========================= */
+$user = $_SESSION['user'] ?? null;
+
+if (!$user || ($user['role'] ?? '') !== 'teacher') {
     http_response_code(403);
     exit('Akses i ndaluar');
 }
 
-$annId     = (int)($_GET['id'] ?? 0);
-$teacherId = (int)$_SESSION['user']['id'];
-$schoolId  = (int)$_SESSION['user']['school_id'];
+$userId   = (int)$user['id'];
+$schoolId = (int)$user['school_id'];
+$annId    = (int)($_GET['id'] ?? 0);
 
 if (!$annId) {
     http_response_code(400);
@@ -23,7 +29,24 @@ if (!$annId) {
 }
 
 /* =========================
-   VERIFY OWNERSHIP + SCHOOL
+   RESOLVE REAL teacher_id
+========================= */
+$tStmt = $pdo->prepare("
+    SELECT id 
+    FROM teachers 
+    WHERE user_id = ? AND school_id = ?
+    LIMIT 1
+");
+$tStmt->execute([$userId, $schoolId]);
+$teacherId = (int)$tStmt->fetchColumn();
+
+if (!$teacherId) {
+    http_response_code(403);
+    exit('Mësues i pavlefshëm');
+}
+
+/* =========================
+   VERIFY OWNERSHIP
 ========================= */
 $check = $pdo->prepare("
     SELECT 1
@@ -49,5 +72,5 @@ $del = $pdo->prepare("
 ");
 $del->execute([$annId]);
 
-header('Location: /E-Shkolla/teacher-notices');
+header('Location: /E-Shkolla/teacher-notices?deleted=1');
 exit;

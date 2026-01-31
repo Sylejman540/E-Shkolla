@@ -1,38 +1,121 @@
 <?php
 date_default_timezone_set('Europe/Tirane');
-if (session_status() === PHP_SESSION_NONE) { session_start(); }
+if (session_status() === PHP_SESSION_NONE) session_start();
 require_once __DIR__ . '/../../../../db.php';
 
-$user     = $_SESSION['user'] ?? null;
-$role     = $user['role'] ?? null;
-$userId   = (int)($user['id'] ?? 0);
-$schoolId = (int)($user['school_id'] ?? 0);
-
-if (!$userId || !$schoolId || !$role) {
+/* =========================
+   AUTH
+========================= */
+$user = $_SESSION['user'] ?? null;
+if (!$user) {
     http_response_code(403);
     exit('Akses i ndaluar');
 }
 
-$isAjax = (!empty($_SERVER['HTTP_X_REQUESTED_WITH']) && strtolower($_SERVER['HTTP_X_REQUESTED_WITH']) === 'xmlhttprequest');
-if (!$isAjax) { ob_start(); }
+$role     = $user['role'];
+$userId   = (int)$user['id'];
+$schoolId = (int)$user['school_id'];
+
+$isAjax = (
+    !empty($_SERVER['HTTP_X_REQUESTED_WITH']) &&
+    strtolower($_SERVER['HTTP_X_REQUESTED_WITH']) === 'xmlhttprequest'
+);
+
+/* =========================
+   RESOLVE TEACHER ID
+========================= */
+$teacherId = null;
+
+if ($role === 'teacher') {
+    $tStmt = $pdo->prepare("
+        SELECT id 
+        FROM teachers 
+        WHERE user_id = ? AND school_id = ?
+        LIMIT 1
+    ");
+    $tStmt->execute([$userId, $schoolId]);
+    $teacherId = (int) $tStmt->fetchColumn();
+}
+
+/* =========================
+   DELETE ANNOUNCEMENT
+========================= */
+if (
+    $role === 'teacher' &&
+    $_SERVER['REQUEST_METHOD'] === 'POST' &&
+    isset($_POST['delete_id'])
+) {
+    $announcementId = (int)$_POST['delete_id'];
+
+    // Only delete announcements created for THIS teacher
+    $del = $pdo->prepare("
+        DELETE FROM announcements
+        WHERE id = ?
+          AND school_id = ?
+          AND teacher_id = ?
+    ");
+    $del->execute([$announcementId, $schoolId, $teacherId]);
+
+    echo json_encode(['success' => true]);
+    exit;
+}
 
 /* =========================
    FETCH ANNOUNCEMENTS
 ========================= */
-if ($role === 'teacher') {
-    $stmt = $pdo->prepare("SELECT a.*, c.grade AS class_name FROM announcements a LEFT JOIN classes c ON c.id = a.class_id WHERE a.school_id = ? AND a.teacher_id = ? AND (a.expires_at IS NULL OR a.expires_at >= CURDATE()) ORDER BY a.created_at DESC");
-    $stmt->execute([$schoolId, $userId]);
-} else {
-    // Shared logic for Student/Parent
-    $target = ($role === 'student') ? 'student' : 'parent';
-    $stmt = $pdo->prepare("SELECT DISTINCT a.*, c.grade AS class_name FROM announcements a INNER JOIN students s ON s.user_id = ? INNER JOIN classes c ON c.id = s.class_id WHERE a.school_id = ? AND a.class_id = s.class_id AND a.target_role IN (?, 'all') AND (a.expires_at IS NULL OR a.expires_at >= CURDATE()) ORDER BY a.created_at DESC");
-    $stmt->execute([$userId, $schoolId, $target]);
+$announcements = [];
+
+/* ---------- TEACHER ---------- */
+if ($role === 'teacher' && $teacherId) {
+
+    $stmt = $pdo->prepare("
+        SELECT a.*, c.grade AS class_name
+        FROM announcements a
+        LEFT JOIN classes c ON c.id = a.class_id
+        WHERE a.school_id = ?
+          AND (
+                a.teacher_id = ?
+             OR a.target_role IN ('teacher','all')
+          )
+          AND (a.expires_at IS NULL OR a.expires_at >= CURDATE())
+        ORDER BY a.created_at DESC
+    ");
+    $stmt->execute([$schoolId, $teacherId]);
+    $announcements = $stmt->fetchAll(PDO::FETCH_ASSOC);
 }
 
-$announcements = $stmt->fetchAll(PDO::FETCH_ASSOC);
+/* ---------- STUDENT / PARENT ---------- */
+elseif (in_array($role, ['student','parent'])) {
 
-if (!$isAjax) { ob_start(); }
+    $target = $role;
+
+    $stmt = $pdo->prepare("
+        SELECT DISTINCT a.*, c.grade AS class_name
+        FROM announcements a
+        INNER JOIN students s ON s.user_id = ?
+        INNER JOIN classes c ON c.id = s.class_id
+        WHERE a.school_id = ?
+          AND a.class_id = s.class_id
+          AND a.target_role IN (?, 'all')
+          AND (a.expires_at IS NULL OR a.expires_at >= CURDATE())
+        ORDER BY a.created_at DESC
+    ");
+
+    $stmt->execute([$userId, $schoolId, $target]);
+    $announcements = $stmt->fetchAll(PDO::FETCH_ASSOC);
+}
+
+/* =========================
+   OUTPUT
+========================= */
+if ($isAjax) {
+    echo json_encode($announcements);
+    exit;
+}
+
+ob_start();
 ?>
+
 
 <div class="max-w-6xl mx-auto space-y-6 pb-12 animate-in fade-in duration-500 font-inter text-slate-700">
     
