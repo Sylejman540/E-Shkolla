@@ -67,22 +67,38 @@ $isClassHeader = !empty($headClass);
 /* =====================================================
     ADMIN LOGS — ONLY FOR CLASS HEADERS
 ===================================================== */
+/* =====================================================
+    ADMIN LOGS — ONLY FOR CLASS HEADERS (AUTO-EXPIRE 3 DAYS)
+===================================================== */
+/* =====================================================
+    ADMIN LOGS — ONLY FOR CLASS HEADERS (AUTO-EXPIRE 3 DAYS)
+===================================================== */
 $adminInsights = [];
 if ($isClassHeader) {
-    // Filtrojmë log-et që kanë lidhje me klasën e mësuesit
-    $classRef = "%Klasa ID: " . $headClass['id'] . "%";
+    $currentClassId = (int)$headClass['id'];
+    
+    // Përdorim JSON_EXTRACT ose LIKE për të gjetur class_id brenda kolonës context
+    // Gjithashtu shtojmë kushtin për datën (3 ditë)
     $logStmt = $pdo->prepare("
         SELECT action_title, note, created_at
         FROM admin_logs
         WHERE school_id = ? 
-          AND (note LIKE ? OR action_title LIKE '%Klasa%')
+          AND (
+            context LIKE ? 
+            OR note LIKE ?
+          )
+          AND created_at >= DATE_SUB(NOW(), INTERVAL 3 DAY)
         ORDER BY created_at DESC
         LIMIT 5
     ");
-    $logStmt->execute([$schoolId, $classRef]);
+    
+    // Kërkojmë për class_id brenda formatit JSON të kolonës context
+    $jsonSearch = '%"class_id": ' . $currentClassId . '%';
+    $noteSearch = '%Klasa ID: ' . $currentClassId . '%';
+    
+    $logStmt->execute([$schoolId, $jsonSearch, $noteSearch]);
     $adminInsights = $logStmt->fetchAll(PDO::FETCH_ASSOC);
 }
-
 $pendingAssignmentsStmt = $pdo->prepare("SELECT COUNT(*) FROM assignments WHERE teacher_id = ? AND status = 'submitted'");
 $pendingAssignmentsStmt->execute([$teacherId]);
 $pendingCount = (int)$pendingAssignmentsStmt->fetchColumn();
