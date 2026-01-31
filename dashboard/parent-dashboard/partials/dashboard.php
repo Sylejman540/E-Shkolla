@@ -37,15 +37,27 @@ try {
         $studentId = (int)$stmt->fetchColumn();
     }
 
-    $stmt = $pdo->prepare("
-        SELECT s.student_id, s.name, s.class_name, c.id as class_id
-        FROM students s 
-        JOIN parent_student ps ON s.student_id = ps.student_id 
-        LEFT JOIN classes c ON s.class_name = c.grade AND s.school_id = c.school_id
-        WHERE ps.parent_id = ? AND s.student_id = ?
-    ");
-    $stmt->execute([$parentId, $studentId]);
-    $student = $stmt->fetch(PDO::FETCH_ASSOC);
+$stmt = $pdo->prepare("
+    SELECT s.student_id, s.name, s.class_name, c.id AS class_id
+    FROM students s 
+    JOIN parent_student ps ON s.student_id = ps.student_id 
+    LEFT JOIN classes c 
+        ON s.class_name = c.grade 
+       AND s.school_id = c.school_id
+    WHERE 
+        ps.parent_id = ?
+        AND s.student_id = ?
+        AND s.school_id = ?
+        AND s.status = 'active'
+    LIMIT 1
+");
+$stmt->execute([$parentId, $studentId, $schoolId]);
+$student = $stmt->fetch(PDO::FETCH_ASSOC);
+
+if (!$student) {
+    throw new Exception('Nxënësi nuk është aktiv ose nuk është i lidhur me llogarinë tuaj.');
+}
+
 
     // Statistikat
     $stmt = $pdo->prepare("SELECT SUM(present=1) as p, COUNT(*) as t FROM attendance WHERE student_id = ?");

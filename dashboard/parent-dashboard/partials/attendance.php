@@ -28,10 +28,14 @@ try {
         FROM parent_student ps
         JOIN students s ON s.student_id = ps.student_id
         JOIN classes c ON s.class_id = c.id
-        WHERE ps.parent_id = ? AND s.school_id = ?
+        WHERE 
+            ps.parent_id = ?
+            AND s.school_id = ?
+            AND s.status = 'active'
     ");
     $stmt->execute([$parentId, $schoolId]);
     $children = $stmt->fetchAll(PDO::FETCH_ASSOC);
+
 
     if (!$children) die('Nuk ka fëmijë të lidhur');
 

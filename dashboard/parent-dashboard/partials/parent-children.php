@@ -37,10 +37,15 @@ try {
             s.name AS student_name, 
             s.class_name, 
             s.status,
-            (SELECT ROUND(AVG(grade), 2) FROM grades WHERE student_id = s.student_id) as avg_grade
+            (SELECT ROUND(AVG(grade), 2) 
+            FROM grades 
+            WHERE student_id = s.student_id) AS avg_grade
         FROM parent_student ps
         JOIN students s ON s.student_id = ps.student_id
-        WHERE ps.parent_id = ? AND s.school_id = ?
+        WHERE 
+            ps.parent_id = ?
+            AND s.school_id = ?
+            AND s.status = 'active'
         ORDER BY s.name ASC
     ");
     $stmt->execute([$parentId, $schoolId]);
