@@ -324,7 +324,7 @@ function startDiagnosis(classId, gradeName) {
     document.getElementById('diagContent').classList.add('hidden');
     document.getElementById('diagLoading').classList.remove('hidden');
 
-    fetch(`attendance-analysis.php?class_id=${classId}`)
+    fetch(`/E-Shkolla/dashboard/schooladmin-dashboard/partials/dashboard/attendance-analysis.php?class_id=${classId}`)
         .then(res => res.json())
         .then(data => {
             document.getElementById('diagLoading').classList.add('hidden');

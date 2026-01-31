@@ -1,7 +1,4 @@
 <?php
-$rawInput = file_get_contents('php://input');
-file_put_contents(__DIR__ . '/debug.log', "RAW:\n".$rawInput."\n\n", FILE_APPEND);
-
 header('Content-Type: application/json; charset=utf-8');
 
 require_once __DIR__ . '/../../../../db.php';
