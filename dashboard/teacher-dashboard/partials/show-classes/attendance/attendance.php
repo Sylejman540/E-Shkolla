@@ -67,7 +67,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             FROM student_class sc
             LEFT JOIN attendance a ON a.student_id = sc.student_id AND a.lesson_date = ? AND a.lesson_start_time = ? AND a.subject_id = ?
             WHERE sc.class_id = ? AND (a.updated_at IS NULL OR a.updated_at < DATE_SUB(NOW(), INTERVAL " . ATTENDANCE_LOCK_MINUTES . " MINUTE))
-            ON DUPLICATE KEY UPDATE present = 1, missing = 0, updated_at = NOW()
+            ON DUPLICATE KEY UPDATE present = 1, missing = 0, updated_at = NOW() 
         ");
         $stmt->execute([$schoolId, $classId, $subjectId, $teacherId, $lessonDate, $lessonTime, $lessonDate, $lessonTime, $subjectId, $classId]);
         echo json_encode(['status' => 'ok']);
@@ -136,10 +136,11 @@ $stmt = $pdo->prepare("
         AND s.status = 'active'
     LEFT JOIN attendance a 
         ON a.student_id = sc.student_id
-        AND a.lesson_date = ?        -- 1. $lessonDate
-        AND a.lesson_start_time = ?  -- 2. $lessonTime
-        AND a.subject_id = ?         -- 3. $subjectId
-    WHERE sc.class_id = ?            -- 4. $classId
+        AND a.lesson_date = ?
+        AND a.lesson_start_time = ?
+        AND a.subject_id = ?
+    WHERE sc.class_id = ?
+    ORDER BY s.name ASC  -- <--- SHTONI KËTË RRESHT
 ");
 
 // Execute with exactly 4 parameters in the correct order
@@ -193,53 +194,56 @@ ob_start();
                class="block w-full pl-10 pr-3 py-2.5 border border-gray-200 rounded-xl leading-5 bg-white placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent sm:text-sm transition-all">
     </div>
 
-    <div class="bg-white rounded-xl border border-gray-200 shadow-sm overflow-hidden">
-        <table class="min-w-full divide-y divide-gray-200" id="attendanceTable">
-            <thead class="bg-gray-50">
+<div class="bg-white rounded-lg border border-gray-100 shadow-sm overflow-hidden">
+    <div class="overflow-x-auto">
+        <table class="min-w-full divide-y divide-gray-100" id="attendanceTable">
+            <thead class="bg-gray-50/50">
                 <tr>
-                    <th class="px-6 py-3 text-left text-xs font-bold text-gray-400 uppercase tracking-wider">Nxënësi</th>
-                    <th class="px-6 py-3 text-left text-xs font-bold text-gray-400 uppercase tracking-wider">Statusi</th>
-                    <th class="px-6 py-3 text-right text-xs font-bold text-gray-400 uppercase tracking-wider">Veprimet</th>
+                    <th class="px-4 md:px-5 py-2.5 text-left text-xs font-medium text-gray-400 uppercase tracking-tight">Nxënësi</th>
+                    <th class="px-4 md:px-5 py-2.5 text-left text-xs font-medium text-gray-400 uppercase tracking-tight">Statusi</th>
+                    <th class="px-4 md:px-5 py-2.5 text-right text-xs font-medium text-gray-400 uppercase tracking-tight">Veprimet</th>
                 </tr>
             </thead>
-            <tbody class="bg-white divide-y divide-gray-200">
+            <tbody class="bg-white divide-y divide-gray-50">
                 <?php foreach ($rows as $r): 
                     $isLocked = false;
                     if (!empty($r['updated_at'])) {
                         $isLocked = (time() - strtotime($r['updated_at'])) < (ATTENDANCE_LOCK_MINUTES * 60);
                     }
                 ?>
-                <tr class="student-row hover:bg-gray-50 transition-colors">
-                    <td class="px-6 py-4 whitespace-nowrap student-name font-semibold text-gray-800"><?= htmlspecialchars($r['name']) ?></td>
-                    <td class="px-6 py-4 whitespace-nowrap">
+                <tr class="student-row hover:bg-gray-50/50 transition-colors">
+                    <td class="px-4 md:px-5 py-3 whitespace-nowrap student-name text-sm font-medium text-gray-700">
+                        <?= htmlspecialchars($r['name']) ?>
+                    </td>
+                    <td class="px-4 md:px-5 py-3 whitespace-nowrap">
                         <?php if ($r['missing']): ?>
-                            <span class="px-2.5 py-1 text-xs font-bold rounded-md bg-red-50 text-red-600 uppercase">Mungon</span>
+                            <span class="px-2 py-0.5 text-[10px] font-medium rounded bg-red-50 text-red-500 uppercase tracking-wide">Mungon</span>
                         <?php elseif ($r['present']): ?>
-                            <span class="px-2.5 py-1 text-xs font-bold rounded-md bg-indigo-50 text-indigo-600 uppercase">Prezent</span>
+                            <span class="px-2 py-0.5 text-[10px] font-medium rounded bg-indigo-50 text-indigo-500 uppercase tracking-wide">Prezent</span>
                         <?php else: ?>
-                            <span class="px-2.5 py-1 text-xs font-bold rounded-md bg-gray-100 text-gray-400 uppercase tracking-tighter">Pa regjistruar</span>
+                            <span class="px-2 py-0.5 text-[10px] font-normal rounded bg-gray-50 text-gray-400 uppercase tracking-tight">Pa regjistruar</span>
                         <?php endif; ?>
                     </td>
-                    <td class="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
-                        <div class="flex justify-end items-center gap-3">
+                    <td class="px-4 md:px-5 py-3 whitespace-nowrap text-right">
+                        <div class="flex justify-end items-center gap-1.5 md:gap-2">
                             <?php if ($isLocked): ?>
-                                <span class="text-[10px] text-gray-300 font-bold uppercase mr-2">🔒 Kyçur</span>
+                                <span class="text-[9px] text-gray-300 font-medium uppercase mr-1">🔒 <span class="hidden sm:inline">Kyçur</span></span>
                             <?php endif; ?>
 
                             <button onclick="save(<?= $r['student_id'] ?>,'present', this)" 
                                     <?= $isLocked ? 'disabled' : '' ?>
-                                    class="bg-white border border-gray-200 text-gray-700 px-4 py-1.5 rounded-lg hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed disabled:bg-red-50 disabled:hover:bg-red-50">
+                                    class="bg-white border border-gray-100 text-gray-600 px-2.5 md:px-3 py-1 rounded text-xs hover:bg-gray-50 disabled:opacity-40 disabled:cursor-not-allowed transition-all">
                                 Prezent
                             </button>
                             
                             <button onclick="save(<?= $r['student_id'] ?>,'missing', this)" 
                                     <?= $isLocked ? 'disabled' : '' ?>
-                                    class="bg-white border border-gray-200 text-gray-700 px-4 py-1.5 rounded-lg hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed disabled:bg-red-50 disabled:hover:bg-red-50">
+                                    class="bg-white border border-gray-100 text-gray-600 px-2.5 md:px-3 py-1 rounded text-xs hover:bg-gray-50 disabled:opacity-40 disabled:cursor-not-allowed transition-all">
                                 Mungon
                             </button>
 
-                            <button onclick="resetA(<?= $r['student_id'] ?>)" class="text-gray-300 hover:text-red-500 transition-colors">
-                                <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"/></svg>
+                            <button onclick="resetA(<?= $r['student_id'] ?>)" class="text-gray-200 hover:text-red-400 transition-colors ml-1">
+                                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"/></svg>
                             </button>
                         </div>
                     </td>
