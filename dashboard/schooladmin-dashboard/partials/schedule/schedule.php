@@ -153,44 +153,46 @@ ob_start();
         });
 
     const teacherSelect = document.getElementById('teacherSelect');
-    const subjectSelect = document.getElementById('subjectSelect');
+const subjectSelect = document.getElementById('subjectSelect');
+const classId = <?= (int)$classId ?>;
 
-    if (teacherSelect && subjectSelect) {
-        teacherSelect.addEventListener('change', function() {
-            const teacherId = this.value;
-            if (!teacherId) return;
-                            
-            subjectSelect.innerHTML = '<option value="">Duke ngarkuar...</option>';
-            subjectSelect.classList.remove('border-emerald-400', 'bg-emerald-50', 'border-2');
+if (teacherSelect && subjectSelect) {
+    teacherSelect.addEventListener('change', function () {
+        const teacherId = this.value;
+        if (!teacherId || !classId) return;
 
-            fetch(`/E-Shkolla/dashboard/schooladmin-dashboard/partials/schedule/get-teacher-subjects.php?teacher_id=70&class_id=26`)
-                .then(response => response.json())
-                .then(subjects => {
-                    subjectSelect.innerHTML = '<option value="" disabled selected>Lënda</option>';
+        subjectSelect.innerHTML = '<option value="">Duke ngarkuar...</option>';
+        subjectSelect.classList.remove('border-emerald-400', 'bg-emerald-50', 'border-2');
 
-                    if (!Array.isArray(subjects) || subjects.length === 0) {
-                        subjectSelect.innerHTML = '<option value="" disabled>Asnjë lëndë e caktuar</option>';
-                        return;
-                    }
+        fetch(`/E-Shkolla/dashboard/schooladmin-dashboard/partials/schedule/get-teacher-subjects.php?teacher_id=${teacherId}&class_id=${classId}`)
+            .then(r => r.json())
+            .then(subjects => {
+                subjectSelect.innerHTML = '<option value="" disabled selected>Lënda</option>';
 
-                    subjects.forEach(s => {
-                        const opt = document.createElement('option');
-                        opt.value = s.id;
-                        opt.textContent = s.subject_name; 
-                        subjectSelect.appendChild(opt);
-                    });
+                if (!Array.isArray(subjects) || subjects.length === 0) {
+                    subjectSelect.innerHTML = '<option value="" disabled>Asnjë lëndë e caktuar</option>';
+                    return;
+                }
 
-                    if (subjects.length === 1) {
-                        subjectSelect.value = subjects[0].id;
-                        subjectSelect.classList.add('border-emerald-400', 'bg-emerald-50', 'border-2');
-                    }
-                })
-                .catch(err => {
-                    console.error('Fetch Error:', err);
-                    subjectSelect.innerHTML = '<option value="" disabled>Gabim gjatë ngarkimit</option>';
+                subjects.forEach(s => {
+                    const opt = document.createElement('option');
+                    opt.value = s.id;
+                    opt.textContent = s.subject_name;
+                    subjectSelect.appendChild(opt);
                 });
-        });
-    }
+
+                // ✅ AUTO-SELECT if only one subject
+                if (subjects.length === 1) {
+                    subjectSelect.value = subjects[0].id;
+                    subjectSelect.classList.add('border-emerald-400', 'bg-emerald-50', 'border-2');
+                }
+            })
+            .catch(err => {
+                console.error('Fetch Error:', err);
+                subjectSelect.innerHTML = '<option value="" disabled>Gabim gjatë ngarkimit</option>';
+            });
+    });
+}
 
     function deleteEntry(id) {
         if (!confirm('A jeni të sigurt?')) return;
