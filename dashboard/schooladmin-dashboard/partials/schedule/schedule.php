@@ -239,7 +239,14 @@ ob_start();
 
     document.addEventListener('DOMContentLoaded', checkUrlMessages);
     </script>
-
+    <?php if (!empty($_SESSION['msg'])): ?>
+    <script>
+        showToast(
+            <?= json_encode($_SESSION['msg']['text']) ?>,
+            <?= json_encode($_SESSION['msg']['type']) ?>
+        );
+    </script>
+    <?php unset($_SESSION['msg']); endif; ?>
     <?php else: ?>
         <div class="flex flex-col items-center justify-center bg-white p-16 rounded-xl border-2 border-dashed border-slate-200">
             <h2 class="text-sm font-bold text-slate-700">Asnjë klasë e zgjedhur</h2>
