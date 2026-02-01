@@ -101,18 +101,27 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         $stmt->execute([$schoolId, $studentId, $classId, $subjectId, $teacherId, $lessonDate, $lessonTime, $present, $missing]);
 
         
-        if ($missing) {
-            $nameStmt = $pdo->prepare("SELECT name FROM students WHERE student_id = ?");
-            $nameStmt->execute([$studentId]);
-            $studentName = $nameStmt->fetchColumn() ?: 'Nxenes';
-            $emails = getParentEmailsByStudent($studentId, $pdo);
-            if (!empty($emails)) {
-                // The delay happens here
-                sendSchoolEmail($emails, 'Njoftim mungese', "Nxenesi $studentName mungon ne oren $lessonTime ($lessonDate)");
-            }
-        }
-        echo json_encode(['status' => 'ok']);
-        exit;
+if ($missing) {
+    $nameStmt = $pdo->prepare("SELECT name FROM students WHERE student_id = ?");
+    $nameStmt->execute([$studentId]);
+    $studentName = $nameStmt->fetchColumn() ?: 'Nxënës';
+    
+    $emails = getParentEmailsByStudent($studentId, $pdo);
+    
+    if (!empty($emails)) {
+        // Marrim kohën fiks kur po regjistrohet mungesa
+        date_default_timezone_set('Europe/Tirane');
+        $now = date('H:i'); 
+        $today = date('d/m/Y');
+
+        // Opsioni A: Dërgimi normal (me vonesë)
+        sendSchoolEmail($emails, 'Njoftim mungese', "Nxënësi $studentName u shënua me mungesë në orën $now ($today).");
+    }
+}
+
+// Kthe përgjigjen menjëherë pas logjikës
+echo json_encode(['status' => 'ok']);
+exit;
     }
 
     if ($action === 'reset' && $studentId) {
